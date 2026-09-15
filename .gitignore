@@ -1,0 +1,39 @@
+# ---------- .NET ----------
+bin/
+obj/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+[Dd]ebug/
+[Rr]elease/
+artifacts/
+TestResults/
+*.nupkg
+
+# ---------- Node / Frontend ----------
+node_modules/
+dist/
+dist-ssr/
+build/
+.vite/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# ---------- Entorno / secretos ----------
+.env
+.env.*
+!.env.example
+appsettings.Development.json
+appsettings.Local.json
+*.pfx
+
+# ---------- Editores / SO ----------
+.vs/
+.vscode/
+.idea/
+*.swp
+.DS_Store
+Thumbs.db
