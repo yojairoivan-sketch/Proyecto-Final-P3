@@ -5,7 +5,7 @@
 | Estudiante | Yojairo Rodriguez (`yojairoivan-sketch`) |
 | Agente | Claude Code, app de escritorio (pestaña Code) |
 | Modelo | Claude Sonnet 5 al inicio; Claude Opus 5.5 desde `/model claude-opus-5-5` |
-| Fecha de la sesión | 2026-09-26 |
+| Fecha de la sesión | 2026-09-26 al 2026-09-27 |
 
 ## Tareas que le delegué
 
@@ -15,6 +15,7 @@
 | 2 | Revisar el repositorio contra la sección 1.1 y la rúbrica | Hecha; se equivocó en un criterio (caso A) |
 | 3 | Dividir el commit inicial en commits atómicos y redactar sus mensajes | Hecha |
 | 4 | Redactar la descripción del pull request que agrega esta bitácora | Hecha |
+| 5 | Preparar y abrir los tres pull requests al repositorio de mi pareja, verificando el README en mi máquina | Hecha (PRs #2, #3 y #4 en `josemiguelm12/stockflow`) |
 
 ## Caso A — dio por bueno un commit que no cumplía la regla
 
@@ -113,6 +114,12 @@ $ git log main -S"ConnectionStrings" --oneline    (sin resultados)
 $ git log main -S"POSTGRES_PASSWORD" --oneline    (sin resultados)
 ```
 
-## Pendiente
+## Colaboración con la pareja
 
-- Pull requests con la pareja (secciones 1.2 y 1.3): se agregan a esta bitácora cuando estén.
+- **Mis pull requests a la pareja** (`josemiguelm12/stockflow`), abiertos el 2026-09-26
+  con las cuatro secciones:
+  - [#2 · Add .gitignore for Maven and IDE files](https://github.com/josemiguelm12/stockflow/pull/2)
+  - [#3 · Add README with setup and run steps](https://github.com/josemiguelm12/stockflow/pull/3)
+  - [#4 · Add pull request template](https://github.com/josemiguelm12/stockflow/pull/4)
+- **Pull requests de la pareja a este repositorio:** al 2026-09-27 no ha abierto ninguno.
+  La evidencia de contacto va en la entrega de Moodle.
