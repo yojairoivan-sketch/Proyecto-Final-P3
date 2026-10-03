@@ -5,6 +5,7 @@ import Inicio from './paginas/Inicio'
 import MiCuenta from './paginas/MiCuenta'
 import ReenviarActivacion from './paginas/ReenviarActivacion'
 import Registro from './paginas/Registro'
+import Usuarios from './paginas/Usuarios'
 import { useSesion } from './sesion'
 
 export default function App() {
@@ -19,7 +20,10 @@ export default function App() {
             Inicio
           </NavLink>
           {usuario ? (
-            <NavLink to="/cuenta">Mi cuenta</NavLink>
+            <>
+              <NavLink to="/cuenta">Mi cuenta</NavLink>
+              {usuario.rol === 'Administrador' && <NavLink to="/usuarios">Usuarios</NavLink>}
+            </>
           ) : (
             <>
               <NavLink to="/iniciar-sesion">Iniciar sesión</NavLink>
@@ -41,6 +45,7 @@ export default function App() {
           <Route path="/reenviar-activacion" element={<ReenviarActivacion />} />
           <Route path="/iniciar-sesion" element={<IniciarSesion />} />
           <Route path="/cuenta" element={<MiCuenta />} />
+          <Route path="/usuarios" element={<Usuarios />} />
           <Route path="*" element={<p>Esta página no existe.</p>} />
         </Routes>
       </main>
