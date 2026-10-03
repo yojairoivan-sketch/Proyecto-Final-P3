@@ -14,6 +14,9 @@ public interface IServicioCuentas
 
     /// <summary>RF-CA-16: consume el enlace (un solo uso, con vencimiento) y activa la cuenta.</summary>
     Task<Resultado> ActivarAsync(string? token, CancellationToken ct = default);
+
+    /// <summary>RF-CA-17: invalida el enlace anterior y encola uno nuevo. Responde igual exista o no el correo.</summary>
+    Task<Resultado> ReenviarActivacionAsync(string? correo, CancellationToken ct = default);
 }
 
 internal sealed class ServicioCuentas(
@@ -22,6 +25,9 @@ internal sealed class ServicioCuentas(
     TimeProvider reloj,
     OpcionesControlAcceso opciones) : IServicioCuentas
 {
+    public const string RespuestaReenvio =
+        "Si el correo corresponde a una cuenta pendiente de activación, te enviamos un enlace nuevo.";
+
     public async Task<Resultado> RegistrarAsync(string? nombre, string? correo, string? contrasena, CancellationToken ct = default)
     {
         var (nombreValido, errorNombre) = ValidacionEntrada.Nombre(nombre);
@@ -91,6 +97,31 @@ internal sealed class ServicioCuentas(
         await transaccion.CommitAsync(ct);
 
         return Resultado.Ok("Cuenta activada. Ya puedes iniciar sesión.");
+    }
+
+    public async Task<Resultado> ReenviarActivacionAsync(string? correo, CancellationToken ct = default)
+    {
+        var (correoValido, error) = ValidacionEntrada.Correo(correo);
+        if (error is not null)
+            return Resultado.Falla(TipoFallo.Validacion, error);
+
+        var usuario = await db.Usuarios.SingleOrDefaultAsync(u => u.Correo == correoValido, ct);
+        if (usuario is { PendienteDeActivacion: true })
+        {
+            var ahora = reloj.GetUtcNow();
+            await db.TokensActivacion
+                .Where(t => t.UsuarioId == usuario.Id && !t.Usado && t.InvalidadoEn == null)
+                .ExecuteUpdateAsync(t => t.SetProperty(x => x.InvalidadoEn, ahora), ct);
+
+            var token = Secretos.NuevoToken();
+            var activacion = TokenActivacion.Emitir(usuario, Secretos.HashDeToken(token), ahora, opciones.VigenciaActivacion);
+            db.TokensActivacion.Add(activacion);
+            await db.SaveChangesAsync(ct);
+            await EncolarActivacionAsync(usuario, token, activacion.VenceEn, ct);
+        }
+
+        // Misma respuesta en todos los casos: no revela qué correos están registrados.
+        return Resultado.Ok(RespuestaReenvio);
     }
 
     private async Task EncolarActivacionAsync(Usuario usuario, string token, DateTimeOffset venceEn, CancellationToken ct)
