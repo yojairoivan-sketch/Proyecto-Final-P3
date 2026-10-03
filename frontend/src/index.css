@@ -1,0 +1,125 @@
+:root {
+  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  line-height: 1.5;
+  color: #1f2933;
+  background: #f5f7fa;
+}
+
+body {
+  margin: 0;
+}
+
+.barra {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.75rem 1rem;
+  background: #12355b;
+  color: #fff;
+}
+
+.barra nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  flex: 1;
+}
+
+.barra a {
+  color: #dbe7f3;
+  text-decoration: none;
+}
+
+.barra a.active {
+  color: #fff;
+  font-weight: 600;
+}
+
+main {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 1.5rem 1rem;
+}
+
+form {
+  display: grid;
+  gap: 0.75rem;
+  max-width: 420px;
+}
+
+label {
+  display: grid;
+  gap: 0.25rem;
+  font-weight: 500;
+}
+
+input,
+select,
+button {
+  font: inherit;
+  padding: 0.45rem 0.6rem;
+  border: 1px solid #b6c2cf;
+  border-radius: 6px;
+}
+
+button {
+  background: #12355b;
+  color: #fff;
+  border: none;
+  cursor: pointer;
+}
+
+button:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+button.secundario {
+  background: #e4e9ef;
+  color: #1f2933;
+}
+
+.nota {
+  color: #52606d;
+}
+
+.exito,
+.error {
+  padding: 0.6rem 0.8rem;
+  border-radius: 6px;
+}
+
+.exito {
+  background: #e3f6e8;
+  color: #1d5b2c;
+}
+
+.error {
+  background: #fde8e8;
+  color: #8a1c1c;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  background: #fff;
+}
+
+th,
+td {
+  text-align: left;
+  padding: 0.5rem;
+  border-bottom: 1px solid #e4e9ef;
+  vertical-align: top;
+}
+
+td .acciones {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.tabla {
+  overflow-x: auto;
+}
