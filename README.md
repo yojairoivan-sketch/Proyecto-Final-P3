@@ -64,6 +64,94 @@ Casi todas las piezas registran sus acciones en Auditoría; esa flecha punteada 
 
 Cada pieza tiene su propio esquema en PostgreSQL (`control_acceso`, `cola_correos` e `inventario`). Ninguna lee las tablas de otra: todo pasa por interfaces. Ningún proyecto `Inventario.Core.*` referencia a `Inventario.Negocio`.
 
+## Requisitos
+
+- **Docker Desktop** con Docker Compose v2 (`docker compose version`), ya iniciado.
+- **Git**. Los comandos de abajo funcionan en Git Bash y en PowerShell, salvo los de `curl`, que están escritos para **Git Bash** (en Windows PowerShell 5.1, `curl` es otro comando).
+- Puertos libres: **8080** (la aplicación) y **8025** (Mailpit). PostgreSQL no publica puerto, así que no choca con otro que tengas instalado.
+
+No hace falta instalar .NET, Node ni PostgreSQL: todo se compila y corre dentro de Docker.
+
+## Cómo ejecutarlo
+
+```bash
+git clone https://github.com/yojairoivan-sketch/Proyecto-Final-P3.git
+cd Proyecto-Final-P3
+git checkout practica-1
+cp .env.example .env
+```
+
+Abre `.env` y completa los valores vacíos (la tabla de abajo dice qué es cada uno):
+
+- `POSTGRES_PASSWORD`: cualquier contraseña.
+- `ADMIN_NOMBRE`, `ADMIN_CORREO` y `ADMIN_CONTRASENA`: el primer Administrador. La contraseña debe tener de 8 a 128 caracteres, con letras y números.
+- `SMTP_REMITENTE` y, si quieres que el correo llegue a una bandeja real, el resto de `SMTP_*` (ver [Correo real](#correo-real-gmail)). Con los valores por defecto los correos llegan a Mailpit.
+
+Después:
+
+```bash
+docker compose up --build -d
+```
+
+La primera vez tarda unos minutos, porque descarga las imágenes y compila. Cuando termine:
+
+| Qué | Dónde |
+|---|---|
+| Aplicación (React) | http://localhost:8080 |
+| API | http://localhost:8080/api (por ejemplo, http://localhost:8080/api/salud) |
+| Bandeja de Mailpit (correo de pruebas) | http://localhost:8025 |
+
+La portada dice «API: conectada». Para ver los registros de la API: `docker compose logs api`.
+
+**Enviar los correos.** Las operaciones solo dejan los correos en la cola. Para entregarlos, corre el enviador:
+
+```bash
+docker compose run --rm enviador
+```
+
+Hace una pasada y termina. Si prefieres que los envíe solo cada 10 segundos, déjalo corriendo en otra terminal con `docker compose run --rm enviador --vigilar 10` (Ctrl+C lo detiene).
+
+Para apagar todo: `docker compose down`. Los datos quedan en el volumen y vuelven en el siguiente `up`. `docker compose down -v` sí borra la base.
+
+### Variables de entorno
+
+Todas van en `.env`, que nunca se sube al repositorio. `.env.example` trae los nombres y solo los valores que no son secretos.
+
+| Variable | Para qué | Obligatoria |
+|---|---|---|
+| `POSTGRES_DB` | Nombre de la base de datos. | Sí (trae `inventario`) |
+| `POSTGRES_USER` | Usuario de la base de datos. | Sí (trae `inventario`) |
+| `POSTGRES_PASSWORD` | Contraseña de ese usuario. | Sí, la eliges tú |
+| `URL_PUBLICA` | Dirección con la que se abre la aplicación; con ella se arman los enlaces de los correos. | Sí (trae `http://localhost:8080`) |
+| `ADMIN_NOMBRE` | Nombre del primer Administrador, que se crea al arrancar si no existe. | Sí |
+| `ADMIN_CORREO` | Correo con el que entra ese Administrador. | Sí |
+| `ADMIN_CONTRASENA` | Su contraseña (8 a 128 caracteres, con letras y números). | Sí |
+| `SMTP_HOST` | Servidor de correo saliente. | Sí (trae `mailpit`) |
+| `SMTP_PUERTO` | Puerto de ese servidor. | Sí (trae `1025`) |
+| `SMTP_SEGURIDAD` | `Ninguna`, `StartTls` o `SslAlConectar`. | Sí (trae `Ninguna`) |
+| `SMTP_USUARIO` | Usuario del servidor de correo. | Solo si el servidor pide autenticación |
+| `SMTP_CONTRASENA` | Contraseña de ese usuario (en Gmail, una contraseña de aplicación). | Solo si el servidor pide autenticación |
+| `SMTP_REMITENTE` | Dirección que aparece como remitente. | Sí |
+| `WEB_PUERTO` | Puerto de la aplicación en tu máquina, si el 8080 está ocupado. Si lo cambias, cambia también `URL_PUBLICA`. | No (8080) |
+| `MAILPIT_PUERTO` | Puerto de la bandeja de Mailpit, si el 8025 está ocupado. | No (8025) |
+
+Si falta una variable obligatoria, `docker compose` se detiene y dice cuál. Solo el enviador recibe las variables `SMTP_*`: la API no las tiene, así que una operación nunca habla con el servidor de correo.
+
+### Correo real (Gmail)
+
+Para que los correos lleguen a una bandeja real (por ejemplo, al registrarte con tu propio correo), usa una cuenta de Gmail con verificación en dos pasos:
+
+1. En https://myaccount.google.com/apppasswords crea una contraseña de aplicación (16 letras).
+2. En `.env` pon:
+   - `SMTP_HOST=smtp.gmail.com`
+   - `SMTP_PUERTO=587`
+   - `SMTP_SEGURIDAD=StartTls`
+   - `SMTP_USUARIO` y `SMTP_REMITENTE`: tu dirección de Gmail.
+   - `SMTP_CONTRASENA`: la contraseña de aplicación, sin espacios.
+3. Después de cada operación que manda correo, corre `docker compose run --rm enviador` (o déjalo con `--vigilar 10`). El correo llega a la bandeja del destinatario y su enlace abre `URL_PUBLICA`.
+
+No hace falta reiniciar la API: el enviador lee `.env` cada vez que se ejecuta.
+
 ## Estructura del repositorio
 
 ```
