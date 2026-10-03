@@ -24,10 +24,11 @@ public sealed class Rol
         Nombre = nombre;
     }
 
-    internal static int IdDe(string nombre) => nombre switch
+    /// <summary>Acepta el nombre sin importar mayúsculas ni la tilde («Estandar» sirve igual que «Estándar»).</summary>
+    internal static int? IdDe(string? nombre) => nombre?.Trim().ToLowerInvariant() switch
     {
-        Administrador => IdAdministrador,
-        Estandar => IdEstandar,
-        _ => throw new ArgumentOutOfRangeException(nameof(nombre), nombre, "Rol desconocido."),
+        "administrador" => IdAdministrador,
+        "estándar" or "estandar" => IdEstandar,
+        _ => null,
     };
 }

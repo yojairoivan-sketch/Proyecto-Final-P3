@@ -25,6 +25,9 @@ services:
     environment:
       ConnectionStrings__Inventario: Host=db;Port=5432;Database=${POSTGRES_DB};Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD};Gss Encryption Mode=Disable
       URL_PUBLICA: ${URL_PUBLICA:?Falta URL_PUBLICA en .env}
+      ADMIN_NOMBRE: ${ADMIN_NOMBRE:?Falta ADMIN_NOMBRE en .env}
+      ADMIN_CORREO: ${ADMIN_CORREO:?Falta ADMIN_CORREO en .env}
+      ADMIN_CONTRASENA: ${ADMIN_CONTRASENA:?Falta ADMIN_CONTRASENA en .env}
     depends_on:
       db:
         condition: service_healthy

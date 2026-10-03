@@ -3,7 +3,9 @@ using Inventario.Api.Acceso;
 using Inventario.Api.Errores;
 using Inventario.Core.ColaCorreos;
 using Inventario.Core.ControlAcceso;
+using Inventario.Core.ControlAcceso.Usuarios;
 using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authorization;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -26,19 +28,27 @@ builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<IUsuarioActual, UsuarioActualHttp>();
 builder.Services.AddAuthentication(AutenticacionSesion.Esquema)
     .AddScheme<AuthenticationSchemeOptions, AutenticacionSesion>(AutenticacionSesion.Esquema, null);
-builder.Services.AddAuthorization();
+builder.Services.AddAuthorization(opciones =>
+    // Defensa extra: lo que no declare nada exige sesión. VerificarQueTodoEndpointDeclareSuOperacion impide que pase.
+    opciones.FallbackPolicy = new AuthorizationPolicyBuilder(AutenticacionSesion.Esquema).RequireAuthenticatedUser().Build());
 
 var app = builder.Build();
-
-await app.Services.MigrarColaCorreosAsync();
-await app.Services.MigrarControlAccesoAsync();
 
 app.UsarErroresControlados();
 app.UseAuthentication();
 app.UseAuthorization();
 
-app.MapGet("/api/salud", (TimeProvider reloj) => Results.Ok(new { estado = "ok", hora = reloj.GetUtcNow() }));
+app.MapGet("/api/salud", (TimeProvider reloj) => Results.Ok(new { estado = "ok", hora = reloj.GetUtcNow() }))
+    .Requiere(Operaciones.ConsultarSalud);
 app.MapearCuentas();
 app.MapearSesion();
+app.MapearUsuarios();
+
+app.VerificarQueTodoEndpointDeclareSuOperacion();
+
+await app.Services.MigrarColaCorreosAsync();
+await app.Services.MigrarControlAccesoAsync();
+app.Logger.LogInformation("{Mensaje}", await app.Services.AsegurarAdministradorInicialAsync(
+    builder.Configuration["ADMIN_NOMBRE"], builder.Configuration["ADMIN_CORREO"], builder.Configuration["ADMIN_CONTRASENA"]));
 
 app.Run();

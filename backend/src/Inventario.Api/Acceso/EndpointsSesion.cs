@@ -11,11 +11,12 @@ public static class EndpointsSesion
     public static IEndpointRouteBuilder MapearSesion(this IEndpointRouteBuilder app)
     {
         app.MapPost("/api/acceso/sesion", async (SolicitudInicioSesion solicitud, IServicioSesiones sesiones, CancellationToken ct) =>
-            (await sesiones.IniciarAsync(solicitud.Correo, solicitud.Contrasena, ct)).ComoRespuesta());
+            (await sesiones.IniciarAsync(solicitud.Correo, solicitud.Contrasena, ct)).ComoRespuesta())
+            .Requiere(Operaciones.IniciarSesion);
 
         app.MapDelete("/api/acceso/sesion", async (IUsuarioActual actual, IServicioSesiones sesiones, CancellationToken ct) =>
             (await sesiones.CerrarAsync(actual.Usuario!.SesionId, ct)).ComoRespuesta())
-            .RequireAuthorization();
+            .Requiere(Operaciones.CerrarSesion);
 
         // RF-CA-07: sin sesión válida responde 401.
         app.MapGet("/api/yo", (IUsuarioActual actual) =>
@@ -23,7 +24,7 @@ public static class EndpointsSesion
             var yo = actual.Usuario!;
             return Results.Ok(new { yo.Id, yo.Nombre, yo.Correo, yo.Rol });
         })
-            .RequireAuthorization();
+            .Requiere(Operaciones.ConsultarMiCuenta);
 
         return app;
     }
