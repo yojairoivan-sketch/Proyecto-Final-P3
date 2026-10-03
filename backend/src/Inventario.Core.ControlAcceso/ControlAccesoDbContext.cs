@@ -1,4 +1,5 @@
 using Inventario.Core.ControlAcceso.Cuentas;
+using Inventario.Core.ControlAcceso.Sesiones;
 using Microsoft.EntityFrameworkCore;
 
 namespace Inventario.Core.ControlAcceso;
@@ -11,6 +12,7 @@ public sealed class ControlAccesoDbContext(DbContextOptions<ControlAccesoDbConte
     internal DbSet<Rol> Roles => Set<Rol>();
     internal DbSet<Usuario> Usuarios => Set<Usuario>();
     internal DbSet<TokenActivacion> TokensActivacion => Set<TokenActivacion>();
+    internal DbSet<Sesion> Sesiones => Set<Sesion>();
 
     protected override void OnModelCreating(ModelBuilder modelo)
     {
@@ -43,6 +45,14 @@ public sealed class ControlAccesoDbContext(DbContextOptions<ControlAccesoDbConte
             token.Property(t => t.HashCodigo).HasMaxLength(64);
             token.HasIndex(t => t.HashCodigo).IsUnique();
             token.HasOne(t => t.Usuario).WithMany().HasForeignKey(t => t.UsuarioId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelo.Entity<Sesion>(sesion =>
+        {
+            sesion.ToTable("sesiones");
+            sesion.Property(s => s.HashToken).HasMaxLength(64);
+            sesion.HasIndex(s => s.HashToken).IsUnique();
+            sesion.HasOne(s => s.Usuario).WithMany().HasForeignKey(s => s.UsuarioId).OnDelete(DeleteBehavior.Cascade);
         });
     }
 }

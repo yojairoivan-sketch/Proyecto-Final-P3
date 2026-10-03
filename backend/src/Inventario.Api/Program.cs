@@ -20,6 +20,7 @@ builder.Services.AddColaCorreos(cadenaConexion);
 builder.Services.AddControlAcceso(cadenaConexion, opciones =>
     opciones.UrlPublica = builder.Configuration["URL_PUBLICA"] ?? opciones.UrlPublica);
 
+
 var app = builder.Build();
 
 await app.Services.MigrarColaCorreosAsync();
@@ -29,5 +30,6 @@ app.UsarErroresControlados();
 
 app.MapGet("/api/salud", (TimeProvider reloj) => Results.Ok(new { estado = "ok", hora = reloj.GetUtcNow() }));
 app.MapearCuentas();
+app.MapearSesion();
 
 app.Run();

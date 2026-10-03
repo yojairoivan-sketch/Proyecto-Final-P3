@@ -7,4 +7,6 @@ public sealed class OpcionesControlAcceso
     public string UrlPublica { get; set; } = "http://localhost:8080";
 
     public TimeSpan VigenciaActivacion { get; set; } = TimeSpan.FromHours(24);
+
+    public TimeSpan VigenciaSesion { get; set; } = TimeSpan.FromHours(8);
 }
