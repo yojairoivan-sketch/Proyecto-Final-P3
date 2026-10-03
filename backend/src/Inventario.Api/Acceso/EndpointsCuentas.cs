@@ -7,6 +7,8 @@ public static class EndpointsCuentas
 {
     public sealed record SolicitudRegistro(string? Nombre, string? Correo, string? Contrasena);
 
+    public sealed record SolicitudActivacion(string? Token);
+
     public static IEndpointRouteBuilder MapearCuentas(this IEndpointRouteBuilder app)
     {
         var acceso = app.MapGroup("/api/acceso");
@@ -14,6 +16,9 @@ public static class EndpointsCuentas
         acceso.MapPost("/registro", async (SolicitudRegistro solicitud, IServicioCuentas cuentas, CancellationToken ct) =>
             (await cuentas.RegistrarAsync(solicitud.Nombre, solicitud.Correo, solicitud.Contrasena, ct))
                 .ComoRespuesta(StatusCodes.Status201Created));
+
+        acceso.MapPost("/activar", async (SolicitudActivacion solicitud, IServicioCuentas cuentas, CancellationToken ct) =>
+            (await cuentas.ActivarAsync(solicitud.Token, ct)).ComoRespuesta());
 
         return app;
     }
