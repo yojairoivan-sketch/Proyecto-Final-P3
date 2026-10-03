@@ -15,4 +15,8 @@
     <ProjectReference Include="..\Inventario.Core.ColaCorreos\Inventario.Core.ColaCorreos.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <InternalsVisibleTo Include="Inventario.Core.ControlAcceso.Pruebas" />
+  </ItemGroup>
+
 </Project>
