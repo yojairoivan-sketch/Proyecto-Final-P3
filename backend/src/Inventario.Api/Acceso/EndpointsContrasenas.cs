@@ -26,6 +26,10 @@ public static class EndpointsContrasenas
             (await contrasenas.CambiarAsync(actual.Usuario!.Id, solicitud.ContrasenaActual, solicitud.ContrasenaNueva, ct)).ComoRespuesta())
             .Requiere(Operaciones.CambiarMiContrasena);
 
+        app.MapPost("/api/usuarios/{id:int}/forzar-restablecimiento", async (int id, IServicioContrasenas contrasenas, CancellationToken ct) =>
+            (await contrasenas.ForzarRestablecimientoAsync(id, ct)).ComoRespuesta())
+            .Requiere(Operaciones.ForzarRestablecimiento);
+
         return app;
     }
 }

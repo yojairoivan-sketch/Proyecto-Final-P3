@@ -32,6 +32,21 @@ internal static class Correos
         Si no lo pediste, ignora este correo: tu contraseña no cambia.
         """);
 
+    public static (string Asunto, string Cuerpo) RestablecimientoForzado(string nombre, string enlace, string codigo, DateTimeOffset venceEn) => (
+        "Un administrador restableció tu contraseña de Inventario",
+        $"""
+        Hola, {nombre}:
+
+        Un administrador restableció tu contraseña: la anterior ya no sirve y tus sesiones se cerraron.
+        Abre este enlace para definir una nueva:
+        {enlace}
+
+        O escribe este código en la página «Restablecer contraseña»:
+        {codigo}
+
+        El código sirve una sola vez y vence el {Fecha(venceEn)}.
+        """);
+
     public static string Fecha(DateTimeOffset fecha) =>
         fecha.ToUniversalTime().ToString("dd/MM/yyyy 'a las' HH:mm 'UTC'", CultureInfo.InvariantCulture);
 

@@ -26,6 +26,12 @@ public interface IServicioContrasenas
     /// (RF-CA-14) y la revocación de las sesiones abiertas, incluida la actual (RF-CA-12).
     /// </summary>
     Task<Resultado> CambiarAsync(int usuarioId, string? contrasenaActual, string? contrasenaNueva, CancellationToken ct = default);
+
+    /// <summary>
+    /// RF-CA-13: un Administrador fuerza el restablecimiento. La contraseña anterior deja de servir, las sesiones
+    /// se revocan y el usuario recibe por la cola un código para definir una nueva.
+    /// </summary>
+    Task<Resultado> ForzarRestablecimientoAsync(int usuarioId, CancellationToken ct = default);
 }
 
 internal sealed class ServicioContrasenas(
@@ -119,6 +125,31 @@ internal sealed class ServicioContrasenas(
         await transaccion.CommitAsync(ct);
 
         return Resultado.Ok("Contraseña cambiada. Todas tus sesiones se cerraron; inicia sesión con la nueva.");
+    }
+
+    public async Task<Resultado> ForzarRestablecimientoAsync(int usuarioId, CancellationToken ct = default)
+    {
+        var usuario = await db.Usuarios.SingleOrDefaultAsync(u => u.Id == usuarioId, ct);
+        if (usuario is null)
+            return Resultado.Falla(TipoFallo.NoEncontrado, "El usuario no existe.");
+        if (usuario.PendienteDeActivacion)
+            return Resultado.Falla(TipoFallo.Conflicto, "La cuenta todavía no se ha activado; no tiene contraseña en uso.");
+
+        await using (var transaccion = await db.Database.BeginTransactionAsync(ct))
+        {
+            // La contraseña pasa a ser el hash de un secreto que nadie conoce: la anterior deja de servir ya.
+            usuario.CambiarHash(Secretos.HashDeContrasena(Secretos.NuevoToken()));
+            await db.SaveChangesAsync(ct);
+            await db.RevocarSesionesDeAsync(usuario.Id, reloj.GetUtcNow(), ct);
+            await transaccion.CommitAsync(ct);
+        }
+
+        var (codigo, venceEn) = await EmitirCodigoAsync(usuario, ct);
+        var enlace = Correos.Enlace(opciones, "restablecer", "codigo", codigo);
+        var (asunto, cuerpo) = Correos.RestablecimientoForzado(usuario.Nombre, enlace, codigo, venceEn);
+        await cola.EncolarAsync(usuario.Correo, asunto, cuerpo, ct);
+
+        return Resultado.Ok($"Contraseña de {usuario.Correo} restablecida: la anterior ya no sirve y le enviamos un código para definir una nueva.");
     }
 
     private static Resultado CodigoUsado() =>

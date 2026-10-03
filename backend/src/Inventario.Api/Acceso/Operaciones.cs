@@ -39,4 +39,5 @@ public static class Operaciones
     public static readonly Operacion CambiarRol = new(nameof(CambiarRol), SoloAdministrador);
     public static readonly Operacion DesactivarUsuario = new(nameof(DesactivarUsuario), SoloAdministrador);
     public static readonly Operacion ReactivarUsuario = new(nameof(ReactivarUsuario), SoloAdministrador);
+    public static readonly Operacion ForzarRestablecimiento = new(nameof(ForzarRestablecimiento), SoloAdministrador);
 }
