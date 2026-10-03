@@ -1,0 +1,6 @@
+<Project>
+  <!-- Versiones de los paquetes NuGet en un solo lugar para todos los proyectos. -->
+  <PropertyGroup>
+    <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
+  </PropertyGroup>
+</Project>
