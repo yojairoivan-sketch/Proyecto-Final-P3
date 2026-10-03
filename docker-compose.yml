@@ -68,5 +68,13 @@ services:
       db:
         condition: service_healthy
 
+  # Pruebas de Control de acceso (RD-12). No necesitan la base ni la API:
+  #   docker compose run --rm pruebas
+  pruebas:
+    build:
+      context: ./backend
+      target: pruebas
+    profiles: ["herramientas"]
+
 volumes:
   datos-postgres:
