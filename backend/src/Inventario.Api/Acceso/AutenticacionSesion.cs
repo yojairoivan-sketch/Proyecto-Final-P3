@@ -54,9 +54,18 @@ public sealed class AutenticacionSesion(
             : "Necesitas iniciar sesión para usar esta operación.");
     }
 
-    /// <summary>403 explícito con ProblemDetails.</summary>
-    protected override Task HandleForbiddenAsync(AuthenticationProperties properties) =>
-        Escribir(StatusCodes.Status403Forbidden, "Tu rol no tiene permiso para usar esta operación.");
+    /// <summary>
+    /// RF-CA-06: rechazo explícito cuando el rol no alcanza. Dice qué operación era y qué rol exige,
+    /// también cuando la petición se arma a mano sin pasar por la interfaz.
+    /// </summary>
+    protected override Task HandleForbiddenAsync(AuthenticationProperties properties)
+    {
+        var operacion = Context.GetEndpoint()?.Metadata.GetMetadata<Operacion>();
+        var rol = Context.User.FindFirstValue(ClaimTypes.Role);
+        return Escribir(StatusCodes.Status403Forbidden, operacion is null
+            ? "Tu rol no tiene permiso para usar esta operación."
+            : $"La operación {operacion.Nombre} es solo para: {string.Join(", ", operacion.Roles)}. Tu rol es {rol}.");
+    }
 
     private async Task Escribir(int estado, string detalle)
     {

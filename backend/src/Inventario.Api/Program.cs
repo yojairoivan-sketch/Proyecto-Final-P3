@@ -4,6 +4,7 @@ using Inventario.Api.Errores;
 using Inventario.Core.ColaCorreos;
 using Inventario.Core.ControlAcceso;
 using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authorization;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -26,7 +27,9 @@ builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<IUsuarioActual, UsuarioActualHttp>();
 builder.Services.AddAuthentication(AutenticacionSesion.Esquema)
     .AddScheme<AuthenticationSchemeOptions, AutenticacionSesion>(AutenticacionSesion.Esquema, null);
-builder.Services.AddAuthorization();
+builder.Services.AddAuthorization(opciones =>
+    // Defensa extra: lo que no declare nada exige sesión. VerificarQueTodoEndpointDeclareSuOperacion impide que pase.
+    opciones.FallbackPolicy = new AuthorizationPolicyBuilder(AutenticacionSesion.Esquema).RequireAuthenticatedUser().Build());
 
 var app = builder.Build();
 
