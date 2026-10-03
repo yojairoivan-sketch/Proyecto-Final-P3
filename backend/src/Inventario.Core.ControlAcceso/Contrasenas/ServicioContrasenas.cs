@@ -13,6 +13,12 @@ public interface IServicioContrasenas
     /// en 30 minutos y lo encola. La respuesta es la misma exista o no el correo.
     /// </summary>
     Task<Resultado> SolicitarRecuperacionAsync(string? correo, CancellationToken ct = default);
+
+    /// <summary>
+    /// RF-CA-11: con un código válido define la contraseña nueva (guardada con hash). Un código usado,
+    /// vencido o reemplazado se rechaza y la contraseña no cambia.
+    /// </summary>
+    Task<Resultado> RestablecerAsync(string? codigo, string? contrasenaNueva, CancellationToken ct = default);
 }
 
 internal sealed class ServicioContrasenas(
@@ -42,6 +48,48 @@ internal sealed class ServicioContrasenas(
         // Misma respuesta en todos los casos: el flujo no revela qué correos están registrados.
         return Resultado.Ok(RespuestaRecuperacion);
     }
+
+    public async Task<Resultado> RestablecerAsync(string? codigo, string? contrasenaNueva, CancellationToken ct = default)
+    {
+        if (string.IsNullOrWhiteSpace(codigo))
+            return Resultado.Falla(TipoFallo.Validacion, "Falta el código de recuperación.");
+
+        var hash = Secretos.HashDeToken(codigo.Trim());
+        var registro = await db.CodigosRecuperacion.Include(c => c.Usuario).SingleOrDefaultAsync(c => c.HashCodigo == hash, ct);
+        var ahora = reloj.GetUtcNow();
+
+        if (registro is null)
+            return Resultado.Falla(TipoFallo.Validacion, "El código de recuperación no es válido.");
+        if (registro.Usado)
+            return CodigoUsado();
+        if (registro.InvalidadoEn is not null)
+            return Resultado.Falla(TipoFallo.Validacion,
+                "Este código ya no sirve porque se pidió uno nuevo. Usa el del correo más reciente.");
+        if (ahora >= registro.VenceEn)
+            return Resultado.Falla(TipoFallo.Validacion, "El código de recuperación venció. Pide uno nuevo.");
+
+        // RF-CA-14 también aplica aquí. Si falla, el código no se gasta.
+        if (PoliticaContrasena.Validar(contrasenaNueva) is { } error)
+            return Resultado.Falla(TipoFallo.Validacion, error);
+
+        await using var transaccion = await db.Database.BeginTransactionAsync(ct);
+        var consumidos = await db.CodigosRecuperacion
+            .Where(c => c.Id == registro.Id && !c.Usado && c.InvalidadoEn == null)
+            .ExecuteUpdateAsync(c => c.SetProperty(x => x.Usado, true).SetProperty(x => x.UsadoEn, ahora), ct);
+        if (consumidos == 0)
+            return CodigoUsado();
+
+        var usuario = registro.Usuario;
+        usuario.CambiarHash(Secretos.HashDeContrasena(contrasenaNueva!));
+        usuario.RegistrarInicioCorrecto();
+        await db.SaveChangesAsync(ct);
+        await transaccion.CommitAsync(ct);
+
+        return Resultado.Ok("Contraseña cambiada. Inicia sesión con la nueva.");
+    }
+
+    private static Resultado CodigoUsado() =>
+        Resultado.Falla(TipoFallo.Validacion, "Este código de recuperación ya se usó. Pide uno nuevo si lo necesitas.");
 
     /// <summary>Invalida los códigos anteriores sin usar y emite uno nuevo.</summary>
     private async Task<(string Codigo, DateTimeOffset VenceEn)> EmitirCodigoAsync(Usuario usuario, CancellationToken ct)

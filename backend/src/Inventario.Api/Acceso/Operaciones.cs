@@ -27,6 +27,7 @@ public static class Operaciones
     public static readonly Operacion ReenviarActivacion = new(nameof(ReenviarActivacion), Publica);
     public static readonly Operacion IniciarSesion = new(nameof(IniciarSesion), Publica);
     public static readonly Operacion SolicitarRecuperacion = new(nameof(SolicitarRecuperacion), Publica);
+    public static readonly Operacion RestablecerContrasena = new(nameof(RestablecerContrasena), Publica);
 
     // Cualquier usuario con sesión, sea Administrador o Estándar.
     public static readonly Operacion ConsultarMiCuenta = new(nameof(ConsultarMiCuenta), ConSesion);
