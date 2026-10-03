@@ -11,6 +11,10 @@ public sealed class OrdenDeCompra
     public int Id { get; private set; }
     public int ProveedorId { get; private set; }
     public Proveedor Proveedor { get; private set; } = null!;
+
+    /// <summary>Atributo de estado de la entidad central. Nace en Borrador.</summary>
+    public EstadoOrdenCompra Estado { get; private set; }
+
     public DateTimeOffset CreadaEn { get; private set; }
     public DateTimeOffset ActualizadaEn { get; private set; }
     public IReadOnlyList<LineaOrdenCompra> Lineas => lineas;
@@ -22,6 +26,7 @@ public sealed class OrdenDeCompra
     public static OrdenDeCompra Crear(Proveedor proveedor, DateTimeOffset ahora) => new()
     {
         Proveedor = proveedor,
+        Estado = EstadoOrdenCompra.Borrador,
         CreadaEn = ahora,
         ActualizadaEn = ahora,
     };

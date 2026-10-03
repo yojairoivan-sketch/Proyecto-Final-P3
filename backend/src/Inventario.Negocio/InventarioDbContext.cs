@@ -41,6 +41,8 @@ public sealed class InventarioDbContext(DbContextOptions<InventarioDbContext> op
         modelo.Entity<OrdenDeCompra>(orden =>
         {
             orden.ToTable("ordenes_de_compra");
+            orden.Property(o => o.Estado).HasConversion<string>().HasMaxLength(20);
+            orden.HasIndex(o => o.Estado);
             orden.HasOne(o => o.Proveedor).WithMany().HasForeignKey(o => o.ProveedorId).OnDelete(DeleteBehavior.Restrict);
             orden.HasMany(o => o.Lineas).WithOne(l => l.OrdenDeCompra).HasForeignKey(l => l.OrdenDeCompraId).OnDelete(DeleteBehavior.Cascade);
             orden.Navigation(o => o.Lineas).HasField("lineas");
