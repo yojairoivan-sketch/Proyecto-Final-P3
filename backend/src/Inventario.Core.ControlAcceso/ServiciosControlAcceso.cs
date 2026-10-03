@@ -1,3 +1,4 @@
+using Inventario.Core.ControlAcceso.Cuentas;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -19,6 +20,7 @@ public static class ServiciosControlAcceso
             .UseNpgsql(cadenaConexion, npgsql => npgsql.MigrationsHistoryTable("__ef_migraciones", ControlAccesoDbContext.Esquema))
             .UseSnakeCaseNamingConvention());
 
+        services.AddScoped<IServicioCuentas, ServicioCuentas>();
         return services;
     }
 
