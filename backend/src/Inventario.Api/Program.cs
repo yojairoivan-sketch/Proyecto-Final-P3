@@ -3,6 +3,7 @@ using Inventario.Api.Acceso;
 using Inventario.Api.Errores;
 using Inventario.Core.ColaCorreos;
 using Inventario.Core.ControlAcceso;
+using Microsoft.AspNetCore.Authentication;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -20,6 +21,12 @@ builder.Services.AddColaCorreos(cadenaConexion);
 builder.Services.AddControlAcceso(cadenaConexion, opciones =>
     opciones.UrlPublica = builder.Configuration["URL_PUBLICA"] ?? opciones.UrlPublica);
 
+// La credencial de sesión se valida en cada petición contra Control de acceso.
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddScoped<IUsuarioActual, UsuarioActualHttp>();
+builder.Services.AddAuthentication(AutenticacionSesion.Esquema)
+    .AddScheme<AuthenticationSchemeOptions, AutenticacionSesion>(AutenticacionSesion.Esquema, null);
+builder.Services.AddAuthorization();
 
 var app = builder.Build();
 
@@ -27,6 +34,8 @@ await app.Services.MigrarColaCorreosAsync();
 await app.Services.MigrarControlAccesoAsync();
 
 app.UsarErroresControlados();
+app.UseAuthentication();
+app.UseAuthorization();
 
 app.MapGet("/api/salud", (TimeProvider reloj) => Results.Ok(new { estado = "ok", hora = reloj.GetUtcNow() }));
 app.MapearCuentas();

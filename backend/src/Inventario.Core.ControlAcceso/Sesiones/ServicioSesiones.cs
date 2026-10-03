@@ -14,6 +14,12 @@ public interface IServicioSesiones
     /// </summary>
     Task<Resultado<SesionIniciada>> IniciarAsync(string? correo, string? contrasena, CancellationToken ct = default);
 
+    /// <summary>
+    /// Devuelve el dueño de la credencial si la sesión no está cerrada ni vencida y el usuario sigue activo.
+    /// Se llama en cada petición.
+    /// </summary>
+    Task<UsuarioAutenticado?> ValidarAsync(string token, CancellationToken ct = default);
+
 }
 
 internal sealed class ServicioSesiones(
@@ -57,6 +63,21 @@ internal sealed class ServicioSesiones(
         await db.SaveChangesAsync(ct);
 
         return Resultado<SesionIniciada>.Ok(new SesionIniciada(token, sesion.VenceEn, Autenticado(usuario, sesion.Id)));
+    }
+
+    public async Task<UsuarioAutenticado?> ValidarAsync(string token, CancellationToken ct = default)
+    {
+        if (string.IsNullOrWhiteSpace(token))
+            return null;
+
+        var hash = Secretos.HashDeToken(token.Trim());
+        var ahora = reloj.GetUtcNow();
+        var sesion = await db.Sesiones
+            .AsNoTracking()
+            .Include(s => s.Usuario).ThenInclude(u => u.Rol)
+            .SingleOrDefaultAsync(s => s.HashToken == hash && s.RevocadaEn == null && s.VenceEn > ahora && s.Usuario.Activo, ct);
+
+        return sesion is null ? null : Autenticado(sesion.Usuario, sesion.Id);
     }
 
     private static UsuarioAutenticado Autenticado(Usuario usuario, long sesionId) =>
