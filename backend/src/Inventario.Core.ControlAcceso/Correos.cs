@@ -17,6 +17,21 @@ internal static class Correos
         Si no creaste esta cuenta, ignora este correo.
         """);
 
+    public static (string Asunto, string Cuerpo) Recuperacion(string nombre, string enlace, string codigo, DateTimeOffset venceEn) => (
+        "Código para restablecer tu contraseña de Inventario",
+        $"""
+        Hola, {nombre}:
+
+        Pediste restablecer tu contraseña. Abre este enlace para definir una nueva:
+        {enlace}
+
+        O escribe este código en la página «Restablecer contraseña»:
+        {codigo}
+
+        El código sirve una sola vez y vence el {Fecha(venceEn)}.
+        Si no lo pediste, ignora este correo: tu contraseña no cambia.
+        """);
+
     public static string Fecha(DateTimeOffset fecha) =>
         fecha.ToUniversalTime().ToString("dd/MM/yyyy 'a las' HH:mm 'UTC'", CultureInfo.InvariantCulture);
 

@@ -1,3 +1,4 @@
+using Inventario.Core.ControlAcceso.Contrasenas;
 using Inventario.Core.ControlAcceso.Cuentas;
 using Inventario.Core.ControlAcceso.Sesiones;
 using Inventario.Core.ControlAcceso.Usuarios;
@@ -25,6 +26,7 @@ public static class ServiciosControlAcceso
         services.AddScoped<IServicioCuentas, ServicioCuentas>();
         services.AddScoped<IServicioSesiones, ServicioSesiones>();
         services.AddScoped<IServicioUsuarios, ServicioUsuarios>();
+        services.AddScoped<IServicioContrasenas, ServicioContrasenas>();
         return services;
     }
 

@@ -1,3 +1,4 @@
+using Inventario.Core.ControlAcceso.Contrasenas;
 using Inventario.Core.ControlAcceso.Cuentas;
 using Inventario.Core.ControlAcceso.Sesiones;
 using Microsoft.EntityFrameworkCore;
@@ -13,6 +14,7 @@ public sealed class ControlAccesoDbContext(DbContextOptions<ControlAccesoDbConte
     internal DbSet<Usuario> Usuarios => Set<Usuario>();
     internal DbSet<TokenActivacion> TokensActivacion => Set<TokenActivacion>();
     internal DbSet<Sesion> Sesiones => Set<Sesion>();
+    internal DbSet<CodigoRecuperacion> CodigosRecuperacion => Set<CodigoRecuperacion>();
 
     protected override void OnModelCreating(ModelBuilder modelo)
     {
@@ -53,6 +55,14 @@ public sealed class ControlAccesoDbContext(DbContextOptions<ControlAccesoDbConte
             sesion.Property(s => s.HashToken).HasMaxLength(64);
             sesion.HasIndex(s => s.HashToken).IsUnique();
             sesion.HasOne(s => s.Usuario).WithMany().HasForeignKey(s => s.UsuarioId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelo.Entity<CodigoRecuperacion>(codigo =>
+        {
+            codigo.ToTable("codigos_recuperacion");
+            codigo.Property(c => c.HashCodigo).HasMaxLength(64);
+            codigo.HasIndex(c => c.HashCodigo).IsUnique();
+            codigo.HasOne(c => c.Usuario).WithMany().HasForeignKey(c => c.UsuarioId).OnDelete(DeleteBehavior.Cascade);
         });
     }
 }
