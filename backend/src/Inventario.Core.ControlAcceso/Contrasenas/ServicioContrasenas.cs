@@ -20,6 +20,12 @@ public interface IServicioContrasenas
     /// vencido o reemplazado se rechaza y la contraseña no cambia. RF-CA-12: revoca las sesiones abiertas.
     /// </summary>
     Task<Resultado> RestablecerAsync(string? codigo, string? contrasenaNueva, CancellationToken ct = default);
+
+    /// <summary>
+    /// RF-CA-22: el usuario con sesión cambia su contraseña indicando la actual. Aplican la política
+    /// (RF-CA-14) y la revocación de las sesiones abiertas, incluida la actual (RF-CA-12).
+    /// </summary>
+    Task<Resultado> CambiarAsync(int usuarioId, string? contrasenaActual, string? contrasenaNueva, CancellationToken ct = default);
 }
 
 internal sealed class ServicioContrasenas(
@@ -88,6 +94,31 @@ internal sealed class ServicioContrasenas(
         await transaccion.CommitAsync(ct);
 
         return Resultado.Ok("Contraseña cambiada. Las sesiones abiertas se cerraron; inicia sesión con la nueva.");
+    }
+
+    public async Task<Resultado> CambiarAsync(int usuarioId, string? contrasenaActual, string? contrasenaNueva, CancellationToken ct = default)
+    {
+        if (string.IsNullOrEmpty(contrasenaActual))
+            return Resultado.Falla(TipoFallo.Validacion, "Escribe tu contraseña actual.");
+
+        var usuario = await db.Usuarios.SingleOrDefaultAsync(u => u.Id == usuarioId, ct);
+        if (usuario is null)
+            return Resultado.Falla(TipoFallo.NoEncontrado, "El usuario no existe.");
+
+        var (correcta, _) = Secretos.Verificar(usuario.HashContrasena, contrasenaActual);
+        if (!correcta)
+            return Resultado.Falla(TipoFallo.Validacion, "La contraseña actual no es correcta. La contraseña no cambió.");
+
+        if (PoliticaContrasena.Validar(contrasenaNueva) is { } error)
+            return Resultado.Falla(TipoFallo.Validacion, error);
+
+        await using var transaccion = await db.Database.BeginTransactionAsync(ct);
+        usuario.CambiarHash(Secretos.HashDeContrasena(contrasenaNueva!));
+        await db.SaveChangesAsync(ct);
+        await db.RevocarSesionesDeAsync(usuario.Id, reloj.GetUtcNow(), ct);
+        await transaccion.CommitAsync(ct);
+
+        return Resultado.Ok("Contraseña cambiada. Todas tus sesiones se cerraron; inicia sesión con la nueva.");
     }
 
     private static Resultado CodigoUsado() =>

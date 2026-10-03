@@ -32,6 +32,7 @@ public static class Operaciones
     // Cualquier usuario con sesión, sea Administrador o Estándar.
     public static readonly Operacion ConsultarMiCuenta = new(nameof(ConsultarMiCuenta), ConSesion);
     public static readonly Operacion CerrarSesion = new(nameof(CerrarSesion), ConSesion);
+    public static readonly Operacion CambiarMiContrasena = new(nameof(CambiarMiContrasena), ConSesion);
 
     // Solo Administrador.
     public static readonly Operacion ListarUsuarios = new(nameof(ListarUsuarios), SoloAdministrador);

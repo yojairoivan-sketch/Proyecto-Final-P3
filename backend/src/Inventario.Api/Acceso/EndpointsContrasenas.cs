@@ -1,3 +1,4 @@
+using Inventario.Core.ControlAcceso;
 using Inventario.Core.ControlAcceso.Contrasenas;
 
 namespace Inventario.Api.Acceso;
@@ -9,6 +10,8 @@ public static class EndpointsContrasenas
 
     public sealed record SolicitudRestablecimiento(string? Codigo, string? ContrasenaNueva);
 
+    public sealed record SolicitudCambio(string? ContrasenaActual, string? ContrasenaNueva);
+
     public static IEndpointRouteBuilder MapearContrasenas(this IEndpointRouteBuilder app)
     {
         app.MapPost("/api/acceso/recuperacion", async (SolicitudRecuperacion solicitud, IServicioContrasenas contrasenas, CancellationToken ct) =>
@@ -18,6 +21,10 @@ public static class EndpointsContrasenas
         app.MapPost("/api/acceso/restablecer", async (SolicitudRestablecimiento solicitud, IServicioContrasenas contrasenas, CancellationToken ct) =>
             (await contrasenas.RestablecerAsync(solicitud.Codigo, solicitud.ContrasenaNueva, ct)).ComoRespuesta())
             .Requiere(Operaciones.RestablecerContrasena);
+
+        app.MapPut("/api/yo/contrasena", async (SolicitudCambio solicitud, IUsuarioActual actual, IServicioContrasenas contrasenas, CancellationToken ct) =>
+            (await contrasenas.CambiarAsync(actual.Usuario!.Id, solicitud.ContrasenaActual, solicitud.ContrasenaNueva, ct)).ComoRespuesta())
+            .Requiere(Operaciones.CambiarMiContrasena);
 
         return app;
     }
