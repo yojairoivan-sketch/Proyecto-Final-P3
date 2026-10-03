@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Pieza del Core: Control de acceso. Responde «¿quién eres y qué rol tienes?».
+    Requiere la cola de correos (IColaCorreos). Nunca referencia al módulo de negocio (RD-03).
+  -->
+
+  <ItemGroup>
+    <PackageReference Include="EFCore.NamingConventions" />
+    <PackageReference Include="Microsoft.Extensions.Identity.Core" />
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Inventario.Core.ColaCorreos\Inventario.Core.ColaCorreos.csproj" />
+  </ItemGroup>
+
+</Project>

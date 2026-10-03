@@ -23,7 +23,7 @@ services:
       context: ./backend
       target: api
     environment:
-      ConnectionStrings__Inventario: Host=db;Port=5432;Database=${POSTGRES_DB};Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD}
+      ConnectionStrings__Inventario: Host=db;Port=5432;Database=${POSTGRES_DB};Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD};Gss Encryption Mode=Disable
       URL_PUBLICA: ${URL_PUBLICA:?Falta URL_PUBLICA en .env}
     depends_on:
       db:
@@ -54,7 +54,7 @@ services:
       target: enviador
     profiles: ["herramientas"]
     environment:
-      ConnectionStrings__Inventario: Host=db;Port=5432;Database=${POSTGRES_DB};Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD}
+      ConnectionStrings__Inventario: Host=db;Port=5432;Database=${POSTGRES_DB};Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD};Gss Encryption Mode=Disable
       SMTP_HOST: ${SMTP_HOST:?Falta SMTP_HOST en .env}
       SMTP_PUERTO: ${SMTP_PUERTO:?Falta SMTP_PUERTO en .env}
       SMTP_SEGURIDAD: ${SMTP_SEGURIDAD:?Falta SMTP_SEGURIDAD en .env}
