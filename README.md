@@ -152,6 +152,135 @@ Para que los correos lleguen a una bandeja real (por ejemplo, al registrarte con
 
 No hace falta reiniciar la API: el enviador lee `.env` cada vez que se ejecuta.
 
+## Cómo provocar cada criterio de aceptación
+
+Todo se puede hacer desde la interfaz (http://localhost:8080) o armando la petición a mano con `curl`. Los `curl` de abajo son para **Git Bash**.
+
+**Preparación.** Para leer la base de datos:
+
+```bash
+docker compose exec db psql -U inventario -d inventario
+```
+
+(Si cambiaste `POSTGRES_USER` o `POSTGRES_DB`, usa tus valores.) Dentro de `psql`, `\q` sale.
+
+Para guardar la credencial de sesión de un usuario en la variable `TOKEN` (cambia correo y contraseña):
+
+```bash
+TOKEN=$(curl -s http://localhost:8080/api/acceso/sesion -H 'Content-Type: application/json' -d '{"correo":"tu@correo.com","contrasena":"TuClave123"}' | sed -nE 's/.*"token":"([^"]+)".*/\1/p'); echo $TOKEN
+```
+
+### 1. Registro y activación (RF-CA-01, 02, 04, 14, 15, 16 y 17)
+
+| Para comprobar | Haz esto | Resultado esperado |
+|---|---|---|
+| Registro | En `/registro` crea una cuenta con tu correo y una contraseña válida (por ejemplo `clave1234`). | «Cuenta creada. Te enviamos un correo con el enlace para activarla.» |
+| Login antes de activar | En `/iniciar-sesion` entra con esa cuenta. | «La cuenta no está activa. Ábrela con el enlace que te enviamos por correo.» (403) |
+| El correo sale por la cola | `docker compose run --rm enviador` y abre el correo (en tu bandeja o en http://localhost:8025). | Llega «Activa tu cuenta de Inventario» con el enlace. |
+| Abrir el enlace | Ábrelo. | «Cuenta activada. Ya puedes iniciar sesión.» |
+| Abrirlo por segunda vez | Vuelve a abrir el mismo enlace. | «Este enlace de activación ya se usó…» (400). La cuenta no cambia. |
+| Correo duplicado | Regístrate otra vez con el mismo correo. | «Ya existe una cuenta con ese correo.» (409) |
+| Contraseña de 5 caracteres | Regístrate con la contraseña `ab123`. | «La contraseña debe tener al menos 8 caracteres.» (400) |
+| Correo mal formado | Regístrate con el correo `ana@@ejemplo`. | «El correo no tiene un formato válido.» (400) |
+| Datos vacíos o JSON roto | `curl -i http://localhost:8080/api/acceso/registro -H 'Content-Type: application/json' -d '{"nombre":'` | 400 con un mensaje en español, sin trazas. |
+| Reenvío del enlace | En `/reenviar-activacion` pide el enlace con un correo inexistente y con uno pendiente de activar. | La misma respuesta en los dos casos. El enlace anterior deja de servir: «Este enlace ya no sirve porque se pidió uno nuevo…». |
+| Enlace vencido | Pide un enlace nuevo, corre en `psql` `update control_acceso.tokens_activacion set vence_en = now() - interval '1 minute' where not usado;` y abre el enlace. | «Este enlace de activación venció. Pide uno nuevo.» (400) |
+| Rol único | En `psql`: `select correo, rol_id from control_acceso.usuarios;` | Cada usuario tiene un `rol_id` (1 = Administrador, 2 = Estándar); la columna no admite nulos. Todo usuario nuevo nace Estándar. |
+
+### 2. Almacenamiento de las contraseñas (RF-CA-02, RD-05)
+
+Registra y activa dos usuarios con la **misma** contraseña y, en `psql`:
+
+```sql
+select correo, hash_contrasena from control_acceso.usuarios;
+```
+
+La contraseña no aparece en ninguna columna, y los dos hashes son distintos. Es PBKDF2 con sal aleatoria (`PasswordHasher` de ASP.NET Core Identity), así que no se puede revertir.
+
+### 3. Sesión (RF-CA-03, 07, 18 y 19)
+
+| Para comprobar | Haz esto | Resultado esperado |
+|---|---|---|
+| Rechazos idénticos | Inicia sesión con tu correo y una contraseña incorrecta, y luego con un correo que no existe. | Los dos dan «Correo o contraseña incorrectos.» (401), sin decir cuál dato falló. |
+| Sesión correcta | Entra con los datos correctos. | Lleva a `/cuenta` con tu nombre, correo y rol (`GET /api/yo`). |
+| Consulta sin sesión | `curl -i http://localhost:8080/api/yo` | 401: «Necesitas iniciar sesión para usar esta operación.» |
+| Cerrar sesión | Guarda tu `TOKEN` y ciérrala: `curl -i -X DELETE http://localhost:8080/api/acceso/sesion -H "Authorization: Bearer $TOKEN"` | «Sesión cerrada.» |
+| Credencial cerrada | `curl -i http://localhost:8080/api/yo -H "Authorization: Bearer $TOKEN"` | 401: «La sesión no es válida o ya terminó…» |
+| Bloqueo | Falla la contraseña cinco veces seguidas y luego usa la correcta. | El sexto intento da «La cuenta está bloqueada por 5 intentos fallidos seguidos. Intenta de nuevo en 15 minutos.» (423), aunque la contraseña sea correcta. |
+| Fin del bloqueo y contador | Espera 15 minutos o, en `psql`, `update control_acceso.usuarios set bloqueado_hasta = now() where correo = 'tu@correo.com';`. Entra con la contraseña correcta. | Entra, y `select intentos_fallidos from control_acceso.usuarios where correo = 'tu@correo.com';` da 0. |
+
+### 4. Roles y administración (RF-CA-04, 05, 06, 08, 20 y 21, RD-06)
+
+**Exigencia de rol en un solo punto (RF-CA-05):** [`backend/src/Inventario.Api/Acceso/Operaciones.cs`](backend/src/Inventario.Api/Acceso/Operaciones.cs). Cada operación del sistema está ahí, en una línea, con los roles que la pueden ejecutar. Cada endpoint la declara con `.Requiere(Operaciones.X)`; si un endpoint no la declara, la API no arranca. El servidor verifica sesión y rol en cada petición, antes de leer el cuerpo.
+
+| Operación | Quién |
+|---|---|
+| ConsultarSalud, Registrarse, ActivarCuenta, ReenviarActivacion, IniciarSesion, SolicitarRecuperacion, RestablecerContrasena | Pública |
+| ConsultarMiCuenta, CerrarSesion, CambiarMiContrasena | Administrador o Estándar |
+| ListarUsuarios, CambiarRol, DesactivarUsuario, ReactivarUsuario, ForzarRestablecimiento | Administrador |
+
+| Para comprobar | Haz esto | Resultado esperado |
+|---|---|---|
+| Estándar invoca una operación de Administrador a mano | Con el `TOKEN` de un usuario Estándar: `curl -i http://localhost:8080/api/usuarios -H "Authorization: Bearer $TOKEN"` | 403: «La operación ListarUsuarios es solo para: Administrador. Tu rol es Estándar.» |
+| Estándar intenta cambiar su propio rol | Con su `TOKEN` y su id (sale en `GET /api/yo`): `curl -i -X PUT http://localhost:8080/api/usuarios/<id>/rol -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' -d '{"rol":"Administrador"}'` | 403. El rol no cambia. |
+| Listar usuarios | Entra con el Administrador de `.env` y abre `/usuarios`. | Nombre, correo, rol y estado (Activo, Pendiente de activación o Desactivado). La respuesta de `GET /api/usuarios` no trae hashes ni tokens. |
+| Cambiar un rol | En `/usuarios`, cambia el rol de otro usuario con el selector. | «Rol cambiado a …». Con `curl`, el cuerpo es `{"rol":"Administrador"}` o `{"rol":"Estandar"}` (se acepta con o sin tilde). |
+| Desactivar a un usuario con sesión abierta | Entra con ese usuario en otro navegador (o guarda su `TOKEN`). Como Administrador, pulsa «Desactivar». Luego usa su sesión: `curl -i http://localhost:8080/api/yo -H "Authorization: Bearer $TOKEN"` | Su sesión da 401, y si intenta entrar: «La cuenta está desactivada. Habla con un administrador.» (403). «Reactivar» le devuelve el acceso. |
+| Desactivarse a sí mismo | En `/usuarios`, pulsa «Desactivar» en tu propia fila. | «Un Administrador no puede desactivarse a sí mismo.» (409) |
+| Último Administrador | Intenta pasarte a Estándar cuando eres el único Administrador activo. | «No se puede quitar el rol al último Administrador activo.» (409) |
+
+### 5. Contraseñas: recuperación, cambio y restablecimiento (RF-CA-09 a 13 y 22)
+
+| Para comprobar | Haz esto | Resultado esperado |
+|---|---|---|
+| Respuesta idéntica | En `/recuperar` pide el código con un correo inexistente y con uno registrado. | Los dos: «Si el correo corresponde a una cuenta activa, te enviamos un código…». |
+| Código por la cola | `docker compose run --rm enviador` y abre el correo «Código para restablecer tu contraseña…». | Trae el código y el enlace `/restablecer?codigo=...`, que vence en 30 minutos. |
+| Usar el código | Abre el enlace y define una contraseña nueva. | «Contraseña cambiada…». |
+| Usarlo otra vez | Vuelve a enviar el mismo código. | «Este código de recuperación ya se usó…» (400). La contraseña no cambia. |
+| Contraseña vieja y nueva | Inicia sesión con la vieja y luego con la nueva. | La vieja da 401; la nueva entra. |
+| Credencial emitida antes | Guarda un `TOKEN` antes de restablecer y úsalo después: `curl -i http://localhost:8080/api/yo -H "Authorization: Bearer $TOKEN"` | 401. |
+| Código vencido | Pide otro código, corre en `psql` `update control_acceso.codigos_recuperacion set vence_en = now() - interval '1 minute' where not usado;` y úsalo. | «El código de recuperación venció. Pide uno nuevo.» (400). La contraseña no cambia. |
+| Restablecimiento forzado | Como Administrador, en `/usuarios` pulsa «Forzar restablecimiento» en otro usuario. | Su contraseña anterior y sus sesiones dejan de servir en ese momento. Al correr el enviador le llega «Un administrador restableció tu contraseña…» con el código. |
+| Cambio con la actual incorrecta | En `/cuenta`, cambia la contraseña escribiendo mal la actual. | «La contraseña actual no es correcta. La contraseña no cambió.» (400) |
+| Cambio correcto | Cambia la contraseña con la actual correcta. | Todas las sesiones se cierran (también la actual) y hay que entrar con la nueva. La nueva también debe cumplir la política. |
+
+### 6. Correo por cola (RF-NOT-08, 09, 12 y 13)
+
+1. Apaga el servidor de correo de pruebas: `docker compose stop mailpit`.
+2. Registra un usuario nuevo en `/registro`. La operación termina bien: la API nunca habla con el servidor SMTP.
+3. En `psql`: `select id, destinatario, estado, intentos, ultimo_error from cola_correos.correos_en_cola order by id;`. El correo está **Pendiente**.
+4. Corre el enviador con el servidor apagado: `docker compose run --rm enviador`. El correo cuenta como «Con error (siguen pendientes)». En la tabla sigue Pendiente, con `intentos = 1` y el error en `ultimo_error`.
+5. Enciende el servidor (`docker compose start mailpit`) y corre el enviador **dos veces**. La primera lo envía («Enviados: …»); la segunda dice «No hay correos pendientes.». En Mailpit el correo aparece una sola vez.
+
+Si usas Gmail en vez de Mailpit, el paso 1 se hace apuntando el enviador a un servidor que no existe solo para esa ejecución: `docker compose run --rm -e SMTP_HOST=no-existe.invalid enviador`.
+
+Las credenciales SMTP solo están en `.env` (fuera del repositorio) y se leen como variables de entorno.
+
+### 7. Reinicio (RD-09)
+
+```bash
+docker compose restart
+```
+
+Los usuarios siguen ahí: entra con cualquiera de ellos. También sobreviven a `docker compose down` + `docker compose up -d`, porque la base vive en el volumen `datos-postgres`.
+
+### 8. Máquina de estados del negocio (RF-NEG-03, 04, 05, RD-04)
+
+- Estados, en un solo lugar: [`backend/src/Inventario.Negocio/Ordenes/EstadoOrdenCompra.cs`](backend/src/Inventario.Negocio/Ordenes/EstadoOrdenCompra.cs).
+- Transiciones, en un solo lugar, con la prohibida explícita y los terminales: [`backend/src/Inventario.Negocio/Ordenes/TransicionesOrdenCompra.cs`](backend/src/Inventario.Negocio/Ordenes/TransicionesOrdenCompra.cs).
+- Tabla de transiciones y diagrama: [`docs/maquina-de-estados.md`](docs/maquina-de-estados.md).
+- La entidad y su estado en la base: `\d inventario.ordenes_de_compra` en `psql` (columna `estado`).
+
+### 9. Historial
+
+```bash
+git log --oneline --graph --all
+git ls-files
+git log -p | grep -iE "SMTP_CONTRASENA=|POSTGRES_PASSWORD=|ADMIN_CONTRASENA="
+```
+
+Cada funcionalidad entró por su pull request, fusionado con merge commit. `.env` no está en el repositorio. La búsqueda solo encuentra las líneas vacías de `.env.example` y el propio comando de arriba en este README.
+
 ## Estructura del repositorio
 
 ```
