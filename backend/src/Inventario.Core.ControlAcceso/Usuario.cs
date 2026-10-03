@@ -43,6 +43,8 @@ public sealed class Usuario
 
     internal void CambiarHash(string hash) => HashContrasena = hash;
 
+    internal void CambiarRol(int rolId) => RolId = rolId;
+
     internal void Activar(DateTimeOffset ahora)
     {
         Activo = true;
