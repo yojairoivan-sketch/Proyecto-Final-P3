@@ -1,5 +1,6 @@
 using Inventario.Core.ControlAcceso.Cuentas;
 using Inventario.Core.ControlAcceso.Sesiones;
+using Inventario.Core.ControlAcceso.Usuarios;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -23,6 +24,7 @@ public static class ServiciosControlAcceso
 
         services.AddScoped<IServicioCuentas, ServicioCuentas>();
         services.AddScoped<IServicioSesiones, ServicioSesiones>();
+        services.AddScoped<IServicioUsuarios, ServicioUsuarios>();
         return services;
     }
 

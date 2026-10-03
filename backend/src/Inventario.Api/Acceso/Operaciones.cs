@@ -18,6 +18,7 @@ public static class Operaciones
 {
     private static readonly string[] Publica = [];
     private static readonly string[] ConSesion = [Rol.Administrador, Rol.Estandar];
+    private static readonly string[] SoloAdministrador = [Rol.Administrador];
 
     // Públicas: no piden sesión.
     public static readonly Operacion ConsultarSalud = new(nameof(ConsultarSalud), Publica);
@@ -29,4 +30,7 @@ public static class Operaciones
     // Cualquier usuario con sesión, sea Administrador o Estándar.
     public static readonly Operacion ConsultarMiCuenta = new(nameof(ConsultarMiCuenta), ConSesion);
     public static readonly Operacion CerrarSesion = new(nameof(CerrarSesion), ConSesion);
+
+    // Solo Administrador.
+    public static readonly Operacion ListarUsuarios = new(nameof(ListarUsuarios), SoloAdministrador);
 }

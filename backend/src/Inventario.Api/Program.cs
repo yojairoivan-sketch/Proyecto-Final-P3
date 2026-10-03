@@ -41,6 +41,7 @@ app.MapGet("/api/salud", (TimeProvider reloj) => Results.Ok(new { estado = "ok",
     .Requiere(Operaciones.ConsultarSalud);
 app.MapearCuentas();
 app.MapearSesion();
+app.MapearUsuarios();
 
 app.VerificarQueTodoEndpointDeclareSuOperacion();
 
