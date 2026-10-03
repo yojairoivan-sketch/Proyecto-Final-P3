@@ -13,6 +13,10 @@ public static class EndpointsSesion
         app.MapPost("/api/acceso/sesion", async (SolicitudInicioSesion solicitud, IServicioSesiones sesiones, CancellationToken ct) =>
             (await sesiones.IniciarAsync(solicitud.Correo, solicitud.Contrasena, ct)).ComoRespuesta());
 
+        app.MapDelete("/api/acceso/sesion", async (IUsuarioActual actual, IServicioSesiones sesiones, CancellationToken ct) =>
+            (await sesiones.CerrarAsync(actual.Usuario!.SesionId, ct)).ComoRespuesta())
+            .RequireAuthorization();
+
         // RF-CA-07: sin sesión válida responde 401.
         app.MapGet("/api/yo", (IUsuarioActual actual) =>
         {

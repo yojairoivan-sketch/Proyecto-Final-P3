@@ -20,6 +20,8 @@ public interface IServicioSesiones
     /// </summary>
     Task<UsuarioAutenticado?> ValidarAsync(string token, CancellationToken ct = default);
 
+    /// <summary>RF-CA-18: la credencial cerrada deja de servir.</summary>
+    Task<Resultado> CerrarAsync(long sesionId, CancellationToken ct = default);
 }
 
 internal sealed class ServicioSesiones(
@@ -78,6 +80,15 @@ internal sealed class ServicioSesiones(
             .SingleOrDefaultAsync(s => s.HashToken == hash && s.RevocadaEn == null && s.VenceEn > ahora && s.Usuario.Activo, ct);
 
         return sesion is null ? null : Autenticado(sesion.Usuario, sesion.Id);
+    }
+
+    public async Task<Resultado> CerrarAsync(long sesionId, CancellationToken ct = default)
+    {
+        var ahora = reloj.GetUtcNow();
+        await db.Sesiones
+            .Where(s => s.Id == sesionId && s.RevocadaEn == null)
+            .ExecuteUpdateAsync(s => s.SetProperty(x => x.RevocadaEn, ahora), ct);
+        return Resultado.Ok("Sesión cerrada.");
     }
 
     private static UsuarioAutenticado Autenticado(Usuario usuario, long sesionId) =>
