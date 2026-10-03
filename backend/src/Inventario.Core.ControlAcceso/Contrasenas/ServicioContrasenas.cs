@@ -1,5 +1,6 @@
 using Inventario.Core.ColaCorreos;
 using Inventario.Core.ControlAcceso.Seguridad;
+using Inventario.Core.ControlAcceso.Sesiones;
 using Inventario.Core.ControlAcceso.Validacion;
 using Microsoft.EntityFrameworkCore;
 
@@ -16,7 +17,7 @@ public interface IServicioContrasenas
 
     /// <summary>
     /// RF-CA-11: con un código válido define la contraseña nueva (guardada con hash). Un código usado,
-    /// vencido o reemplazado se rechaza y la contraseña no cambia.
+    /// vencido o reemplazado se rechaza y la contraseña no cambia. RF-CA-12: revoca las sesiones abiertas.
     /// </summary>
     Task<Resultado> RestablecerAsync(string? codigo, string? contrasenaNueva, CancellationToken ct = default);
 }
@@ -83,9 +84,10 @@ internal sealed class ServicioContrasenas(
         usuario.CambiarHash(Secretos.HashDeContrasena(contrasenaNueva!));
         usuario.RegistrarInicioCorrecto();
         await db.SaveChangesAsync(ct);
+        await db.RevocarSesionesDeAsync(usuario.Id, ahora, ct);
         await transaccion.CommitAsync(ct);
 
-        return Resultado.Ok("Contraseña cambiada. Inicia sesión con la nueva.");
+        return Resultado.Ok("Contraseña cambiada. Las sesiones abiertas se cerraron; inicia sesión con la nueva.");
     }
 
     private static Resultado CodigoUsado() =>
