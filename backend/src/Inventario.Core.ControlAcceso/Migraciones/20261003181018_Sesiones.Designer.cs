@@ -3,6 +3,7 @@ using System;
 using Inventario.Core.ControlAcceso;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Inventario.Core.ControlAcceso.Migraciones
 {
     [DbContext(typeof(ControlAccesoDbContext))]
-    partial class ControlAccesoDbContextModelSnapshot : ModelSnapshot
+    [Migration("20261003181018_Sesiones")]
+    partial class Sesiones
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -170,10 +173,6 @@ namespace Inventario.Core.ControlAcceso.Migraciones
                         .HasColumnType("boolean")
                         .HasColumnName("activo");
 
-                    b.Property<DateTimeOffset?>("BloqueadoHasta")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("bloqueado_hasta");
-
                     b.Property<string>("Correo")
                         .IsRequired()
                         .HasMaxLength(254)
@@ -189,10 +188,6 @@ namespace Inventario.Core.ControlAcceso.Migraciones
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)")
                         .HasColumnName("hash_contrasena");
-
-                    b.Property<int>("IntentosFallidos")
-                        .HasColumnType("integer")
-                        .HasColumnName("intentos_fallidos");
 
                     b.Property<string>("Nombre")
                         .IsRequired()

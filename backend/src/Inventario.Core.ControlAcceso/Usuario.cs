@@ -22,6 +22,11 @@ public sealed class Usuario
 
     public DateTimeOffset CreadoEn { get; private set; }
 
+    /// <summary>Fallos de contraseña seguidos (RF-CA-19). Vuelve a cero con un inicio correcto o al bloquear.</summary>
+    public int IntentosFallidos { get; private set; }
+
+    public DateTimeOffset? BloqueadoHasta { get; private set; }
+
     private Usuario()
     {
     }
@@ -43,6 +48,24 @@ public sealed class Usuario
         Activo = true;
         ActivadoEn ??= ahora;
     }
+
+    internal void RegistrarIntentoFallido(DateTimeOffset ahora, int maximo, TimeSpan bloqueo)
+    {
+        IntentosFallidos++;
+        if (IntentosFallidos >= maximo)
+        {
+            BloqueadoHasta = ahora + bloqueo;
+            IntentosFallidos = 0;
+        }
+    }
+
+    internal void RegistrarInicioCorrecto()
+    {
+        IntentosFallidos = 0;
+        BloqueadoHasta = null;
+    }
+
+    public bool EstaBloqueado(DateTimeOffset ahora) => BloqueadoHasta > ahora;
 
     public bool PendienteDeActivacion => !Activo && ActivadoEn is null;
 
