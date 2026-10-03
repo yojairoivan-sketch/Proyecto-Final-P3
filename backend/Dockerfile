@@ -13,3 +13,12 @@ WORKDIR /app
 COPY --from=publicar-api /out .
 USER $APP_UID
 ENTRYPOINT ["dotnet", "Inventario.Api.dll"]
+
+FROM compilar AS publicar-enviador
+RUN dotnet publish src/Inventario.Enviador -c Release -o /out --no-restore
+
+FROM mcr.microsoft.com/dotnet/runtime:10.0 AS enviador
+WORKDIR /app
+COPY --from=publicar-enviador /out .
+USER $APP_UID
+ENTRYPOINT ["dotnet", "Inventario.Enviador.dll"]

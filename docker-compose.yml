@@ -38,5 +38,32 @@ services:
       - api
     restart: unless-stopped
 
+  # Servidor SMTP de pruebas: recibe todo y lo muestra en http://localhost:8025. No envía nada afuera.
+  mailpit:
+    image: axllent/mailpit:v1.31
+    ports:
+      - "127.0.0.1:${MAILPIT_PUERTO:-8025}:8025"
+    restart: unless-stopped
+
+  # Proceso independiente que entrega la cola de correos (RF-NOT-09). No arranca con `up`:
+  #   docker compose run --rm enviador              una pasada
+  #   docker compose run --rm enviador --vigilar 10 repite cada 10 segundos
+  enviador:
+    build:
+      context: ./backend
+      target: enviador
+    profiles: ["herramientas"]
+    environment:
+      ConnectionStrings__Inventario: Host=db;Port=5432;Database=${POSTGRES_DB};Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD}
+      SMTP_HOST: ${SMTP_HOST:?Falta SMTP_HOST en .env}
+      SMTP_PUERTO: ${SMTP_PUERTO:?Falta SMTP_PUERTO en .env}
+      SMTP_SEGURIDAD: ${SMTP_SEGURIDAD:?Falta SMTP_SEGURIDAD en .env}
+      SMTP_USUARIO: ${SMTP_USUARIO:-}
+      SMTP_CONTRASENA: ${SMTP_CONTRASENA:-}
+      SMTP_REMITENTE: ${SMTP_REMITENTE:?Falta SMTP_REMITENTE en .env}
+    depends_on:
+      db:
+        condition: service_healthy
+
 volumes:
   datos-postgres:
