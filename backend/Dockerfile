@@ -5,6 +5,11 @@ WORKDIR /src
 COPY . .
 RUN dotnet restore Inventario.slnx
 
+# Pruebas (RD-12): se compilan en la imagen y corren sin base de datos ni API.
+FROM compilar AS pruebas
+RUN dotnet build Inventario.slnx -c Release --no-restore
+ENTRYPOINT ["dotnet", "test", "Inventario.slnx", "-c", "Release", "--no-build"]
+
 FROM compilar AS publicar-api
 RUN dotnet publish src/Inventario.Api -c Release -o /out --no-restore
 

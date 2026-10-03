@@ -6,4 +6,7 @@
     <Project Path="src/Inventario.Enviador/Inventario.Enviador.csproj" />
     <Project Path="src/Inventario.Negocio/Inventario.Negocio.csproj" />
   </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Inventario.Core.ControlAcceso.Pruebas/Inventario.Core.ControlAcceso.Pruebas.csproj" />
+  </Folder>
 </Solution>

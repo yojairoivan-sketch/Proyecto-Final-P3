@@ -20,6 +20,7 @@ Entregado en la etiqueta `practica-1`:
 - **Control de acceso completo** (pieza 1 del Core): registro con activación por correo, sesión con bloqueo por intentos, roles y administración de usuarios, recuperación, cambio y restablecimiento forzado de contraseña. Cubre RF-CA-01 a RF-CA-22.
 - **Cola mínima de correos**: las operaciones encolan y un enviador independiente entrega (RF-NOT-08, 09, 12 y 13).
 - **Estructura de la máquina de estados del negocio**: la orden de compra, en [`docs/maquina-de-estados.md`](docs/maquina-de-estados.md).
+- Después de la etiqueta se agregaron [pruebas automáticas](#pruebas-automáticas-rd-12) de Control de acceso.
 - Cada funcionalidad entró por su pull request: [#4 base](https://github.com/yojairoivan-sketch/Proyecto-Final-P3/pull/4), [#5 cola de correos](https://github.com/yojairoivan-sketch/Proyecto-Final-P3/pull/5), [#6 registro y activación](https://github.com/yojairoivan-sketch/Proyecto-Final-P3/pull/6), [#7 sesión](https://github.com/yojairoivan-sketch/Proyecto-Final-P3/pull/7), [#8 roles y administración](https://github.com/yojairoivan-sketch/Proyecto-Final-P3/pull/8), [#9 contraseñas](https://github.com/yojairoivan-sketch/Proyecto-Final-P3/pull/9), [#10 máquina de estados](https://github.com/yojairoivan-sketch/Proyecto-Final-P3/pull/10) y el PR de este README.
 
 ## Diagrama de componentes
@@ -281,19 +282,33 @@ git log -p | grep -iE "SMTP_CONTRASENA=|POSTGRES_PASSWORD=|ADMIN_CONTRASENA="
 
 Cada funcionalidad entró por su pull request, fusionado con merge commit. `.env` no está en el repositorio. La búsqueda solo encuentra las líneas vacías de `.env.example` y el propio comando de arriba en este README.
 
+## Pruebas automáticas (RD-12)
+
+Control de acceso tiene 44 pruebas xUnit en `backend/tests/Inventario.Core.ControlAcceso.Pruebas`. Corren sin interfaz y sin levantar la aplicación: en lugar de PostgreSQL y SMTP usan SQLite en memoria, un reloj falso para provocar vencimientos y bloqueos, y una cola de correos falsa que guarda los enlaces.
+
+```bash
+docker compose run --rm pruebas
+```
+
+Termina con `Passed!` y el total. Si tienes el SDK de .NET 10 instalado, también sirve `dotnet test backend/Inventario.slnx`.
+
+Cubren la política de contraseña y la validación de datos, el hash, registro y activación, sesión y bloqueo, recuperación, cambio y restablecimiento forzado de contraseña, y administración de usuarios.
+
 ## Estructura del repositorio
 
 ```
 .
 ├── backend/
 │   ├── Inventario.slnx                 # solución .NET 10
-│   ├── Dockerfile                      # etapas api y enviador
-│   └── src/
-│       ├── Inventario.Api/             # host: endpoints, Operaciones.cs, errores
-│       ├── Inventario.Core.ControlAcceso/
-│       ├── Inventario.Core.ColaCorreos/
-│       ├── Inventario.Enviador/        # consola que entrega la cola
-│       └── Inventario.Negocio/         # módulo de inventario
+│   ├── Dockerfile                      # etapas api, enviador y pruebas
+│   ├── src/
+│   │   ├── Inventario.Api/             # host: endpoints, Operaciones.cs, errores
+│   │   ├── Inventario.Core.ControlAcceso/
+│   │   ├── Inventario.Core.ColaCorreos/
+│   │   ├── Inventario.Enviador/        # consola que entrega la cola
+│   │   └── Inventario.Negocio/         # módulo de inventario
+│   └── tests/
+│       └── Inventario.Core.ControlAcceso.Pruebas/   # pruebas xUnit (RD-12)
 ├── frontend/                           # React 19 + TypeScript + Vite, servido por nginx
 ├── docs/                               # máquina de estados y bitácoras
 ├── docker-compose.yml
