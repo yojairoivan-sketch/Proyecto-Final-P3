@@ -2,6 +2,7 @@
   <Folder Name="/src/">
     <Project Path="src/Inventario.Api/Inventario.Api.csproj" />
     <Project Path="src/Inventario.Core.ColaCorreos/Inventario.Core.ColaCorreos.csproj" />
+    <Project Path="src/Inventario.Core.ControlAcceso/Inventario.Core.ControlAcceso.csproj" />
     <Project Path="src/Inventario.Enviador/Inventario.Enviador.csproj" />
   </Folder>
 </Solution>
