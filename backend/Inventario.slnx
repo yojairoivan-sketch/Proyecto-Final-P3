@@ -4,5 +4,6 @@
     <Project Path="src/Inventario.Core.ColaCorreos/Inventario.Core.ColaCorreos.csproj" />
     <Project Path="src/Inventario.Core.ControlAcceso/Inventario.Core.ControlAcceso.csproj" />
     <Project Path="src/Inventario.Enviador/Inventario.Enviador.csproj" />
+    <Project Path="src/Inventario.Negocio/Inventario.Negocio.csproj" />
   </Folder>
 </Solution>
