@@ -1,0 +1,42 @@
+# Levanta todo con: docker compose up --build
+# Las variables salen de .env (copia .env.example y complétalo). Si falta una obligatoria, compose se detiene y la nombra.
+
+services:
+  db:
+    image: postgres:17
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:?Falta POSTGRES_DB en .env}
+      POSTGRES_USER: ${POSTGRES_USER:?Falta POSTGRES_USER en .env}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Falta POSTGRES_PASSWORD en .env}
+    # Sin puerto publicado: así no choca con otro PostgreSQL de la máquina.
+    # Para leer la base: docker compose exec db psql -U <POSTGRES_USER> -d <POSTGRES_DB>
+    volumes:
+      - datos-postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  api:
+    build:
+      context: ./backend
+      target: api
+    environment:
+      ConnectionStrings__Inventario: Host=db;Port=5432;Database=${POSTGRES_DB};Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD}
+      URL_PUBLICA: ${URL_PUBLICA:?Falta URL_PUBLICA en .env}
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
+  web:
+    build: ./frontend
+    ports:
+      - "${WEB_PUERTO:-8080}:80"
+    depends_on:
+      - api
+    restart: unless-stopped
+
+volumes:
+  datos-postgres:
