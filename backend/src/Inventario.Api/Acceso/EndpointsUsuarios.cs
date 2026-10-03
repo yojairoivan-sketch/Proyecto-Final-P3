@@ -1,3 +1,4 @@
+using Inventario.Core.ControlAcceso;
 using Inventario.Core.ControlAcceso.Usuarios;
 
 namespace Inventario.Api.Acceso;
@@ -18,6 +19,14 @@ public static class EndpointsUsuarios
         usuarios.MapPut("/{id:int}/rol", async (int id, SolicitudCambioRol solicitud, IServicioUsuarios servicio, CancellationToken ct) =>
             (await servicio.CambiarRolAsync(id, solicitud.Rol, ct)).ComoRespuesta())
             .Requiere(Operaciones.CambiarRol);
+
+        usuarios.MapPost("/{id:int}/desactivar", async (int id, IUsuarioActual actual, IServicioUsuarios servicio, CancellationToken ct) =>
+            (await servicio.DesactivarAsync(actual.Usuario!.Id, id, ct)).ComoRespuesta())
+            .Requiere(Operaciones.DesactivarUsuario);
+
+        usuarios.MapPost("/{id:int}/reactivar", async (int id, IServicioUsuarios servicio, CancellationToken ct) =>
+            (await servicio.ReactivarAsync(id, ct)).ComoRespuesta())
+            .Requiere(Operaciones.ReactivarUsuario);
 
         return app;
     }

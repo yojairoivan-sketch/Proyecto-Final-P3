@@ -1,3 +1,4 @@
+using Inventario.Core.ControlAcceso.Sesiones;
 using Microsoft.EntityFrameworkCore;
 
 namespace Inventario.Core.ControlAcceso.Usuarios;
@@ -16,9 +17,18 @@ public interface IServicioUsuarios
 
     /// <summary>RF-CA-08: cambia el rol de un usuario. Nunca deja el sistema sin un Administrador activo.</summary>
     Task<Resultado> CambiarRolAsync(int usuarioId, string? rol, CancellationToken ct = default);
+
+    /// <summary>
+    /// RF-CA-20: el usuario deja de poder iniciar sesión y sus sesiones abiertas se revocan.
+    /// Un Administrador no puede desactivarse a sí mismo.
+    /// </summary>
+    Task<Resultado> DesactivarAsync(int administradorId, int usuarioId, CancellationToken ct = default);
+
+    /// <summary>RF-CA-20: devuelve el acceso a un usuario desactivado.</summary>
+    Task<Resultado> ReactivarAsync(int usuarioId, CancellationToken ct = default);
 }
 
-internal sealed class ServicioUsuarios(ControlAccesoDbContext db) : IServicioUsuarios
+internal sealed class ServicioUsuarios(ControlAccesoDbContext db, TimeProvider reloj) : IServicioUsuarios
 {
     public async Task<IReadOnlyList<UsuarioListado>> ListarAsync(CancellationToken ct = default)
     {
@@ -44,6 +54,43 @@ internal sealed class ServicioUsuarios(ControlAccesoDbContext db) : IServicioUsu
         usuario.CambiarRol(rolId);
         await db.SaveChangesAsync(ct);
         return Resultado.Ok($"Rol cambiado a {(rolId == Rol.IdAdministrador ? Rol.Administrador : Rol.Estandar)}.");
+    }
+
+    public async Task<Resultado> DesactivarAsync(int administradorId, int usuarioId, CancellationToken ct = default)
+    {
+        if (usuarioId == administradorId)
+            return Resultado.Falla(TipoFallo.Conflicto, "Un Administrador no puede desactivarse a sí mismo.");
+
+        var usuario = await db.Usuarios.SingleOrDefaultAsync(u => u.Id == usuarioId, ct);
+        if (usuario is null)
+            return NoExiste();
+        if (usuario.PendienteDeActivacion)
+            return Resultado.Falla(TipoFallo.Conflicto, "La cuenta todavía no se ha activado; no hay nada que desactivar.");
+        if (!usuario.Activo)
+            return Resultado.Ok("El usuario ya estaba desactivado.");
+
+        await using var transaccion = await db.Database.BeginTransactionAsync(ct);
+        usuario.Desactivar();
+        await db.SaveChangesAsync(ct);
+        await db.RevocarSesionesDeAsync(usuario.Id, reloj.GetUtcNow(), ct);
+        await transaccion.CommitAsync(ct);
+
+        return Resultado.Ok("Usuario desactivado. Sus sesiones abiertas dejaron de servir.");
+    }
+
+    public async Task<Resultado> ReactivarAsync(int usuarioId, CancellationToken ct = default)
+    {
+        var usuario = await db.Usuarios.SingleOrDefaultAsync(u => u.Id == usuarioId, ct);
+        if (usuario is null)
+            return NoExiste();
+        if (usuario.Activo)
+            return Resultado.Ok("El usuario ya estaba activo.");
+        if (usuario.PendienteDeActivacion)
+            return Resultado.Falla(TipoFallo.Conflicto, "La cuenta nunca se activó: el usuario debe abrir su enlace de activación.");
+
+        usuario.Reactivar();
+        await db.SaveChangesAsync(ct);
+        return Resultado.Ok("Usuario reactivado. Ya puede iniciar sesión.");
     }
 
     private static Resultado NoExiste() => Resultado.Falla(TipoFallo.NoEncontrado, "El usuario no existe.");

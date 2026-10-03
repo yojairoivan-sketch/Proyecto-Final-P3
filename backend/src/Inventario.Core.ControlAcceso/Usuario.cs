@@ -45,6 +45,11 @@ public sealed class Usuario
 
     internal void CambiarRol(int rolId) => RolId = rolId;
 
+    internal void Desactivar() => Activo = false;
+
+    /// <summary>Solo para quien ya había activado su cuenta; una pendiente se activa con su enlace.</summary>
+    internal void Reactivar() => Activo = true;
+
     internal void Activar(DateTimeOffset ahora)
     {
         Activo = true;
