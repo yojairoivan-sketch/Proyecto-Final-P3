@@ -17,13 +17,16 @@ public static class EndpointsCuentas
 
         acceso.MapPost("/registro", async (SolicitudRegistro solicitud, IServicioCuentas cuentas, CancellationToken ct) =>
             (await cuentas.RegistrarAsync(solicitud.Nombre, solicitud.Correo, solicitud.Contrasena, ct))
-                .ComoRespuesta(StatusCodes.Status201Created));
+                .ComoRespuesta(StatusCodes.Status201Created))
+            .Requiere(Operaciones.Registrarse);
 
         acceso.MapPost("/activar", async (SolicitudActivacion solicitud, IServicioCuentas cuentas, CancellationToken ct) =>
-            (await cuentas.ActivarAsync(solicitud.Token, ct)).ComoRespuesta());
+            (await cuentas.ActivarAsync(solicitud.Token, ct)).ComoRespuesta())
+            .Requiere(Operaciones.ActivarCuenta);
 
         acceso.MapPost("/reenviar-activacion", async (SolicitudCorreo solicitud, IServicioCuentas cuentas, CancellationToken ct) =>
-            (await cuentas.ReenviarActivacionAsync(solicitud.Correo, ct)).ComoRespuesta());
+            (await cuentas.ReenviarActivacionAsync(solicitud.Correo, ct)).ComoRespuesta())
+            .Requiere(Operaciones.ReenviarActivacion);
 
         return app;
     }

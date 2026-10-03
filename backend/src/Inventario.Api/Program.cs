@@ -30,15 +30,18 @@ builder.Services.AddAuthorization();
 
 var app = builder.Build();
 
-await app.Services.MigrarColaCorreosAsync();
-await app.Services.MigrarControlAccesoAsync();
-
 app.UsarErroresControlados();
 app.UseAuthentication();
 app.UseAuthorization();
 
-app.MapGet("/api/salud", (TimeProvider reloj) => Results.Ok(new { estado = "ok", hora = reloj.GetUtcNow() }));
+app.MapGet("/api/salud", (TimeProvider reloj) => Results.Ok(new { estado = "ok", hora = reloj.GetUtcNow() }))
+    .Requiere(Operaciones.ConsultarSalud);
 app.MapearCuentas();
 app.MapearSesion();
+
+app.VerificarQueTodoEndpointDeclareSuOperacion();
+
+await app.Services.MigrarColaCorreosAsync();
+await app.Services.MigrarControlAccesoAsync();
 
 app.Run();
