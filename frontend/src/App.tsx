@@ -1,5 +1,7 @@
 import { NavLink, Route, Routes } from 'react-router'
+import Activar from './paginas/Activar'
 import Inicio from './paginas/Inicio'
+import ReenviarActivacion from './paginas/ReenviarActivacion'
 import Registro from './paginas/Registro'
 
 export default function App() {
@@ -18,6 +20,8 @@ export default function App() {
         <Routes>
           <Route path="/" element={<Inicio />} />
           <Route path="/registro" element={<Registro />} />
+          <Route path="/activar" element={<Activar />} />
+          <Route path="/reenviar-activacion" element={<ReenviarActivacion />} />
           <Route path="*" element={<p>Esta página no existe.</p>} />
         </Routes>
       </main>
