@@ -9,8 +9,8 @@ public sealed record SesionIniciada(string Token, DateTimeOffset VenceEn, Usuari
 public interface IServicioSesiones
 {
     /// <summary>
-    /// RF-CA-03: abre una sesión con correo y contraseña. Un correo inexistente y una contraseña
-    /// incorrecta dan el mismo rechazo.
+    /// RF-CA-03 y RF-CA-19: abre una sesión con correo y contraseña. Un correo inexistente y una contraseña
+    /// incorrecta dan el mismo rechazo; tras cinco fallos seguidos la cuenta queda bloqueada.
     /// </summary>
     Task<Resultado<SesionIniciada>> IniciarAsync(string? correo, string? contrasena, CancellationToken ct = default);
 
@@ -44,9 +44,23 @@ internal sealed class ServicioSesiones(
             return CredencialesIncorrectas();
         }
 
+        var ahora = reloj.GetUtcNow();
+        if (usuario.EstaBloqueado(ahora))
+        {
+            // Durante el bloqueo se rechaza incluso la contraseña correcta.
+            var minutos = (int)Math.Ceiling((usuario.BloqueadoHasta!.Value - ahora).TotalMinutes);
+            return Resultado<SesionIniciada>.Falla(TipoFallo.Bloqueado,
+                $"La cuenta está bloqueada por {opciones.IntentosAntesDeBloqueo} intentos fallidos seguidos. " +
+                $"Intenta de nuevo en {minutos} minuto{(minutos == 1 ? "" : "s")}.");
+        }
+
         var (correcta, rehacerHash) = Secretos.Verificar(usuario.HashContrasena, contrasena);
         if (!correcta)
+        {
+            usuario.RegistrarIntentoFallido(ahora, opciones.IntentosAntesDeBloqueo, opciones.DuracionBloqueo);
+            await db.SaveChangesAsync(ct);
             return CredencialesIncorrectas();
+        }
 
         if (!usuario.Activo)
         {
@@ -55,10 +69,10 @@ internal sealed class ServicioSesiones(
                 : "La cuenta está desactivada. Habla con un administrador.");
         }
 
+        usuario.RegistrarInicioCorrecto();
         if (rehacerHash)
             usuario.CambiarHash(Secretos.HashDeContrasena(contrasena));
 
-        var ahora = reloj.GetUtcNow();
         var token = Secretos.NuevoToken();
         var sesion = Sesion.Abrir(usuario, Secretos.HashDeToken(token), ahora, opciones.VigenciaSesion);
         db.Sesiones.Add(sesion);
