@@ -3,6 +3,7 @@ using Inventario.Api.Acceso;
 using Inventario.Api.Errores;
 using Inventario.Core.ColaCorreos;
 using Inventario.Core.ControlAcceso;
+using Inventario.Core.ControlAcceso.Usuarios;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
 
@@ -47,5 +48,7 @@ app.VerificarQueTodoEndpointDeclareSuOperacion();
 
 await app.Services.MigrarColaCorreosAsync();
 await app.Services.MigrarControlAccesoAsync();
+app.Logger.LogInformation("{Mensaje}", await app.Services.AsegurarAdministradorInicialAsync(
+    builder.Configuration["ADMIN_NOMBRE"], builder.Configuration["ADMIN_CORREO"], builder.Configuration["ADMIN_CONTRASENA"]));
 
 app.Run();

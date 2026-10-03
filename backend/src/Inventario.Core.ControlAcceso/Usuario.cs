@@ -41,6 +41,17 @@ public sealed class Usuario
         CreadoEn = ahora,
     };
 
+    /// <summary>El primer Administrador nace activo: no hay nadie que le mande un enlace.</summary>
+    internal static Usuario CrearAdministrador(string nombre, string correo, DateTimeOffset ahora) => new()
+    {
+        Nombre = nombre,
+        Correo = correo,
+        RolId = Rol.IdAdministrador,
+        Activo = true,
+        ActivadoEn = ahora,
+        CreadoEn = ahora,
+    };
+
     internal void CambiarHash(string hash) => HashContrasena = hash;
 
     internal void CambiarRol(int rolId) => RolId = rolId;
