@@ -10,6 +10,8 @@ public sealed class OpcionesControlAcceso
 
     public TimeSpan VigenciaSesion { get; set; } = TimeSpan.FromHours(8);
 
+    public TimeSpan VigenciaCodigoRecuperacion { get; set; } = TimeSpan.FromMinutes(30);
+
     /// <summary>RF-CA-19: tras este número de fallos seguidos la cuenta se bloquea.</summary>
     public int IntentosAntesDeBloqueo { get; set; } = 5;
 

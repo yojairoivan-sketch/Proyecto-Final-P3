@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Navigate, useNavigate } from 'react-router'
 import { llamar, mensajeDe } from '../api'
 import Aviso, { type EstadoAviso } from '../componentes/Aviso'
+import CambiarContrasena from '../componentes/CambiarContrasena'
 import { useSesion } from '../sesion'
 
 export default function MiCuenta() {
@@ -45,6 +46,7 @@ export default function MiCuenta() {
         <button onClick={cerrarSesion}>Cerrar sesión</button>
       </p>
       <Aviso aviso={aviso} />
+      <CambiarContrasena />
     </section>
   )
 }

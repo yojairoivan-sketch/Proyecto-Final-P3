@@ -26,14 +26,18 @@ public static class Operaciones
     public static readonly Operacion ActivarCuenta = new(nameof(ActivarCuenta), Publica);
     public static readonly Operacion ReenviarActivacion = new(nameof(ReenviarActivacion), Publica);
     public static readonly Operacion IniciarSesion = new(nameof(IniciarSesion), Publica);
+    public static readonly Operacion SolicitarRecuperacion = new(nameof(SolicitarRecuperacion), Publica);
+    public static readonly Operacion RestablecerContrasena = new(nameof(RestablecerContrasena), Publica);
 
     // Cualquier usuario con sesión, sea Administrador o Estándar.
     public static readonly Operacion ConsultarMiCuenta = new(nameof(ConsultarMiCuenta), ConSesion);
     public static readonly Operacion CerrarSesion = new(nameof(CerrarSesion), ConSesion);
+    public static readonly Operacion CambiarMiContrasena = new(nameof(CambiarMiContrasena), ConSesion);
 
     // Solo Administrador.
     public static readonly Operacion ListarUsuarios = new(nameof(ListarUsuarios), SoloAdministrador);
     public static readonly Operacion CambiarRol = new(nameof(CambiarRol), SoloAdministrador);
     public static readonly Operacion DesactivarUsuario = new(nameof(DesactivarUsuario), SoloAdministrador);
     public static readonly Operacion ReactivarUsuario = new(nameof(ReactivarUsuario), SoloAdministrador);
+    public static readonly Operacion ForzarRestablecimiento = new(nameof(ForzarRestablecimiento), SoloAdministrador);
 }

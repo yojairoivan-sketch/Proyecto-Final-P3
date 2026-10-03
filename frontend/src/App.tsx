@@ -3,8 +3,10 @@ import Activar from './paginas/Activar'
 import IniciarSesion from './paginas/IniciarSesion'
 import Inicio from './paginas/Inicio'
 import MiCuenta from './paginas/MiCuenta'
+import Recuperar from './paginas/Recuperar'
 import ReenviarActivacion from './paginas/ReenviarActivacion'
 import Registro from './paginas/Registro'
+import Restablecer from './paginas/Restablecer'
 import Usuarios from './paginas/Usuarios'
 import { useSesion } from './sesion'
 
@@ -46,6 +48,8 @@ export default function App() {
           <Route path="/iniciar-sesion" element={<IniciarSesion />} />
           <Route path="/cuenta" element={<MiCuenta />} />
           <Route path="/usuarios" element={<Usuarios />} />
+          <Route path="/recuperar" element={<Recuperar />} />
+          <Route path="/restablecer" element={<Restablecer />} />
           <Route path="*" element={<p>Esta página no existe.</p>} />
         </Routes>
       </main>

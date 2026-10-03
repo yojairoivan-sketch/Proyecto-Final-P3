@@ -53,7 +53,7 @@ export default function IniciarSesion() {
       </form>
       <Aviso aviso={aviso} />
       <p className="nota">
-        ¿No tienes cuenta? <Link to="/registro">Crea una</Link>.
+        <Link to="/recuperar">¿Olvidaste tu contraseña?</Link> · ¿No tienes cuenta? <Link to="/registro">Crea una</Link>.
       </p>
     </section>
   )

@@ -82,6 +82,14 @@ export default function Usuarios() {
                         Desactivar
                       </button>
                     )}
+                    {u.estado !== 'Pendiente de activación' && (
+                      <button
+                        className="secundario"
+                        onClick={() => ejecutar('POST', `/usuarios/${u.id}/forzar-restablecimiento`)}
+                      >
+                        Forzar restablecimiento
+                      </button>
+                    )}
                     {u.estado === 'Desactivado' && (
                       <button className="secundario" onClick={() => ejecutar('POST', `/usuarios/${u.id}/reactivar`)}>
                         Reactivar
