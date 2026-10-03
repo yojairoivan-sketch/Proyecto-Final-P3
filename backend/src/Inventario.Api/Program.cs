@@ -4,6 +4,7 @@ using Inventario.Api.Errores;
 using Inventario.Core.ColaCorreos;
 using Inventario.Core.ControlAcceso;
 using Inventario.Core.ControlAcceso.Usuarios;
+using Inventario.Negocio;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
 
@@ -22,6 +23,9 @@ builder.Services.ConfigureHttpJsonOptions(opciones =>
 builder.Services.AddColaCorreos(cadenaConexion);
 builder.Services.AddControlAcceso(cadenaConexion, opciones =>
     opciones.UrlPublica = builder.Configuration["URL_PUBLICA"] ?? opciones.UrlPublica);
+
+// Módulo de negocio: depende del Core, nunca al revés (RD-03).
+builder.Services.AddNegocio(cadenaConexion);
 
 // La credencial de sesión se valida en cada petición contra Control de acceso.
 builder.Services.AddHttpContextAccessor();
@@ -49,6 +53,7 @@ app.VerificarQueTodoEndpointDeclareSuOperacion();
 
 await app.Services.MigrarColaCorreosAsync();
 await app.Services.MigrarControlAccesoAsync();
+await app.Services.MigrarNegocioAsync();
 app.Logger.LogInformation("{Mensaje}", await app.Services.AsegurarAdministradorInicialAsync(
     builder.Configuration["ADMIN_NOMBRE"], builder.Configuration["ADMIN_CORREO"], builder.Configuration["ADMIN_CONTRASENA"]));
 

@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Módulo de negocio: inventario para un negocio pequeño (proyecto #6).
+    Depende del Core (Control de acceso, para los roles); el Core nunca depende de este proyecto (RD-03).
+  -->
+
+  <ItemGroup>
+    <PackageReference Include="EFCore.NamingConventions" />
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Inventario.Core.ControlAcceso\Inventario.Core.ControlAcceso.csproj" />
+  </ItemGroup>
+
+</Project>
