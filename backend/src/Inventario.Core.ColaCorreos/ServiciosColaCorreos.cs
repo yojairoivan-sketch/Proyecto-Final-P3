@@ -15,6 +15,15 @@ public static class ServiciosColaCorreos
         return services;
     }
 
+    /// <summary>Registra el procesador que entrega los pendientes por SMTP.</summary>
+    public static IServiceCollection AddProcesadorCola(this IServiceCollection services, ConfiguracionSmtp smtp)
+    {
+        services.AddSingleton(smtp);
+        services.AddScoped<ITransporteCorreo, TransporteSmtp>();
+        services.AddScoped<ProcesadorCola>();
+        return services;
+    }
+
     /// <summary>Crea o actualiza las tablas de la cola. Lo llama el host al arrancar.</summary>
     public static async Task MigrarColaCorreosAsync(this IServiceProvider servicios, CancellationToken ct = default)
     {
