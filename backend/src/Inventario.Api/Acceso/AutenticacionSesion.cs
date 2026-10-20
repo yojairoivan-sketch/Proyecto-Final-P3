@@ -22,6 +22,7 @@ public sealed class AutenticacionSesion(
 {
     public const string Esquema = "Sesion";
     public const string ClaimSesion = "sesion";
+    public const string ClaimPermiso = "permiso";
 
     protected override async Task<AuthenticateResult> HandleAuthenticateAsync()
     {
@@ -40,6 +41,7 @@ public sealed class AutenticacionSesion(
             new(ClaimTypes.Email, usuario.Correo),
             new(ClaimTypes.Role, usuario.Rol),
             new(ClaimSesion, usuario.SesionId.ToString(CultureInfo.InvariantCulture)),
+            .. usuario.Permisos.Select(permiso => new Claim(ClaimPermiso, permiso)),
         ];
         var identidad = new ClaimsIdentity(claims, Esquema, ClaimTypes.Name, ClaimTypes.Role);
         return AuthenticateResult.Success(new AuthenticationTicket(new ClaimsPrincipal(identidad), Esquema));
@@ -64,7 +66,8 @@ public sealed class AutenticacionSesion(
         var rol = Context.User.FindFirstValue(ClaimTypes.Role);
         return Escribir(StatusCodes.Status403Forbidden, operacion is null
             ? "Tu rol no tiene permiso para usar esta operación."
-            : $"La operación {operacion.Nombre} es solo para: {string.Join(", ", operacion.Roles)}. Tu rol es {rol}.");
+            : $"La operación {operacion.Nombre} es solo para: {string.Join(", ", operacion.Roles)}. Tu rol es {rol}." +
+              (operacion.EsSolicitable ? $" Puedes pedir el permiso {operacion.Nombre} con una solicitud." : ""));
     }
 
     private async Task Escribir(int estado, string detalle)
@@ -94,7 +97,10 @@ public sealed class UsuarioActualHttp(IHttpContextAccessor accesor) : IUsuarioAc
                 principal.FindFirstValue(ClaimTypes.Name)!,
                 principal.FindFirstValue(ClaimTypes.Email)!,
                 principal.FindFirstValue(ClaimTypes.Role)!,
-                long.Parse(principal.FindFirstValue(AutenticacionSesion.ClaimSesion)!, CultureInfo.InvariantCulture));
+                long.Parse(principal.FindFirstValue(AutenticacionSesion.ClaimSesion)!, CultureInfo.InvariantCulture))
+            {
+                Permisos = principal.FindAll(AutenticacionSesion.ClaimPermiso).Select(claim => claim.Value).ToList(),
+            };
         }
     }
 }

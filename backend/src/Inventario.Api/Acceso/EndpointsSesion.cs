@@ -22,7 +22,7 @@ public static class EndpointsSesion
         app.MapGet("/api/yo", (IUsuarioActual actual) =>
         {
             var yo = actual.Usuario!;
-            return Results.Ok(new { yo.Id, yo.Nombre, yo.Correo, yo.Rol });
+            return Results.Ok(new { yo.Id, yo.Nombre, yo.Correo, yo.Rol, yo.Permisos });
         })
             .Requiere(Operaciones.ConsultarMiCuenta);
 
