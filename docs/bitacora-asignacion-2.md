@@ -20,12 +20,14 @@
 
 ## Qué le pedí
 
-Se lo pedí por partes, en este orden:
+Le di el PDF del enunciado y le pedí, en concreto:
 
-1. **Hacer la asignación a partir del enunciado.** Le di el PDF y le encargué lo que pide: la pieza Gestión de permisos en mi repositorio, su primera suite de pruebas y el README que explica cómo provocar cada criterio.
-2. **No publicar sin revisar.** Cuando me propuso subir los cambios, le pedí antes una revisión completa contra la rúbrica: el código, las pruebas, el README y esta bitácora (caso D).
-3. **Una última revisión contra el enunciado.** Después de corregir lo que encontró, le pedí revisar otra vez, punto por punto, contra el PDF de la asignación, y leí esta bitácora antes de publicar.
-4. **Separar lo que no era de esta entrega.** Cuando me avisó de una vulnerabilidad en un paquete de NuGet que ya estaba desde antes, decidí arreglarla en otra sesión y en otro PR, para no mezclarla con esta entrega.
+1. **Construir Gestión de permisos en mi repositorio** según la pieza 2 de los Requerimientos del Core: crear una solicitud, consultar las pendientes, aprobar y rechazar con motivo, y que al aprobar el permiso se aplique solo, cumpliendo RF-GP-01 a RF-GP-07, RD-04, RD-06, RD-07 y RD-09.
+2. **Escribir la primera suite de pruebas de la pieza**, sin levantar la aplicación: al menos una transición válida que verifique el estado y lo que registra, y una prohibida que verifique el rechazo y que el estado no cambia. Cada prueba con preparar, actuar y verificar, y un solo comando para correrlas.
+3. **Documentar en el README** cómo levantar la aplicación, cómo provocar cada criterio y cómo correr las pruebas.
+4. **No publicar nada sin revisarlo antes contra la rúbrica**: el código, las pruebas, el README y esta bitácora (caso D).
+5. **Hacer una última revisión, punto por punto, contra el PDF de la asignación**, y dejarme leer esta bitácora antes de publicar.
+6. **Dejar fuera de esta entrega lo que no le corresponde**: cuando avisó de una vulnerabilidad en un paquete de NuGet que ya estaba desde antes, lo mandé a arreglar en otra sesión y en otro PR.
 
 ## Qué devolvió
 
