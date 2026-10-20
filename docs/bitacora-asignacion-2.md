@@ -19,11 +19,7 @@
 
 ## Qué le pedí
 
-Le pasé el PDF del enunciado y escribí:
-
-> `@"C:\Users\User\Downloads\Asignacion2_GestionPermisos_PIII.pdf"` hagamos la asignacion 2
-
-Lo interrumpí y le dije «vamos». Cuando me propuso publicar, le pedí antes una revisión completa (caso D).
+Le di el enunciado de la Asignación 2 (el PDF) y le encargué hacerla en mi repositorio: construir la pieza Gestión de permisos, escribir su primera suite de pruebas y documentar en el README cómo provocar cada criterio. Cuando me propuso publicar, le pedí antes una revisión completa contra la rúbrica (caso D).
 
 ## Qué devolvió
 
@@ -156,9 +152,7 @@ En la misma revisión, el agente vio que dos pruebas usaban `Assert.ThrowsAsync`
 
 ## Caso D — la revisión que le pedí antes de publicar
 
-**Qué le pedí.** Antes de subir nada:
-
-> antes de publicar revisa todo por favor. tengo que sacar todos los puntos
+**Qué le pedí.** Que antes de subir nada revisara todo contra la rúbrica del enunciado: el código, las pruebas, el README y esta bitácora.
 
 **Qué encontró.** Revisó el código, las pruebas, el README y esta bitácora contra la rúbrica, y encontró cinco errores suyos que se le habían pasado:
 
