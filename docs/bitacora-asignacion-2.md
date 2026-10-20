@@ -3,8 +3,6 @@
 | Campo | Valor |
 |---|---|
 | Estudiante | Yojairo Rodriguez (`yojairoivan-sketch`) |
-| Agente | Claude Code, app de escritorio (pestaña Code) |
-| Modelo | Claude Opus 5.5 |
 | Fecha de la sesión | 2026-10-19 (lunes), por la noche |
 
 ## Tareas que le delegué
