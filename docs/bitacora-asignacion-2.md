@@ -16,10 +16,16 @@
 | 5 | Comprobar que el comando de la sección «Pruebas» funciona desde un clon limpio | Hecha; encontró un error suyo del PR #12 (caso B) |
 | 6 | Redactar el README y esta bitácora | Hecha |
 | 7 | Revisar todo contra la rúbrica antes de publicar | Hecha; encontró cinco errores suyos y cometió otro al corregirlos (caso D) |
+| 8 | Una última revisión, punto por punto, contra el PDF del enunciado | Hecha; todos los puntos cumplían |
 
 ## Qué le pedí
 
-Le di el enunciado de la Asignación 2 (el PDF) y le encargué hacerla en mi repositorio: construir la pieza Gestión de permisos, escribir su primera suite de pruebas y documentar en el README cómo provocar cada criterio. Cuando me propuso publicar, le pedí antes una revisión completa contra la rúbrica (caso D).
+Se lo pedí por partes, en este orden:
+
+1. **Hacer la asignación a partir del enunciado.** Le di el PDF y le encargué lo que pide: la pieza Gestión de permisos en mi repositorio, su primera suite de pruebas y el README que explica cómo provocar cada criterio.
+2. **No publicar sin revisar.** Cuando me propuso subir los cambios, le pedí antes una revisión completa contra la rúbrica: el código, las pruebas, el README y esta bitácora (caso D).
+3. **Una última revisión contra el enunciado.** Después de corregir lo que encontró, le pedí revisar otra vez, punto por punto, contra el PDF de la asignación, y leí esta bitácora antes de publicar.
+4. **Separar lo que no era de esta entrega.** Cuando me avisó de una vulnerabilidad en un paquete de NuGet que ya estaba desde antes, decidí arreglarla en otra sesión y en otro PR, para no mezclarla con esta entrega.
 
 ## Qué devolvió
 
