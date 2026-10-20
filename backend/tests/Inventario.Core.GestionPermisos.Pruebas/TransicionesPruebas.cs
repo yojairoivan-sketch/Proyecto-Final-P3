@@ -16,6 +16,7 @@ public sealed class TransicionesPruebas
     private static readonly Actor Dario = Actor.Administrador(Entorno.Dario.Id, Entorno.Dario.Nombre);
 
     [Fact]
+    [Trait("Requisito", "RF-GP-03")]
     public void AprobarUnaPendienteLaDejaAprobadaConQuienAproboYCuando()
     {
         // Preparar
@@ -32,6 +33,7 @@ public sealed class TransicionesPruebas
     }
 
     [Fact]
+    [Trait("Requisito", "RF-GP-05")]
     public void ElSistemaAplicaUnaAprobadaYRegistraCuando()
     {
         // Preparar
@@ -48,6 +50,7 @@ public sealed class TransicionesPruebas
     }
 
     [Fact]
+    [Trait("Requisito", "RF-GP-04")]
     public void RechazarUnaPendienteConMotivoLaDejaRechazadaConQuienCuandoYElMotivo()
     {
         // Preparar
@@ -65,6 +68,7 @@ public sealed class TransicionesPruebas
     }
 
     [Theory]
+    [Trait("Requisito", "RF-GP-04")]
     [InlineData(null)]
     [InlineData("")]
     [InlineData("   ")]
@@ -83,6 +87,7 @@ public sealed class TransicionesPruebas
     }
 
     [Fact]
+    [Trait("Requisito", "RF-GP-04")]
     public void UnMotivoDeMasDe500CaracteresNoSeAcepta()
     {
         // Preparar
@@ -98,6 +103,7 @@ public sealed class TransicionesPruebas
     }
 
     [Fact]
+    [Trait("Requisito", "RF-GP-06")]
     public void PasarDeRechazadaAAplicadaSeRechazaYElEstadoNoCambia()
     {
         // Preparar
@@ -119,6 +125,7 @@ public sealed class TransicionesPruebas
     /// desde TransicionesSolicitud: si alguien agrega una transición indebida a la tabla, esta prueba lo detecta.
     /// </summary>
     [Theory]
+    [Trait("Requisito", "RF-GP-06")]
     [InlineData(Pendiente, Pendiente)]
     [InlineData(Pendiente, Aplicada)]
     [InlineData(Aprobada, Pendiente)]
@@ -151,6 +158,7 @@ public sealed class TransicionesPruebas
     }
 
     [Fact]
+    [Trait("Requisito", "RF-GP-06")]
     public void UnAdministradorNoPuedeMarcarAplicadaUnaSolicitudPorqueEsoLoHaceElSistema()
     {
         // Preparar
@@ -166,6 +174,7 @@ public sealed class TransicionesPruebas
     }
 
     [Fact]
+    [Trait("Requisito", "RF-GP-07")]
     public void UnAdministradorNoApruebaSuPropiaSolicitud()
     {
         // Preparar
@@ -181,6 +190,7 @@ public sealed class TransicionesPruebas
     }
 
     [Fact]
+    [Trait("Requisito", "RF-GP-07")]
     public void UnAdministradorNoRechazaSuPropiaSolicitud()
     {
         // Preparar
@@ -196,6 +206,7 @@ public sealed class TransicionesPruebas
     }
 
     [Fact]
+    [Trait("Requisito", "RF-GP-06")]
     public void LosUnicosEstadosTerminalesSonAplicadaYRechazada()
     {
         // Preparar: la tabla de transiciones ya está declarada.

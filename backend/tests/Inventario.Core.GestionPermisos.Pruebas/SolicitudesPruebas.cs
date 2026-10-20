@@ -15,6 +15,7 @@ public sealed class SolicitudesPruebas : IDisposable
     public void Dispose() => entorno.Dispose();
 
     [Fact]
+    [Trait("Requisito", "RF-GP-01")]
     public async Task UnEstandarCreaUnaSolicitudQueNaceEnPendiente()
     {
         // Preparar
@@ -34,6 +35,7 @@ public sealed class SolicitudesPruebas : IDisposable
     }
 
     [Theory]
+    [Trait("Requisito", "RF-GP-01")]
     [InlineData(null)]
     [InlineData("")]
     [InlineData("Volar")]
@@ -51,6 +53,7 @@ public sealed class SolicitudesPruebas : IDisposable
     }
 
     [Fact]
+    [Trait("Requisito", "RF-GP-01")]
     public async Task NoSeCreaUnaSegundaSolicitudDelMismoPermisoMientrasLaPrimeraNoSeResuelve()
     {
         // Preparar
@@ -65,6 +68,7 @@ public sealed class SolicitudesPruebas : IDisposable
     }
 
     [Fact]
+    [Trait("Requisito", "RF-GP-02")]
     public async Task ElAdministradorVeSoloLasSolicitudesPendientes()
     {
         // Preparar
@@ -81,6 +85,7 @@ public sealed class SolicitudesPruebas : IDisposable
     }
 
     [Fact]
+    [Trait("Requisito", "RF-GP-02")]
     public async Task UnEstandarSoloVeSusPropiasSolicitudes()
     {
         // Preparar
@@ -96,6 +101,7 @@ public sealed class SolicitudesPruebas : IDisposable
     }
 
     [Fact]
+    [Trait("Requisito", "RF-GP-02")]
     public async Task UnEstandarNoPuedeConsultarLaSolicitudDeOtroUsuario()
     {
         // Preparar
@@ -110,6 +116,7 @@ public sealed class SolicitudesPruebas : IDisposable
     }
 
     [Fact]
+    [Trait("Requisito", "RF-GP-03")]
     public async Task AprobarDejaGuardadoQuienAproboYCuando()
     {
         // Preparar
@@ -130,6 +137,7 @@ public sealed class SolicitudesPruebas : IDisposable
     }
 
     [Fact]
+    [Trait("Requisito", "RF-GP-04")]
     public async Task RechazarConMotivoDejaGuardadosElEstadoYElMotivo()
     {
         // Preparar
@@ -147,6 +155,7 @@ public sealed class SolicitudesPruebas : IDisposable
     }
 
     [Fact]
+    [Trait("Requisito", "RF-GP-04")]
     public async Task RechazarSinMotivoNoCambiaLaSolicitudGuardada()
     {
         // Preparar
@@ -163,6 +172,7 @@ public sealed class SolicitudesPruebas : IDisposable
     }
 
     [Fact]
+    [Trait("Requisito", "RF-GP-05")]
     public async Task AlAprobarElSistemaOtorgaElPermisoAlSolicitanteSinOtroPaso()
     {
         // Preparar
@@ -179,6 +189,7 @@ public sealed class SolicitudesPruebas : IDisposable
     }
 
     [Fact]
+    [Trait("Requisito", "RF-GP-05")]
     public async Task AlRechazarNoSeOtorgaNingunPermiso()
     {
         // Preparar
@@ -192,6 +203,7 @@ public sealed class SolicitudesPruebas : IDisposable
     }
 
     [Fact]
+    [Trait("Requisito", "RF-GP-05")]
     public async Task SiOtorgarFallaLaSolicitudQuedaAprobadaSinAplicar()
     {
         // Preparar
@@ -209,6 +221,7 @@ public sealed class SolicitudesPruebas : IDisposable
     }
 
     [Fact]
+    [Trait("Requisito", "RF-GP-05")]
     public async Task AlArrancarSeAplicanLasSolicitudesQueQuedaronAprobadas()
     {
         // Preparar
@@ -226,6 +239,7 @@ public sealed class SolicitudesPruebas : IDisposable
     }
 
     [Fact]
+    [Trait("Requisito", "RF-GP-06")]
     public async Task AprobarDosVecesLaMismaSolicitudSeRechazaYElEstadoNoCambia()
     {
         // Preparar
@@ -247,6 +261,7 @@ public sealed class SolicitudesPruebas : IDisposable
     }
 
     [Fact]
+    [Trait("Requisito", "RF-GP-06")]
     public async Task AprobarUnaSolicitudRechazadaSeRechazaYSigueRechazadaSinPermiso()
     {
         // Preparar
@@ -265,6 +280,7 @@ public sealed class SolicitudesPruebas : IDisposable
     }
 
     [Fact]
+    [Trait("Requisito", "RF-GP-07")]
     public async Task UnAdministradorNoPuedeAprobarSuPropiaSolicitud()
     {
         // Preparar
@@ -280,6 +296,7 @@ public sealed class SolicitudesPruebas : IDisposable
     }
 
     [Fact]
+    [Trait("Requisito", "RF-GP-07")]
     public async Task OtroAdministradorSiPuedeAprobarLaSolicitudDeUnAdministrador()
     {
         // Preparar
