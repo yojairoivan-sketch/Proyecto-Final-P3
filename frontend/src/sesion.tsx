@@ -6,6 +6,8 @@ export interface Yo {
   nombre: string
   correo: string
   rol: string
+  /** Operaciones que puede ejecutar además de las de su rol, por solicitudes aprobadas. */
+  permisos: string[]
 }
 
 interface ContextoSesion {

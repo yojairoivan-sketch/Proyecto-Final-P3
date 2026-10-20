@@ -3,10 +3,12 @@
     <Project Path="src/Inventario.Api/Inventario.Api.csproj" />
     <Project Path="src/Inventario.Core.ColaCorreos/Inventario.Core.ColaCorreos.csproj" />
     <Project Path="src/Inventario.Core.ControlAcceso/Inventario.Core.ControlAcceso.csproj" />
+    <Project Path="src/Inventario.Core.GestionPermisos/Inventario.Core.GestionPermisos.csproj" />
     <Project Path="src/Inventario.Enviador/Inventario.Enviador.csproj" />
     <Project Path="src/Inventario.Negocio/Inventario.Negocio.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/Inventario.Core.ControlAcceso.Pruebas/Inventario.Core.ControlAcceso.Pruebas.csproj" />
+    <Project Path="tests/Inventario.Core.GestionPermisos.Pruebas/Inventario.Core.GestionPermisos.Pruebas.csproj" />
   </Folder>
 </Solution>

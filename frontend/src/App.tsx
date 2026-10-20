@@ -3,6 +3,7 @@ import Activar from './paginas/Activar'
 import IniciarSesion from './paginas/IniciarSesion'
 import Inicio from './paginas/Inicio'
 import MiCuenta from './paginas/MiCuenta'
+import Permisos from './paginas/Permisos'
 import Recuperar from './paginas/Recuperar'
 import ReenviarActivacion from './paginas/ReenviarActivacion'
 import Registro from './paginas/Registro'
@@ -24,7 +25,10 @@ export default function App() {
           {usuario ? (
             <>
               <NavLink to="/cuenta">Mi cuenta</NavLink>
-              {usuario.rol === 'Administrador' && <NavLink to="/usuarios">Usuarios</NavLink>}
+              <NavLink to="/permisos">Permisos</NavLink>
+              {(usuario.rol === 'Administrador' || usuario.permisos.includes('ListarUsuarios')) && (
+                <NavLink to="/usuarios">Usuarios</NavLink>
+              )}
             </>
           ) : (
             <>
@@ -48,6 +52,7 @@ export default function App() {
           <Route path="/iniciar-sesion" element={<IniciarSesion />} />
           <Route path="/cuenta" element={<MiCuenta />} />
           <Route path="/usuarios" element={<Usuarios />} />
+          <Route path="/permisos" element={<Permisos />} />
           <Route path="/recuperar" element={<Recuperar />} />
           <Route path="/restablecer" element={<Restablecer />} />
           <Route path="*" element={<p>Esta página no existe.</p>} />

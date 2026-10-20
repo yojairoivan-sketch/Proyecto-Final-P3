@@ -68,13 +68,7 @@ services:
       db:
         condition: service_healthy
 
-  # Pruebas de Control de acceso (RD-12). No necesitan la base ni la API:
-  #   docker compose run --rm pruebas
-  pruebas:
-    build:
-      context: ./backend
-      target: pruebas
-    profiles: ["herramientas"]
+  # Las pruebas automáticas (RD-12) están en docker-compose.pruebas.yml: así corren sin .env.
 
 volumes:
   datos-postgres:

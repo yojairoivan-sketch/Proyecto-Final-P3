@@ -40,6 +40,10 @@ export default function MiCuenta() {
             <th>Rol</th>
             <td>{usuario.rol}</td>
           </tr>
+          <tr>
+            <th>Permisos otorgados</th>
+            <td>{usuario.permisos.length > 0 ? usuario.permisos.join(', ') : 'Ninguno'}</td>
+          </tr>
         </tbody>
       </table>
       <p>

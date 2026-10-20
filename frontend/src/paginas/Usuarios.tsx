@@ -12,8 +12,11 @@ interface UsuarioListado {
 }
 
 // La API decide quién puede hacer qué: si un Estándar entra aquí, ve el rechazo que devuelve el servidor.
+// Un Estándar con el permiso ListarUsuarios ve la lista, pero solo los botones de los permisos que tiene.
 export default function Usuarios() {
   const { usuario: yo, refrescar } = useSesion()
+  const esAdministrador = yo?.rol === 'Administrador'
+  const puede = (operacion: string) => esAdministrador || (yo?.permisos.includes(operacion) ?? false)
   const [usuarios, setUsuarios] = useState<UsuarioListado[]>([])
   const [aviso, setAviso] = useState<EstadoAviso | null>(null)
 
@@ -66,23 +69,27 @@ export default function Usuarios() {
                 </td>
                 <td>{u.correo}</td>
                 <td>
-                  <select
-                    value={u.rol}
-                    onChange={(e) => ejecutar('PUT', `/usuarios/${u.id}/rol`, { rol: e.target.value })}
-                  >
-                    <option>Administrador</option>
-                    <option>Estándar</option>
-                  </select>
+                  {esAdministrador ? (
+                    <select
+                      value={u.rol}
+                      onChange={(e) => ejecutar('PUT', `/usuarios/${u.id}/rol`, { rol: e.target.value })}
+                    >
+                      <option>Administrador</option>
+                      <option>Estándar</option>
+                    </select>
+                  ) : (
+                    u.rol
+                  )}
                 </td>
                 <td>{u.estado}</td>
                 <td>
                   <div className="acciones">
-                    {u.estado === 'Activo' && (
+                    {esAdministrador && u.estado === 'Activo' && (
                       <button className="secundario" onClick={() => ejecutar('POST', `/usuarios/${u.id}/desactivar`)}>
                         Desactivar
                       </button>
                     )}
-                    {u.estado !== 'Pendiente de activación' && (
+                    {esAdministrador && u.estado !== 'Pendiente de activación' && (
                       <button
                         className="secundario"
                         onClick={() => ejecutar('POST', `/usuarios/${u.id}/forzar-restablecimiento`)}
@@ -90,7 +97,7 @@ export default function Usuarios() {
                         Forzar restablecimiento
                       </button>
                     )}
-                    {u.estado === 'Desactivado' && (
+                    {puede('ReactivarUsuario') && u.estado === 'Desactivado' && (
                       <button className="secundario" onClick={() => ejecutar('POST', `/usuarios/${u.id}/reactivar`)}>
                         Reactivar
                       </button>

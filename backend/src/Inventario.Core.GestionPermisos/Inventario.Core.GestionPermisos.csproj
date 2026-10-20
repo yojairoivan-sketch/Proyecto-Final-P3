@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Pieza del Core: Gestión de permisos. Responde «¿qué acceso elevado pediste y en qué estado está?».
+    Requiere Control de acceso (quién es el usuario y dónde se aplica el permiso aprobado), solo por sus interfaces.
+    Nunca referencia al módulo de negocio (RD-03).
+  -->
+
+  <ItemGroup>
+    <PackageReference Include="EFCore.NamingConventions" />
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Inventario.Core.ControlAcceso\Inventario.Core.ControlAcceso.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Inventario.Core.GestionPermisos.Pruebas" />
+  </ItemGroup>
+
+</Project>

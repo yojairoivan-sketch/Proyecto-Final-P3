@@ -1,5 +1,6 @@
 using Inventario.Core.ControlAcceso.Contrasenas;
 using Inventario.Core.ControlAcceso.Cuentas;
+using Inventario.Core.ControlAcceso.Permisos;
 using Inventario.Core.ControlAcceso.Sesiones;
 using Inventario.Core.ControlAcceso.Usuarios;
 using Microsoft.EntityFrameworkCore;
@@ -27,6 +28,7 @@ public static class ServiciosControlAcceso
         services.AddScoped<IServicioSesiones, ServicioSesiones>();
         services.AddScoped<IServicioUsuarios, ServicioUsuarios>();
         services.AddScoped<IServicioContrasenas, ServicioContrasenas>();
+        services.AddScoped<IOtorgamientoPermisos, OtorgamientoPermisos>();
         return services;
     }
 

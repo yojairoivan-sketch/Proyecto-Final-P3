@@ -3,8 +3,8 @@ namespace Inventario.Api.Acceso;
 public static class ExigenciaDeRol
 {
     /// <summary>
-    /// Declara la operación que ejecuta el endpoint. El servidor verifica la sesión y el rol en cada petición,
-    /// antes de leer el cuerpo, aunque la petición se arme a mano (RD-06).
+    /// Declara la operación que ejecuta el endpoint. El servidor verifica la sesión y el rol (o el permiso otorgado,
+    /// si la operación es solicitable) en cada petición, antes de leer el cuerpo, aunque la petición se arme a mano (RD-06).
     /// </summary>
     public static TBuilder Requiere<TBuilder>(this TBuilder endpoint, Operacion operacion)
         where TBuilder : IEndpointConventionBuilder
@@ -12,7 +12,9 @@ public static class ExigenciaDeRol
         endpoint.WithMetadata(operacion);
         return operacion.EsPublica
             ? endpoint.AllowAnonymous()
-            : endpoint.RequireAuthorization(politica => politica.RequireAuthenticatedUser().RequireRole(operacion.Roles));
+            : endpoint.RequireAuthorization(politica => politica
+                .RequireAuthenticatedUser()
+                .RequireAssertion(contexto => operacion.LaPuedeEjecutar(contexto.User)));
     }
 
     /// <summary>Detiene el arranque si algún endpoint de la API no declaró su operación.</summary>

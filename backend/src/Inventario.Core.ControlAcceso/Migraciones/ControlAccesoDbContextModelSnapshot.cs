@@ -127,6 +127,39 @@ namespace Inventario.Core.ControlAcceso.Migraciones
                     b.ToTable("tokens_activacion", "control_acceso");
                 });
 
+            modelBuilder.Entity("Inventario.Core.ControlAcceso.Permisos.PermisoOtorgado", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<DateTimeOffset>("OtorgadoEn")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("otorgado_en");
+
+                    b.Property<string>("Permiso")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("permiso");
+
+                    b.Property<int>("UsuarioId")
+                        .HasColumnType("integer")
+                        .HasColumnName("usuario_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_permisos_otorgados");
+
+                    b.HasIndex("UsuarioId", "Permiso")
+                        .IsUnique()
+                        .HasDatabaseName("ix_permisos_otorgados_usuario_id_permiso");
+
+                    b.ToTable("permisos_otorgados", "control_acceso");
+                });
+
             modelBuilder.Entity("Inventario.Core.ControlAcceso.Rol", b =>
                 {
                     b.Property<int>("Id")
@@ -289,6 +322,18 @@ namespace Inventario.Core.ControlAcceso.Migraciones
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
                         .HasConstraintName("fk_tokens_activacion_usuarios_usuario_id");
+
+                    b.Navigation("Usuario");
+                });
+
+            modelBuilder.Entity("Inventario.Core.ControlAcceso.Permisos.PermisoOtorgado", b =>
+                {
+                    b.HasOne("Inventario.Core.ControlAcceso.Usuario", "Usuario")
+                        .WithMany()
+                        .HasForeignKey("UsuarioId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_permisos_otorgados_usuarios_usuario_id");
 
                     b.Navigation("Usuario");
                 });
