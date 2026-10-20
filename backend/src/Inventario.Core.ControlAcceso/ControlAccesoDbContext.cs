@@ -1,5 +1,6 @@
 using Inventario.Core.ControlAcceso.Contrasenas;
 using Inventario.Core.ControlAcceso.Cuentas;
+using Inventario.Core.ControlAcceso.Permisos;
 using Inventario.Core.ControlAcceso.Sesiones;
 using Microsoft.EntityFrameworkCore;
 
@@ -15,6 +16,7 @@ public sealed class ControlAccesoDbContext(DbContextOptions<ControlAccesoDbConte
     internal DbSet<TokenActivacion> TokensActivacion => Set<TokenActivacion>();
     internal DbSet<Sesion> Sesiones => Set<Sesion>();
     internal DbSet<CodigoRecuperacion> CodigosRecuperacion => Set<CodigoRecuperacion>();
+    internal DbSet<PermisoOtorgado> PermisosOtorgados => Set<PermisoOtorgado>();
 
     protected override void OnModelCreating(ModelBuilder modelo)
     {
@@ -63,6 +65,14 @@ public sealed class ControlAccesoDbContext(DbContextOptions<ControlAccesoDbConte
             codigo.Property(c => c.HashCodigo).HasMaxLength(64);
             codigo.HasIndex(c => c.HashCodigo).IsUnique();
             codigo.HasOne(c => c.Usuario).WithMany().HasForeignKey(c => c.UsuarioId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelo.Entity<PermisoOtorgado>(permiso =>
+        {
+            permiso.ToTable("permisos_otorgados");
+            permiso.Property(p => p.Permiso).HasMaxLength(100);
+            permiso.HasIndex(p => new { p.UsuarioId, p.Permiso }).IsUnique();
+            permiso.HasOne(p => p.Usuario).WithMany().HasForeignKey(p => p.UsuarioId).OnDelete(DeleteBehavior.Cascade);
         });
     }
 }

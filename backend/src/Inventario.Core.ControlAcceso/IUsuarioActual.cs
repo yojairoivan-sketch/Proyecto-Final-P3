@@ -4,6 +4,9 @@ namespace Inventario.Core.ControlAcceso;
 public sealed record UsuarioAutenticado(int Id, string Nombre, string Correo, string Rol, long SesionId)
 {
     public bool EsAdministrador => Rol == ControlAcceso.Rol.Administrador;
+
+    /// <summary>Operaciones que puede ejecutar además de las de su rol, por solicitudes aprobadas (RF-GP-05).</summary>
+    public IReadOnlyList<string> Permisos { get; init; } = [];
 }
 
 /// <summary>

@@ -78,7 +78,7 @@ internal sealed class ServicioSesiones(
         db.Sesiones.Add(sesion);
         await db.SaveChangesAsync(ct);
 
-        return Resultado<SesionIniciada>.Ok(new SesionIniciada(token, sesion.VenceEn, Autenticado(usuario, sesion.Id)));
+        return Resultado<SesionIniciada>.Ok(new SesionIniciada(token, sesion.VenceEn, await AutenticadoAsync(usuario, sesion.Id, ct)));
     }
 
     public async Task<UsuarioAutenticado?> ValidarAsync(string token, CancellationToken ct = default)
@@ -93,7 +93,7 @@ internal sealed class ServicioSesiones(
             .Include(s => s.Usuario).ThenInclude(u => u.Rol)
             .SingleOrDefaultAsync(s => s.HashToken == hash && s.RevocadaEn == null && s.VenceEn > ahora && s.Usuario.Activo, ct);
 
-        return sesion is null ? null : Autenticado(sesion.Usuario, sesion.Id);
+        return sesion is null ? null : await AutenticadoAsync(sesion.Usuario, sesion.Id, ct);
     }
 
     public async Task<Resultado> CerrarAsync(long sesionId, CancellationToken ct = default)
@@ -105,8 +105,16 @@ internal sealed class ServicioSesiones(
         return Resultado.Ok("Sesión cerrada.");
     }
 
-    private static UsuarioAutenticado Autenticado(Usuario usuario, long sesionId) =>
-        new(usuario.Id, usuario.Nombre, usuario.Correo, usuario.Rol.Nombre, sesionId);
+    /// <summary>Se leen en cada petición: un permiso recién otorgado sirve sin volver a iniciar sesión (RF-GP-05).</summary>
+    private async Task<UsuarioAutenticado> AutenticadoAsync(Usuario usuario, long sesionId, CancellationToken ct) =>
+        new(usuario.Id, usuario.Nombre, usuario.Correo, usuario.Rol.Nombre, sesionId)
+        {
+            Permisos = await db.PermisosOtorgados
+                .Where(p => p.UsuarioId == usuario.Id)
+                .OrderBy(p => p.Permiso)
+                .Select(p => p.Permiso)
+                .ToListAsync(ct),
+        };
 
     private static Resultado<SesionIniciada> CredencialesIncorrectas() =>
         Resultado<SesionIniciada>.Falla(TipoFallo.NoAutenticado, "Correo o contraseña incorrectos.");
