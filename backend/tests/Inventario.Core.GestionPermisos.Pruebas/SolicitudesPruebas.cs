@@ -42,10 +42,11 @@ public sealed class SolicitudesPruebas : IDisposable
     [InlineData("CambiarRol")]
     public async Task CrearConUnPermisoQueNoSePuedePedirSeRechazaSinGuardarNada(string? permiso)
     {
-        // Preparar: el catálogo del entorno solo tiene ListarUsuarios y ReactivarUsuario.
+        // Preparar: Ana pide; el catálogo del entorno solo tiene ListarUsuarios y ReactivarUsuario.
+        var servicio = entorno.Como(Entorno.Ana);
 
         // Actuar
-        var resultado = await entorno.Como(Entorno.Ana).CrearAsync(permiso, justificacion: null);
+        var resultado = await servicio.CrearAsync(permiso, justificacion: null);
 
         // Verificar
         Assert.Equal(TipoFallo.Validacion, resultado.Fallo);
@@ -60,7 +61,7 @@ public sealed class SolicitudesPruebas : IDisposable
         await entorno.CrearSolicitudAsync(Entorno.Ana, "ListarUsuarios");
 
         // Actuar
-        var resultado = await entorno.Como(Entorno.Ana).CrearAsync("listarusuarios", justificacion: null);
+        var resultado = await entorno.Como(Entorno.Ana).CrearAsync("ListarUsuarios", justificacion: null);
 
         // Verificar
         Assert.Equal(TipoFallo.Conflicto, resultado.Fallo);

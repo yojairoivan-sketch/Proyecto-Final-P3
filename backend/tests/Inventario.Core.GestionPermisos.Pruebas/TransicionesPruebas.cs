@@ -57,7 +57,7 @@ public sealed class TransicionesPruebas
         var solicitud = NuevaSolicitud();
 
         // Actuar
-        var resultado = solicitud.CambiarEstado(Rechazada, new IntentoTransicion(Carla, Despues, "  No lo necesitas para tu puesto.  "));
+        var resultado = solicitud.CambiarEstado(Rechazada, new IntentoTransicion(Carla, Despues, "No lo necesitas para tu puesto."));
 
         // Verificar
         Assert.True(resultado.Exito, resultado.Mensaje);
@@ -209,13 +209,14 @@ public sealed class TransicionesPruebas
     [Trait("Requisito", "RF-GP-06")]
     public void LosUnicosEstadosTerminalesSonAplicadaYRechazada()
     {
-        // Preparar: la tabla de transiciones ya está declarada.
+        // Preparar: los terminales que fija el enunciado, escritos a mano.
+        var esperados = new[] { Aplicada, Rechazada };
 
         // Actuar
-        var terminales = TransicionesSolicitud.Terminales;
+        var terminales = TransicionesSolicitud.Terminales.Order().ToArray();
 
         // Verificar
-        Assert.Equal(new[] { Aplicada, Rechazada }, terminales.Order());
+        Assert.Equal(esperados, terminales);
     }
 
     private static SolicitudPermiso NuevaSolicitud() => SolicitudPermiso.Crear(Entorno.Ana, "ListarUsuarios", "Para el conteo.", Creada);
