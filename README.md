@@ -13,15 +13,16 @@ Instituto Tecnológico de las Américas (ITLA) — Cuatrimestre **2026-C-3**
 
 Aplicación web para que un negocio pequeño lleve el control de su inventario: **órdenes de compra** a proveedores, **movimientos de stock** y **alertas de stock bajo**. Como todos los proyectos del curso, tiene dos partes: el **Core** (la misma especificación para los 25 proyectos) y el **módulo de negocio** (inventario).
 
-## Estado: Práctica 1 — Control de acceso
+## Estado: Asignación 2 — Gestión de permisos
 
-Entregado en la etiqueta `practica-1`:
+Entregado en la etiqueta `asignacion-2`:
 
-- **Control de acceso completo** (pieza 1 del Core): registro con activación por correo, sesión con bloqueo por intentos, roles y administración de usuarios, recuperación, cambio y restablecimiento forzado de contraseña. Cubre RF-CA-01 a RF-CA-22.
-- **Cola mínima de correos**: las operaciones encolan y un enviador independiente entrega (RF-NOT-08, 09, 12 y 13).
-- **Estructura de la máquina de estados del negocio**: la orden de compra, en [`docs/maquina-de-estados.md`](docs/maquina-de-estados.md).
-- Después de la etiqueta se agregaron [pruebas automáticas](#pruebas-automáticas-rd-12) de Control de acceso.
-- Cada funcionalidad entró por su pull request: [#4 base](https://github.com/yojairoivan-sketch/Proyecto-Final-P3/pull/4), [#5 cola de correos](https://github.com/yojairoivan-sketch/Proyecto-Final-P3/pull/5), [#6 registro y activación](https://github.com/yojairoivan-sketch/Proyecto-Final-P3/pull/6), [#7 sesión](https://github.com/yojairoivan-sketch/Proyecto-Final-P3/pull/7), [#8 roles y administración](https://github.com/yojairoivan-sketch/Proyecto-Final-P3/pull/8), [#9 contraseñas](https://github.com/yojairoivan-sketch/Proyecto-Final-P3/pull/9), [#10 máquina de estados](https://github.com/yojairoivan-sketch/Proyecto-Final-P3/pull/10) y el PR de este README.
+- **Gestión de permisos** (pieza 2 del Core): un usuario pide permiso para una operación que su rol no le da; un Administrador lo aprueba o lo rechaza con un motivo, y al aprobarlo el sistema se lo otorga en el acto. Cubre RF-GP-01 a RF-GP-07, con la máquina de estados en un solo punto del código (RD-04). Ver [cómo provocar cada criterio](#9-gestión-de-permisos-rf-gp-01-a-07).
+- **Primera suite de pruebas de la pieza**: 45 pruebas xUnit que corren sin levantar la aplicación (RD-12). Ver [Pruebas](#pruebas).
+- **Bitácora con el agente**: [`docs/bitacora-asignacion-2.md`](docs/bitacora-asignacion-2.md).
+- Entró por los pull requests [#13 Gestión de permisos](https://github.com/yojairoivan-sketch/Proyecto-Final-P3/pull/13) y [#14 documentación](https://github.com/yojairoivan-sketch/Proyecto-Final-P3/pull/14).
+
+Antes, en la etiqueta `practica-1`: **Control de acceso completo** (RF-CA-01 a RF-CA-22), la **cola mínima de correos** (RF-NOT-08, 09, 12 y 13) y la **estructura de la máquina de estados del negocio** ([`docs/maquina-de-estados.md`](docs/maquina-de-estados.md)). Cada funcionalidad entró por su pull request: [#4 base](https://github.com/yojairoivan-sketch/Proyecto-Final-P3/pull/4), [#5 cola de correos](https://github.com/yojairoivan-sketch/Proyecto-Final-P3/pull/5), [#6 registro y activación](https://github.com/yojairoivan-sketch/Proyecto-Final-P3/pull/6), [#7 sesión](https://github.com/yojairoivan-sketch/Proyecto-Final-P3/pull/7), [#8 roles y administración](https://github.com/yojairoivan-sketch/Proyecto-Final-P3/pull/8), [#9 contraseñas](https://github.com/yojairoivan-sketch/Proyecto-Final-P3/pull/9), [#10 máquina de estados](https://github.com/yojairoivan-sketch/Proyecto-Final-P3/pull/10), [#11 README](https://github.com/yojairoivan-sketch/Proyecto-Final-P3/pull/11) y, después de la etiqueta, [#12 pruebas de Control de acceso](https://github.com/yojairoivan-sketch/Proyecto-Final-P3/pull/12).
 
 ## Diagrama de componentes
 
@@ -32,7 +33,7 @@ flowchart LR
     subgraph Core["Core: misma especificación para los 25 proyectos"]
         ACC["<b>Control de acceso</b><br/>¿quién eres y qué rol tienes?<br/>✅ Práctica 1"]
         NOTI["<b>Notificaciones</b><br/>avisos y cola de correos<br/>✅ cola mínima · S11–S12"]
-        PERM["<b>Gestión de permisos</b><br/>solicitud → aprobación<br/>S6–S8"]
+        PERM["<b>Gestión de permisos</b><br/>solicitud → aprobación<br/>✅ Asignación 2"]
         DOC["<b>Manejador de documentos</b><br/>subir, listar, borrado lógico<br/>S9"]
         REP["<b>Reportes</b><br/>agregación filtrada por rol<br/>S12"]
         AUD["<b>Auditoría</b><br/>quién hizo qué y cuándo<br/>S14"]
@@ -57,13 +58,14 @@ Casi todas las piezas registran sus acciones en Auditoría; esa flecha punteada 
 
 | Pieza | Proyecto | Interfaz que ofrece a las demás |
 |---|---|---|
-| Control de acceso | `backend/src/Inventario.Core.ControlAcceso` | `IUsuarioActual` («¿quién es y qué rol?»), `IServicioCuentas`, `IServicioSesiones`, `IServicioContrasenas`, `IServicioUsuarios` |
+| Control de acceso | `backend/src/Inventario.Core.ControlAcceso` | `IUsuarioActual` («¿quién es y qué rol?»), `IOtorgamientoPermisos` («desde ahora este usuario puede ejecutar esta operación»), `IServicioCuentas`, `IServicioSesiones`, `IServicioContrasenas`, `IServicioUsuarios` |
+| Gestión de permisos | `backend/src/Inventario.Core.GestionPermisos` | `IServicioSolicitudes` (pedir, consultar, aprobar y rechazar) y la máquina de estados `TransicionesSolicitud` |
 | Notificaciones (cola de correos) | `backend/src/Inventario.Core.ColaCorreos` | `IColaCorreos.EncolarAsync` y `ProcesadorCola` |
 | Módulo de negocio | `backend/src/Inventario.Negocio` | `OrdenDeCompra.CambiarEstado` y `TransicionesOrdenCompra` |
 | Host de la API | `backend/src/Inventario.Api` | Endpoints HTTP delgados y la tabla de roles por operación (`Acceso/Operaciones.cs`) |
 | Enviador | `backend/src/Inventario.Enviador` | Proceso aparte que entrega la cola por SMTP |
 
-Cada pieza tiene su propio esquema en PostgreSQL (`control_acceso`, `cola_correos` e `inventario`). Ninguna lee las tablas de otra: todo pasa por interfaces. Ningún proyecto `Inventario.Core.*` referencia a `Inventario.Negocio`.
+Cada pieza tiene su propio esquema en PostgreSQL (`control_acceso`, `gestion_permisos`, `cola_correos` e `inventario`). Ninguna lee las tablas de otra: todo pasa por interfaces. Por ejemplo, Gestión de permisos pregunta quién es el usuario con `IUsuarioActual` y otorga el permiso aprobado con `IOtorgamientoPermisos`; nunca toca las tablas de Control de acceso. Ningún proyecto `Inventario.Core.*` referencia a `Inventario.Negocio`.
 
 ## Requisitos
 
@@ -78,7 +80,7 @@ No hace falta instalar .NET, Node ni PostgreSQL: todo se compila y corre dentro 
 ```bash
 git clone https://github.com/yojairoivan-sketch/Proyecto-Final-P3.git
 cd Proyecto-Final-P3
-git checkout practica-1
+git checkout asignacion-2
 cp .env.example .env
 ```
 
@@ -155,7 +157,9 @@ No hace falta reiniciar la API: el enviador lee `.env` cada vez que se ejecuta.
 
 ## Cómo provocar cada criterio de aceptación
 
-Todo se puede hacer desde la interfaz (http://localhost:8080) o armando la petición a mano con `curl`. Los `curl` de abajo son para **Git Bash**.
+Todo se puede hacer desde la interfaz (http://localhost:8080) o armando la petición a mano con `curl`. Los `curl` de abajo son para **Git Bash**. En los textos que mandes con `curl` (por ejemplo un motivo de rechazo), no uses tildes: en Windows, `curl.exe` manda los argumentos en otra codificación y la API responde «La petición no tiene el formato esperado». Desde la interfaz las tildes funcionan bien.
+
+**Lo nuevo de la Asignación 2 está en la [sección 9, Gestión de permisos](#9-gestión-de-permisos-rf-gp-01-a-07).**
 
 **Preparación.** Para leer la base de datos:
 
@@ -217,8 +221,9 @@ La contraseña no aparece en ninguna columna, y los dos hashes son distintos. Es
 | Operación | Quién |
 |---|---|
 | ConsultarSalud, Registrarse, ActivarCuenta, ReenviarActivacion, IniciarSesion, SolicitarRecuperacion, RestablecerContrasena | Pública |
-| ConsultarMiCuenta, CerrarSesion, CambiarMiContrasena | Administrador o Estándar |
-| ListarUsuarios, CambiarRol, DesactivarUsuario, ReactivarUsuario, ForzarRestablecimiento | Administrador |
+| ConsultarMiCuenta, CerrarSesion, CambiarMiContrasena, ConsultarPermisosSolicitables, CrearSolicitudPermiso, ConsultarMisSolicitudes, ConsultarSolicitud | Administrador o Estándar |
+| CambiarRol, DesactivarUsuario, ForzarRestablecimiento, ConsultarSolicitudesPendientes, AprobarSolicitud, RechazarSolicitud | Administrador |
+| ListarUsuarios, ReactivarUsuario | Administrador, o quien recibió ese permiso con una solicitud aprobada ([sección 9](#9-gestión-de-permisos-rf-gp-01-a-07)) |
 
 | Para comprobar | Haz esto | Resultado esperado |
 |---|---|---|
@@ -272,7 +277,78 @@ Los usuarios siguen ahí: entra con cualquiera de ellos. También sobreviven a `
 - Tabla de transiciones y diagrama: [`docs/maquina-de-estados.md`](docs/maquina-de-estados.md).
 - La entidad y su estado en la base: `\d inventario.ordenes_de_compra` en `psql` (columna `estado`).
 
-### 9. Historial
+### 9. Gestión de permisos (RF-GP-01 a 07)
+
+Un usuario pide permiso para ejecutar una operación de Administrador. Un Administrador lo aprueba o lo rechaza con un motivo, y al aprobarlo el sistema se lo otorga en el acto.
+
+**Qué se puede pedir.** Las operaciones de Administrador marcadas como solicitables en [`Operaciones.cs`](backend/src/Inventario.Api/Acceso/Operaciones.cs):
+
+| Permiso | Qué permite |
+|---|---|
+| `ListarUsuarios` | Ver la lista de usuarios con su rol y su estado (`GET /api/usuarios`, página `/usuarios`). |
+| `ReactivarUsuario` | Devolverle el acceso a un usuario desactivado. |
+
+No se pueden pedir `CambiarRol` (un Estándar nunca cambia roles, RF-CA-08), las operaciones que resuelven solicitudes (RF-GP-02 y 07) ni `DesactivarUsuario` (podría dejar el sistema sin Administradores activos). El catálogo lo arma el host con su tabla de operaciones y se lo pasa a la pieza, así el Core no conoce las operaciones del módulo de negocio (RD-03).
+
+**Máquina de estados (RD-04).** Los estados están en [`EstadoSolicitud.cs`](backend/src/Inventario.Core.GestionPermisos/Solicitudes/EstadoSolicitud.cs). Las transiciones se resuelven en un único punto, [`TransicionesSolicitud.cs`](backend/src/Inventario.Core.GestionPermisos/Solicitudes/TransicionesSolicitud.cs), que dice quién ejecuta cada una, con qué condición y qué deja registrado. Nadie más valida estados.
+
+| Desde | Hacia | Quién | Condición |
+|---|---|---|---|
+| Pendiente | Aprobada | Administrador | La solicitud está en Pendiente. Registra quién aprobó y cuándo. |
+| Aprobada | Aplicada | El sistema | Automática, inmediatamente después de aprobar: otorga el permiso. |
+| Pendiente | Rechazada | Administrador | Exige un motivo escrito. Registra quién, cuándo y el motivo. |
+| Cualquier otra combinación | — | — | Prohibida: se rechaza (409) y la solicitud no cambia. |
+
+En las transiciones que ejecuta un Administrador, quien resuelve no puede ser quien pidió (RF-GP-07). Aplicada y Rechazada son terminales.
+
+```mermaid
+stateDiagram-v2
+    [*] --> Pendiente: un usuario pide un permiso
+    Pendiente --> Aprobada: un Administrador la aprueba
+    Aprobada --> Aplicada: el sistema otorga el permiso
+    Pendiente --> Rechazada: un Administrador la rechaza con motivo
+    Aplicada --> [*]
+    Rechazada --> [*]
+```
+
+**Dónde queda guardado.** Las solicitudes, en `gestion_permisos.solicitudes_permiso`. El permiso otorgado, en `control_acceso.permisos_otorgados`: Control de acceso es quien responde qué puede hacer cada usuario, y lee esos permisos en cada petición. Por eso sirven sin volver a iniciar sesión.
+
+**Preparación.** Necesitas dos sesiones: la del Administrador de `.env` y la de un usuario Estándar. Si todavía no tienes uno, regístralo y actívalo como en la [sección 1](#1-registro-y-activación-rf-ca-01-02-04-14-15-16-y-17). En Git Bash, con tus correos y contraseñas:
+
+```bash
+token() { curl -s http://localhost:8080/api/acceso/sesion -H 'Content-Type: application/json' -d "{\"correo\":\"$1\",\"contrasena\":\"$2\"}" | sed -nE 's/.*"token":"([^"]+)".*/\1/p'; }
+TOKEN_ADMIN=$(token admin@tu-correo.com TuClaveDeAdmin1)
+TOKEN_EST=$(token estandar@tu-correo.com clave1234)
+echo "$TOKEN_ADMIN / $TOKEN_EST"
+```
+
+En la interfaz todo está en **`/permisos`** (enlace «Permisos» en la barra). Un Estándar ve «Pedir un permiso» y «Mis solicitudes»; un Administrador ve además «Solicitudes pendientes», con «Aprobar» y una caja para el motivo junto a «Rechazar». Para ver la base: `docker compose exec db psql -U inventario -d inventario`.
+
+Sigue las filas en orden: cada una usa lo que dejó la anterior. `<id>`, `<id2>` y `<id3>` son los números que devuelve cada solicitud al crearse.
+
+| Para comprobar | Haz esto | Resultado esperado |
+|---|---|---|
+| Antes de pedir (RF-GP-05) | `curl -i http://localhost:8080/api/usuarios -H "Authorization: Bearer $TOKEN_EST"` | 403: «La operación ListarUsuarios es solo para: Administrador. Tu rol es Estándar. Puedes pedir el permiso ListarUsuarios con una solicitud.» |
+| Crear una solicitud (RF-GP-01) | En `/permisos`, como el Estándar, elige `ListarUsuarios` y pulsa «Enviar solicitud». Con `curl`: `curl -i http://localhost:8080/api/solicitudes -H "Authorization: Bearer $TOKEN_EST" -H 'Content-Type: application/json' -d '{"permiso":"ListarUsuarios","justificacion":"Hago el conteo mensual"}'` | 201: «Solicitud creada. Queda Pendiente hasta que un Administrador la apruebe o la rechace.», con `"estado":"Pendiente"`. Anota su `id`: es `<id>`. |
+| Entrada inválida (RD-07) | Repite el `curl` anterior con `-d '{"permiso":"Volar"}'`, con `-d '{}'` y, por último, tal cual. | 400: «El permiso «Volar» no se puede pedir. Los que existen son: ListarUsuarios, ReactivarUsuario.»; 400: «Elige el permiso que pides: …»; 409: «Ya tienes una solicitud del permiso ListarUsuarios sin resolver.» |
+| El Administrador consulta las pendientes (RF-GP-02) | En `/permisos`, como Administrador, mira «Solicitudes pendientes». Con `curl`: `curl -i http://localhost:8080/api/solicitudes/pendientes -H "Authorization: Bearer $TOKEN_ADMIN"` | 200 con la solicitud `<id>`, quién la pidió y su justificación. |
+| Un Estándar no ve las pendientes (RF-GP-02, RD-06) | `curl -i http://localhost:8080/api/solicitudes/pendientes -H "Authorization: Bearer $TOKEN_EST"` | 403: «La operación ConsultarSolicitudesPendientes es solo para: Administrador. Tu rol es Estándar.» En cambio, `curl -s http://localhost:8080/api/solicitudes/mias -H "Authorization: Bearer $TOKEN_EST"` le devuelve solo las suyas. |
+| Un Estándar no aprueba (RD-06) | `curl -i -X POST http://localhost:8080/api/solicitudes/<id>/aprobar -H "Authorization: Bearer $TOKEN_EST"` | 403: «La operación AprobarSolicitud es solo para: Administrador…». La solicitud sigue Pendiente. |
+| Aprobar (RF-GP-03) | Pulsa «Aprobar» en la fila. Con `curl`: `curl -i -X POST http://localhost:8080/api/solicitudes/<id>/aprobar -H "Authorization: Bearer $TOKEN_ADMIN"` | 200: «Solicitud aprobada. … ya puede usar ListarUsuarios.» La solicitud trae `"estado":"Aplicada"`, `resueltaPorId`, `resueltaPorNombre` y `resueltaEn`: quién aprobó y cuándo. Anota ese `resueltaEn`. En `psql`: `select id, estado, resuelta_por_id, resuelta_por_nombre, resuelta_en, aplicada_en from gestion_permisos.solicitudes_permiso;` |
+| Se aplica sola (RF-GP-05) | Repite la primera fila con el **mismo** `TOKEN_EST`, sin volver a iniciar sesión. Luego: `curl -s http://localhost:8080/api/yo -H "Authorization: Bearer $TOKEN_EST"` | 200 con la lista de usuarios. `/api/yo` trae `"permisos":["ListarUsuarios"]`. En la interfaz, el Estándar ve el enlace «Usuarios» y «Mi cuenta» dice «Permisos otorgados: ListarUsuarios». Nadie hizo nada aparte de aprobar. En `psql`: `select * from control_acceso.permisos_otorgados;` |
+| Aprobar dos veces (RF-GP-06) | Repite el `curl` de aprobar `<id>`. Luego: `curl -s http://localhost:8080/api/solicitudes/<id> -H "Authorization: Bearer $TOKEN_ADMIN"` | 409: «Una solicitud Aplicada no puede pasar a Aprobada: solo se permite Pendiente → Aprobada → Aplicada y Pendiente → Rechazada. La solicitud sigue Aplicada.» La consulta muestra el mismo estado y el mismo `resueltaEn` que devolvió la primera aprobación. |
+| Rechazar sin motivo (RF-GP-04) | Como el Estándar, pide `ReactivarUsuario` (el `curl` de crear con `-d '{"permiso":"ReactivarUsuario"}'`); su `id` es `<id2>`. Como Administrador, pulsa «Rechazar» con la caja de motivo vacía, o: `curl -i -X POST http://localhost:8080/api/solicitudes/<id2>/rechazar -H "Authorization: Bearer $TOKEN_ADMIN"` (sin cuerpo) y otra vez con `-H 'Content-Type: application/json' -d '{"motivo":"   "}'` | 400: «Escribe el motivo del rechazo: sin motivo la solicitud no se rechaza.» `GET /api/solicitudes/<id2>` sigue en Pendiente. |
+| Rechazar con motivo (RF-GP-04) | Escribe un motivo y pulsa «Rechazar». Con `curl`: `curl -i -X POST http://localhost:8080/api/solicitudes/<id2>/rechazar -H "Authorization: Bearer $TOKEN_ADMIN" -H 'Content-Type: application/json' -d '{"motivo":"Pideselo a tu supervisor primero"}'` | 200: «Solicitud rechazada. El solicitante verá el motivo.», con `"estado":"Rechazada"` y `motivoRechazo`. El Estándar lo ve en «Mis solicitudes». |
+| De Rechazada a Aplicada (RF-GP-06) | `curl -i -X POST http://localhost:8080/api/solicitudes/<id2>/aprobar -H "Authorization: Bearer $TOKEN_ADMIN"`. Luego consulta `<id2>` y `/api/yo` del Estándar. | 409: «Una solicitud Rechazada no puede pasar a Aprobada: … La solicitud sigue Rechazada.» Sigue Rechazada, con `aplicadaEn` en `null`, y el Estándar no recibió `ReactivarUsuario`. |
+| Nadie resuelve la suya (RF-GP-07) | Como Administrador, pide un permiso: `curl -i http://localhost:8080/api/solicitudes -H "Authorization: Bearer $TOKEN_ADMIN" -H 'Content-Type: application/json' -d '{"permiso":"ReactivarUsuario"}'`; su `id` es `<id3>`. Intenta aprobarla y rechazarla con su propio token (`-d '{"motivo":"no"}'` para rechazar). En la interfaz, su fila dice «(tú)». | 403 en los dos intentos: «Nadie resuelve su propia solicitud: otro Administrador debe aprobarla o rechazarla.» `<id3>` sigue Pendiente. Solo otro Administrador puede resolverla (pásale el rol a otro usuario en `/usuarios`). |
+| Un Estándar no ve las de otros (RF-GP-02) | `curl -i http://localhost:8080/api/solicitudes/<id3> -H "Authorization: Bearer $TOKEN_EST"` | 404: «La solicitud no existe.» No revela que existe; el Administrador sí la ve. |
+| Reinicio (RD-09) | `docker compose restart` y repite las consultas de `<id>`, `<id2>` y `/api/usuarios` con `TOKEN_EST`. | Las tres solicitudes siguen con su estado y sus datos, y el Estándar conserva el permiso. |
+
+Sobre «Rechazada → Aplicada»: ninguna operación de la API pasa una solicitud a Aplicada a mano. Eso lo hace el sistema justo después de aprobar, así que desde afuera la única forma de intentarlo es aprobar la solicitud rechazada, que es lo que hace la fila anterior. La prueba `PasarDeRechazadaAAplicadaSeRechazaYElEstadoNoCambia` intenta la transición directa contra la máquina de estados (ver [Pruebas](#pruebas)).
+
+Si la aplicación se detuviera justo entre aprobar y otorgar el permiso, la solicitud quedaría Aprobada. Al arrancar, la API aplica las que hayan quedado así.
+
+### 10. Historial
 
 ```bash
 git log --oneline --graph --all
@@ -282,17 +358,70 @@ git log -p | grep -iE "SMTP_CONTRASENA=|POSTGRES_PASSWORD=|ADMIN_CONTRASENA="
 
 Cada funcionalidad entró por su pull request, fusionado con merge commit. `.env` no está en el repositorio. La búsqueda solo encuentra las líneas vacías de `.env.example` y el propio comando de arriba en este README.
 
-## Pruebas automáticas (RD-12)
+## Pruebas
 
-Control de acceso tiene 44 pruebas xUnit en `backend/tests/Inventario.Core.ControlAcceso.Pruebas`. Corren sin interfaz y sin levantar la aplicación: en lugar de PostgreSQL y SMTP usan SQLite en memoria, un reloj falso para provocar vencimientos y bloqueos, y una cola de correos falsa que guarda los enlaces.
+Un solo comando, desde la raíz del repositorio. Funciona en un clon recién hecho: no necesita `.env`, ni la base de datos, ni levantar la aplicación (RD-12).
 
 ```bash
-docker compose run --rm pruebas
+docker compose -f docker-compose.pruebas.yml run --rm --build pruebas
 ```
 
-Termina con `Passed!` y el total. Si tienes el SDK de .NET 10 instalado, también sirve `dotnet test backend/Inventario.slnx`.
+Compila dentro de Docker y corre las dos suites. La primera vez tarda unos minutos. Termina con:
 
-Cubren la política de contraseña y la validación de datos, el hash, registro y activación, sesión y bloqueo, recuperación, cambio y restablecimiento forzado de contraseña, y administración de usuarios.
+```
+Passed!  - Failed:     0, Passed:    45, Skipped:     0, Total:    45, ... - Inventario.Core.GestionPermisos.Pruebas.dll (net10.0)
+Passed!  - Failed:     0, Passed:    44, Skipped:     0, Total:    44, ... - Inventario.Core.ControlAcceso.Pruebas.dll (net10.0)
+```
+
+Las dos líneas pueden salir en otro orden. Si tienes el SDK de .NET 10 instalado, también sirve `dotnet test backend/Inventario.slnx`.
+
+Para correr una sola prueba, agrega un filtro al final del mismo comando:
+
+```bash
+docker compose -f docker-compose.pruebas.yml run --rm --build pruebas --filter "FullyQualifiedName~AprobarDosVeces"
+```
+
+### Gestión de permisos (45 pruebas)
+
+Están en `backend/tests/Inventario.Core.GestionPermisos.Pruebas` y prueban la pieza directamente, sin la API ni PostgreSQL. Usan SQLite en memoria y un reloj controlado. En lugar de Control de acceso usan dos dobles de sus interfaces: `UsuarioActualFalso` dice quién hace la petición y `OtorgamientoFalso` anota los permisos otorgados.
+
+| Archivo | Qué prueba |
+|---|---|
+| [`TransicionesPruebas.cs`](backend/tests/Inventario.Core.GestionPermisos.Pruebas/TransicionesPruebas.cs) | La máquina de estados sola, sin base de datos (25 pruebas). |
+| [`SolicitudesPruebas.cs`](backend/tests/Inventario.Core.GestionPermisos.Pruebas/SolicitudesPruebas.cs) | RF-GP-01 a 07 a través de `IServicioSolicitudes`, como los usa la API. Lo guardado se lee con un contexto nuevo (20 pruebas). |
+
+Las que pide el enunciado:
+
+- **Transición válida** (RF-GP-03 y 04): `AprobarUnaPendienteLaDejaAprobadaConQuienAproboYCuando`, `AprobarDejaGuardadoQuienAproboYCuando`, `RechazarUnaPendienteConMotivoLaDejaRechazadaConQuienCuandoYElMotivo` y `RechazarConMotivoDejaGuardadosElEstadoYElMotivo`. Verifican el estado resultante y lo que la transición registra: quién, cuándo y el motivo.
+- **Transición prohibida** (RF-GP-06): `AprobarDosVecesLaMismaSolicitudSeRechazaYElEstadoNoCambia`, `PasarDeRechazadaAAplicadaSeRechazaYElEstadoNoCambia` y `UnaTransicionFueraDeLaTablaSeRechazaYLaSolicitudNoCambia`, que recorre las 13 combinaciones que no están en la tabla. Verifican el rechazo y que la solicitud quedó igual que antes.
+
+Cada prueba marca sus tres fases con comentarios (`// Preparar`, `// Actuar`, `// Verificar`), verifica un solo comportamiento y su nombre dice cuál. Cada una arma su propio entorno, con una base en memoria nueva, así que no comparten datos: pasan en cualquier orden y por separado.
+
+Cada prueba lleva también el requisito que verifica, con `[Trait("Requisito", "RF-GP-0X")]`:
+
+| Requisito | Pruebas |
+|---|---|
+| RF-GP-01 (6) | `UnEstandarCreaUnaSolicitudQueNaceEnPendiente`, `CrearConUnPermisoQueNoSePuedePedirSeRechazaSinGuardarNada` (4 casos), `NoSeCreaUnaSegundaSolicitudDelMismoPermisoMientrasLaPrimeraNoSeResuelve` |
+| RF-GP-02 (3) | `ElAdministradorVeSoloLasSolicitudesPendientes`, `UnEstandarSoloVeSusPropiasSolicitudes`, `UnEstandarNoPuedeConsultarLaSolicitudDeOtroUsuario` |
+| RF-GP-03 (2) | `AprobarUnaPendienteLaDejaAprobadaConQuienAproboYCuando`, `AprobarDejaGuardadoQuienAproboYCuando` |
+| RF-GP-04 (7) | `RechazarUnaPendienteConMotivoLaDejaRechazadaConQuienCuandoYElMotivo`, `RechazarConMotivoDejaGuardadosElEstadoYElMotivo`, `RechazarSinMotivoNoSeCompletaYLaSolicitudSiguePendiente` (3 casos), `RechazarSinMotivoNoCambiaLaSolicitudGuardada`, `UnMotivoDeMasDe500CaracteresNoSeAcepta` |
+| RF-GP-05 (5) | `ElSistemaAplicaUnaAprobadaYRegistraCuando`, `AlAprobarElSistemaOtorgaElPermisoAlSolicitanteSinOtroPaso`, `AlRechazarNoSeOtorgaNingunPermiso`, `SiOtorgarFallaLaSolicitudQuedaAprobadaSinAplicar`, `AlArrancarSeAplicanLasSolicitudesQueQuedaronAprobadas` |
+| RF-GP-06 (18) | `AprobarDosVecesLaMismaSolicitudSeRechazaYElEstadoNoCambia`, `AprobarUnaSolicitudRechazadaSeRechazaYSigueRechazadaSinPermiso`, `PasarDeRechazadaAAplicadaSeRechazaYElEstadoNoCambia`, `UnaTransicionFueraDeLaTablaSeRechazaYLaSolicitudNoCambia` (13 casos), `UnAdministradorNoPuedeMarcarAplicadaUnaSolicitudPorqueEsoLoHaceElSistema`, `LosUnicosEstadosTerminalesSonAplicadaYRechazada` |
+| RF-GP-07 (4) | `UnAdministradorNoApruebaSuPropiaSolicitud`, `UnAdministradorNoRechazaSuPropiaSolicitud`, `UnAdministradorNoPuedeAprobarSuPropiaSolicitud`, `OtroAdministradorSiPuedeAprobarLaSolicitudDeUnAdministrador` |
+
+Para correr solo las de un requisito:
+
+```bash
+docker compose -f docker-compose.pruebas.yml run --rm --build pruebas --filter "Requisito=RF-GP-06"
+```
+
+La suite de Control de acceso no tiene pruebas con ese filtro, así que para ella el comando dice «No test matches the given testcase filter». Es normal: la línea que importa es la de `Inventario.Core.GestionPermisos.Pruebas.dll`, con 18 pruebas.
+
+Para comprobar que verifican lo que dicen, cada regla se rompió a propósito (15 mutantes; por ejemplo, agregar Rechazada → Aplicada a la tabla o quitar la regla de RF-GP-07). En todos los casos falló la prueba que nombra esa regla. El detalle está en la [bitácora](docs/bitacora-asignacion-2.md).
+
+### Control de acceso (44 pruebas)
+
+Están en `backend/tests/Inventario.Core.ControlAcceso.Pruebas`. En lugar de PostgreSQL y SMTP usan SQLite en memoria, un reloj falso para provocar vencimientos y bloqueos, y una cola de correos falsa que guarda los enlaces. Cubren la política de contraseña y la validación de datos, el hash, registro y activación, sesión y bloqueo, recuperación, cambio y restablecimiento forzado de contraseña, y administración de usuarios.
 
 ## Estructura del repositorio
 
@@ -304,14 +433,17 @@ Cubren la política de contraseña y la validación de datos, el hash, registro 
 │   ├── src/
 │   │   ├── Inventario.Api/             # host: endpoints, Operaciones.cs, errores
 │   │   ├── Inventario.Core.ControlAcceso/
+│   │   ├── Inventario.Core.GestionPermisos/   # pieza 2: solicitudes y su máquina de estados
 │   │   ├── Inventario.Core.ColaCorreos/
 │   │   ├── Inventario.Enviador/        # consola que entrega la cola
 │   │   └── Inventario.Negocio/         # módulo de inventario
 │   └── tests/
-│       └── Inventario.Core.ControlAcceso.Pruebas/   # pruebas xUnit (RD-12)
+│       ├── Inventario.Core.ControlAcceso.Pruebas/     # pruebas xUnit (RD-12)
+│       └── Inventario.Core.GestionPermisos.Pruebas/   # pruebas xUnit (RD-12)
 ├── frontend/                           # React 19 + TypeScript + Vite, servido por nginx
 ├── docs/                               # máquina de estados y bitácoras
 ├── docker-compose.yml
+├── docker-compose.pruebas.yml          # las pruebas, sin .env
 └── .env.example
 ```
 
@@ -334,4 +466,5 @@ En la declaración de la semana 1 el stack decía .NET 9. Se cambió a **.NET 10
 - **Errores (RD-08):** toda respuesta de error es un ProblemDetails en español, sin trazas, rutas ni consultas.
 - **Fechas (RD-11):** todas las piezas toman la hora de un único `TimeProvider` y la guardan en UTC (`timestamptz`).
 - **Credenciales:** los tokens de sesión, de activación y de recuperación son 32 bytes aleatorios. En la base solo queda su SHA-256, así que leer las tablas no permite usarlos.
-- **Bitácoras anteriores:** [`docs/bitacora-asignacion-1.md`](docs/bitacora-asignacion-1.md).
+- **Dos máquinas de estados independientes (RF-NEG-09):** la de Gestión de permisos vive en el Core y la de la orden de compra en el módulo de negocio. No comparten código, y cambiar una no obliga a tocar la otra.
+- **Bitácoras con el agente:** [`docs/bitacora-asignacion-1.md`](docs/bitacora-asignacion-1.md) y [`docs/bitacora-asignacion-2.md`](docs/bitacora-asignacion-2.md).
