@@ -1,0 +1,234 @@
+using Inventario.Core.ControlAcceso;
+using Inventario.Core.GestionPermisos.Solicitudes;
+using static Inventario.Core.GestionPermisos.Solicitudes.EstadoSolicitud;
+
+namespace Inventario.Core.GestionPermisos.Pruebas;
+
+/// <summary>
+/// RD-04 y RF-GP-03, 04, 06 y 07: la máquina de estados de una solicitud, sin base de datos.
+/// Cada prueba arma una solicitud en un estado, intenta una sola transición y revisa cómo quedó.
+/// </summary>
+public sealed class TransicionesPruebas
+{
+    private static readonly DateTimeOffset Creada = new(2026, 10, 19, 12, 0, 0, TimeSpan.Zero);
+    private static readonly DateTimeOffset Despues = Creada.AddHours(3);
+    private static readonly Actor Carla = Actor.Administrador(Entorno.Carla.Id, Entorno.Carla.Nombre);
+    private static readonly Actor Dario = Actor.Administrador(Entorno.Dario.Id, Entorno.Dario.Nombre);
+
+    [Fact]
+    public void AprobarUnaPendienteLaDejaAprobadaConQuienAproboYCuando()
+    {
+        // Preparar
+        var solicitud = NuevaSolicitud();
+
+        // Actuar
+        var resultado = solicitud.CambiarEstado(Aprobada, new IntentoTransicion(Carla, Despues));
+
+        // Verificar
+        Assert.True(resultado.Exito, resultado.Mensaje);
+        Assert.Equal(Aprobada, solicitud.Estado);
+        Assert.Equal(Entorno.Carla.Id, solicitud.ResueltaPorId);
+        Assert.Equal(Despues, solicitud.ResueltaEn);
+    }
+
+    [Fact]
+    public void ElSistemaAplicaUnaAprobadaYRegistraCuando()
+    {
+        // Preparar
+        var solicitud = En(Aprobada);
+        var aplicacion = Despues.AddSeconds(1);
+
+        // Actuar
+        var resultado = solicitud.CambiarEstado(Aplicada, new IntentoTransicion(Actor.Sistema, aplicacion));
+
+        // Verificar
+        Assert.True(resultado.Exito, resultado.Mensaje);
+        Assert.Equal(Aplicada, solicitud.Estado);
+        Assert.Equal(aplicacion, solicitud.AplicadaEn);
+    }
+
+    [Fact]
+    public void RechazarUnaPendienteConMotivoLaDejaRechazadaConQuienCuandoYElMotivo()
+    {
+        // Preparar
+        var solicitud = NuevaSolicitud();
+
+        // Actuar
+        var resultado = solicitud.CambiarEstado(Rechazada, new IntentoTransicion(Carla, Despues, "  No lo necesitas para tu puesto.  "));
+
+        // Verificar
+        Assert.True(resultado.Exito, resultado.Mensaje);
+        Assert.Equal(Rechazada, solicitud.Estado);
+        Assert.Equal("No lo necesitas para tu puesto.", solicitud.MotivoRechazo);
+        Assert.Equal(Entorno.Carla.Id, solicitud.ResueltaPorId);
+        Assert.Equal(Despues, solicitud.ResueltaEn);
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("   ")]
+    public void RechazarSinMotivoNoSeCompletaYLaSolicitudSiguePendiente(string? motivo)
+    {
+        // Preparar
+        var solicitud = NuevaSolicitud();
+        var antes = Foto.De(solicitud);
+
+        // Actuar
+        var resultado = solicitud.CambiarEstado(Rechazada, new IntentoTransicion(Carla, Despues, motivo));
+
+        // Verificar
+        Assert.Equal(TipoFallo.Validacion, resultado.Fallo);
+        Assert.Equal(antes, Foto.De(solicitud));
+    }
+
+    [Fact]
+    public void UnMotivoDeMasDe500CaracteresNoSeAcepta()
+    {
+        // Preparar
+        var solicitud = NuevaSolicitud();
+        var motivo = new string('x', TransicionesSolicitud.LargoMaximoMotivo + 1);
+
+        // Actuar
+        var resultado = solicitud.CambiarEstado(Rechazada, new IntentoTransicion(Carla, Despues, motivo));
+
+        // Verificar
+        Assert.Equal(TipoFallo.Validacion, resultado.Fallo);
+        Assert.Equal(Pendiente, solicitud.Estado);
+    }
+
+    [Fact]
+    public void PasarDeRechazadaAAplicadaSeRechazaYElEstadoNoCambia()
+    {
+        // Preparar
+        var solicitud = En(Rechazada);
+        var antes = Foto.De(solicitud);
+
+        // Actuar
+        var resultado = solicitud.CambiarEstado(Aplicada, new IntentoTransicion(Actor.Sistema, Despues.AddHours(1)));
+
+        // Verificar
+        Assert.Equal(TipoFallo.Conflicto, resultado.Fallo);
+        Assert.Equal(Rechazada, solicitud.Estado);
+        Assert.Equal(antes, Foto.De(solicitud));
+    }
+
+    /// <summary>
+    /// RF-GP-06: las 13 combinaciones que no están en la tabla del enunciado
+    /// (Pendiente → Aprobada → Aplicada y Pendiente → Rechazada). Están escritas a mano y no se calculan
+    /// desde TransicionesSolicitud: si alguien agrega una transición indebida a la tabla, esta prueba lo detecta.
+    /// </summary>
+    [Theory]
+    [InlineData(Pendiente, Pendiente)]
+    [InlineData(Pendiente, Aplicada)]
+    [InlineData(Aprobada, Pendiente)]
+    [InlineData(Aprobada, Aprobada)]
+    [InlineData(Aprobada, Rechazada)]
+    [InlineData(Aplicada, Pendiente)]
+    [InlineData(Aplicada, Aprobada)]
+    [InlineData(Aplicada, Aplicada)]
+    [InlineData(Aplicada, Rechazada)]
+    [InlineData(Rechazada, Pendiente)]
+    [InlineData(Rechazada, Aprobada)]
+    [InlineData(Rechazada, Aplicada)]
+    [InlineData(Rechazada, Rechazada)]
+    public void UnaTransicionFueraDeLaTablaSeRechazaYLaSolicitudNoCambia(EstadoSolicitud desde, EstadoSolicitud hacia)
+    {
+        // Preparar
+        var solicitud = En(desde);
+        var antes = Foto.De(solicitud);
+        // Con el ejecutor y el motivo que la harían válida si existiera: así solo la tabla puede rechazarla.
+        var intento = hacia == Aplicada
+            ? new IntentoTransicion(Actor.Sistema, Despues.AddHours(1))
+            : new IntentoTransicion(Dario, Despues.AddHours(1), "Motivo escrito.");
+
+        // Actuar
+        var resultado = solicitud.CambiarEstado(hacia, intento);
+
+        // Verificar
+        Assert.Equal(TipoFallo.Conflicto, resultado.Fallo);
+        Assert.Equal(antes, Foto.De(solicitud));
+    }
+
+    [Fact]
+    public void UnAdministradorNoPuedeMarcarAplicadaUnaSolicitudPorqueEsoLoHaceElSistema()
+    {
+        // Preparar
+        var solicitud = En(Aprobada);
+
+        // Actuar
+        var resultado = solicitud.CambiarEstado(Aplicada, new IntentoTransicion(Dario, Despues.AddHours(1)));
+
+        // Verificar
+        Assert.Equal(TipoFallo.Conflicto, resultado.Fallo);
+        Assert.Equal(Aprobada, solicitud.Estado);
+        Assert.Null(solicitud.AplicadaEn);
+    }
+
+    [Fact]
+    public void UnAdministradorNoApruebaSuPropiaSolicitud()
+    {
+        // Preparar
+        var solicitud = SolicitudPermiso.Crear(Entorno.Carla, "ReactivarUsuario", null, Creada);
+
+        // Actuar
+        var resultado = solicitud.CambiarEstado(Aprobada, new IntentoTransicion(Carla, Despues));
+
+        // Verificar
+        Assert.Equal(TipoFallo.Prohibido, resultado.Fallo);
+        Assert.Equal(Pendiente, solicitud.Estado);
+        Assert.Null(solicitud.ResueltaPorId);
+    }
+
+    [Fact]
+    public void UnAdministradorNoRechazaSuPropiaSolicitud()
+    {
+        // Preparar
+        var solicitud = SolicitudPermiso.Crear(Entorno.Carla, "ReactivarUsuario", null, Creada);
+
+        // Actuar
+        var resultado = solicitud.CambiarEstado(Rechazada, new IntentoTransicion(Carla, Despues, "Me arrepentí."));
+
+        // Verificar
+        Assert.Equal(TipoFallo.Prohibido, resultado.Fallo);
+        Assert.Equal(Pendiente, solicitud.Estado);
+        Assert.Null(solicitud.MotivoRechazo);
+    }
+
+    [Fact]
+    public void LosUnicosEstadosTerminalesSonAplicadaYRechazada()
+    {
+        // Preparar: la tabla de transiciones ya está declarada.
+
+        // Actuar
+        var terminales = TransicionesSolicitud.Terminales;
+
+        // Verificar
+        Assert.Equal(new[] { Aplicada, Rechazada }, terminales.Order());
+    }
+
+    private static SolicitudPermiso NuevaSolicitud() => SolicitudPermiso.Crear(Entorno.Ana, "ListarUsuarios", "Para el conteo.", Creada);
+
+    /// <summary>Lleva una solicitud nueva a <paramref name="estado"/> por el camino permitido.</summary>
+    private static SolicitudPermiso En(EstadoSolicitud estado)
+    {
+        var solicitud = NuevaSolicitud();
+        (EstadoSolicitud Hacia, IntentoTransicion Intento)[] pasos = estado switch
+        {
+            Pendiente => [],
+            Aprobada => [(Aprobada, new IntentoTransicion(Carla, Despues))],
+            Aplicada => [(Aprobada, new IntentoTransicion(Carla, Despues)), (Aplicada, new IntentoTransicion(Actor.Sistema, Despues))],
+            Rechazada => [(Rechazada, new IntentoTransicion(Carla, Despues, "No."))],
+            _ => throw new ArgumentOutOfRangeException(nameof(estado)),
+        };
+        foreach (var (hacia, intento) in pasos)
+            Assert.True(solicitud.CambiarEstado(hacia, intento).Exito);
+        return solicitud;
+    }
+
+    /// <summary>Todo lo que una transición puede tocar. Dos fotos iguales: la solicitud no cambió.</summary>
+    private sealed record Foto(EstadoSolicitud Estado, int? ResueltaPorId, DateTimeOffset? ResueltaEn, string? MotivoRechazo, DateTimeOffset? AplicadaEn, int Version)
+    {
+        public static Foto De(SolicitudPermiso s) => new(s.Estado, s.ResueltaPorId, s.ResueltaEn, s.MotivoRechazo, s.AplicadaEn, s.Version);
+    }
+}
