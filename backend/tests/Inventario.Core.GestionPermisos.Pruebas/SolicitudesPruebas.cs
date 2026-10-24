@@ -120,6 +120,22 @@ public sealed class SolicitudesPruebas : IDisposable
 
     [Fact]
     [Trait("Requisito", "RF-GP-02")]
+    public async Task UnEstandarSinSolicitudesNoVeLasDeOtrosUsuarios()
+    {
+        // Preparar
+        await entorno.CrearSolicitudAsync(Entorno.Beto, "ListarUsuarios");
+        await entorno.CrearSolicitudAsync(Entorno.Carla, "ReactivarUsuario");
+
+        // Actuar
+        var mias = await entorno.Como(Entorno.Ana).ListarMiasAsync();
+
+        // Verificar
+        Assert.True(mias.Exito, mias.Mensaje);
+        Assert.Empty(mias.Valor!);
+    }
+
+    [Fact]
+    [Trait("Requisito", "RF-GP-02")]
     public async Task UnEstandarNoPuedeConsultarLaSolicitudDeOtroUsuario()
     {
         // Preparar
