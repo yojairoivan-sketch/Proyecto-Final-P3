@@ -77,10 +77,6 @@ public static class TransicionesSolicitud
                 ? $"Pasar una solicitud de {desde} a {hacia} lo hace el sistema al aprobarla, no una persona."
                 : $"Pasar una solicitud de {desde} a {hacia} lo hace un Administrador, no el sistema.");
 
-        if (intento.Actor.Tipo == Ejecutor.Administrador && intento.Actor.UsuarioId == solicitud.SolicitanteId)
-            return Resultado.Falla(TipoFallo.Prohibido,
-                "Nadie resuelve su propia solicitud: otro Administrador debe aprobarla o rechazarla.");
-
         if (transicion.Validar?.Invoke(intento) is { } problema)
             return Resultado.Falla(TipoFallo.Validacion, problema);
 
