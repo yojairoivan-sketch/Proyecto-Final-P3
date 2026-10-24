@@ -354,6 +354,23 @@ public sealed class SolicitudesPruebas : IDisposable
 
     [Fact]
     [Trait("Requisito", "RF-GP-07")]
+    public async Task UnAdministradorNoPuedeRechazarSuPropiaSolicitud()
+    {
+        // Preparar
+        var id = await entorno.CrearSolicitudAsync(Entorno.Carla, "ReactivarUsuario");
+
+        // Actuar
+        var resultado = await entorno.Como(Entorno.Carla).RechazarAsync(id, "Ya no la necesito.");
+
+        // Verificar
+        Assert.Equal(TipoFallo.Prohibido, resultado.Fallo);
+        var guardada = entorno.Leer(id);
+        Assert.Equal(EstadoSolicitud.Pendiente, guardada.Estado);
+        Assert.Null(guardada.MotivoRechazo);
+    }
+
+    [Fact]
+    [Trait("Requisito", "RF-GP-07")]
     public async Task OtroAdministradorSiPuedeAprobarLaSolicitudDeUnAdministrador()
     {
         // Preparar
