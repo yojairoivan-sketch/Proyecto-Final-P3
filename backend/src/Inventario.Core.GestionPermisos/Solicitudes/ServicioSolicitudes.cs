@@ -107,7 +107,7 @@ internal sealed class ServicioSolicitudes(
             return SinSesion<IReadOnlyList<SolicitudVista>>();
 
         return Resultado<IReadOnlyList<SolicitudVista>>.Ok(
-            await ListarAsync(db.Solicitudes.Where(s => s.SolicitanteId == usuario.Id), ct));
+            await ListarAsync(db.Solicitudes.Where(s => s.SolicitanteId != usuario.Id), ct));
     }
 
     public Task<IReadOnlyList<SolicitudVista>> ListarPendientesAsync(CancellationToken ct = default) =>
