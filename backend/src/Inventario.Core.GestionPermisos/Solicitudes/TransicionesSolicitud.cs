@@ -50,6 +50,8 @@ public static class TransicionesSolicitud
         new(Pendiente, Rechazada, Ejecutor.Administrador, "Exige un motivo escrito. Queda registrado quién rechazó, cuándo y por qué.",
             Registrar: (solicitud, intento) => solicitud.RegistrarResolucion(intento.Actor, intento.Ahora, intento.Motivo!.Trim()),
             Validar: intento => ValidarMotivo(intento.Motivo)),
+        new(Rechazada, Aplicada, Ejecutor.Sistema, "Automática: el sistema otorga el permiso.",
+            Registrar: (solicitud, intento) => solicitud.RegistrarAplicacion(intento.Ahora)),
     ];
 
     /// <summary>Estados de los que no parte ninguna transición: Aplicada y Rechazada.</summary>
