@@ -13,14 +13,16 @@ Instituto Tecnológico de las Américas (ITLA) — Cuatrimestre **2026-C-3**
 
 Aplicación web para que un negocio pequeño lleve el control de su inventario: **órdenes de compra** a proveedores, **movimientos de stock** y **alertas de stock bajo**. Como todos los proyectos del curso, tiene dos partes: el **Core** (la misma especificación para los 25 proyectos) y el **módulo de negocio** (inventario).
 
-## Estado: Asignación 2 — Gestión de permisos
+## Estado: Práctica 2 — Una suite que detecta defectos
 
-Entregado en la etiqueta `asignacion-2`:
+Entregado en la etiqueta `practica-2`:
 
-- **Gestión de permisos** (pieza 2 del Core): un usuario pide permiso para una operación que su rol no le da; un Administrador lo aprueba o lo rechaza con un motivo, y al aprobarlo el sistema se lo otorga en el acto. Cubre RF-GP-01 a RF-GP-07, con la máquina de estados en un solo punto del código (RD-04). Ver [cómo provocar cada criterio](#9-gestión-de-permisos-rf-gp-01-a-07).
-- **Primera suite de pruebas de la pieza**: 45 pruebas xUnit que corren sin levantar la aplicación (RD-12). Ver [Pruebas](#pruebas).
-- **Bitácora con el agente**: [`docs/bitacora-asignacion-2.md`](docs/bitacora-asignacion-2.md).
-- Entró por los pull requests [#13 Gestión de permisos](https://github.com/yojairoivan-sketch/Proyecto-Final-P3/pull/13) y [#14 documentación](https://github.com/yojairoivan-sketch/Proyecto-Final-P3/pull/14).
+- **Suite de Gestión de permisos ampliada** a 63 pruebas: cada requisito de RF-GP-01 a RF-GP-07 tiene al menos una prueba que lo nombra, y todas corren con un solo comando sin levantar la aplicación. Ver [Pruebas](#pruebas).
+- **Seis defectos plantados (variante A)**, cada uno en su etiqueta `practica-2-defecto-1` a `practica-2-defecto-6`, sobre un commit cuyo padre es `practica-2`. Con cada uno falla al menos una prueba. Ver [Defectos](#defectos).
+- Control de acceso sigue igual que en la Práctica 1 (secciones [1](#1-registro-y-activación-rf-ca-01-02-04-14-15-16-y-17), [3](#3-sesión-rf-ca-03-07-18-y-19), [4](#4-roles-y-administración-rf-ca-04-05-06-08-20-y-21-rd-06) y [5](#5-contraseñas-recuperación-cambio-y-restablecimiento-rf-ca-09-a-13-y-22) de abajo).
+- Entró por el pull request [#16](https://github.com/yojairoivan-sketch/Proyecto-Final-P3/pull/16).
+
+Antes, en la etiqueta `asignacion-2`: **Gestión de permisos** (pieza 2 del Core). Un usuario pide permiso para una operación que su rol no le da; un Administrador lo aprueba o lo rechaza con un motivo, y al aprobarlo el sistema se lo otorga en el acto. Cubre RF-GP-01 a RF-GP-07, con la máquina de estados en un solo punto del código (RD-04) ([cómo provocar cada criterio](#9-gestión-de-permisos-rf-gp-01-a-07)), y trajo la primera suite de la pieza (45 pruebas) y la [bitácora con el agente](docs/bitacora-asignacion-2.md). Entró por los pull requests [#13](https://github.com/yojairoivan-sketch/Proyecto-Final-P3/pull/13) y [#14](https://github.com/yojairoivan-sketch/Proyecto-Final-P3/pull/14).
 
 Antes, en la etiqueta `practica-1`: **Control de acceso completo** (RF-CA-01 a RF-CA-22), la **cola mínima de correos** (RF-NOT-08, 09, 12 y 13) y la **estructura de la máquina de estados del negocio** ([`docs/maquina-de-estados.md`](docs/maquina-de-estados.md)). Cada funcionalidad entró por su pull request: [#4 base](https://github.com/yojairoivan-sketch/Proyecto-Final-P3/pull/4), [#5 cola de correos](https://github.com/yojairoivan-sketch/Proyecto-Final-P3/pull/5), [#6 registro y activación](https://github.com/yojairoivan-sketch/Proyecto-Final-P3/pull/6), [#7 sesión](https://github.com/yojairoivan-sketch/Proyecto-Final-P3/pull/7), [#8 roles y administración](https://github.com/yojairoivan-sketch/Proyecto-Final-P3/pull/8), [#9 contraseñas](https://github.com/yojairoivan-sketch/Proyecto-Final-P3/pull/9), [#10 máquina de estados](https://github.com/yojairoivan-sketch/Proyecto-Final-P3/pull/10), [#11 README](https://github.com/yojairoivan-sketch/Proyecto-Final-P3/pull/11) y, después de la etiqueta, [#12 pruebas de Control de acceso](https://github.com/yojairoivan-sketch/Proyecto-Final-P3/pull/12).
 
@@ -80,7 +82,7 @@ No hace falta instalar .NET, Node ni PostgreSQL: todo se compila y corre dentro 
 ```bash
 git clone https://github.com/yojairoivan-sketch/Proyecto-Final-P3.git
 cd Proyecto-Final-P3
-git checkout asignacion-2
+git checkout practica-2
 cp .env.example .env
 ```
 
@@ -159,7 +161,7 @@ No hace falta reiniciar la API: el enviador lee `.env` cada vez que se ejecuta.
 
 Todo se puede hacer desde la interfaz (http://localhost:8080) o armando la petición a mano con `curl`. Los `curl` de abajo son para **Git Bash**. En los textos que mandes con `curl` (por ejemplo un motivo de rechazo), no uses tildes: en Windows, `curl.exe` manda los argumentos en otra codificación y la API responde «La petición no tiene el formato esperado». Desde la interfaz las tildes funcionan bien.
 
-**Lo nuevo de la Asignación 2 está en la [sección 9, Gestión de permisos](#9-gestión-de-permisos-rf-gp-01-a-07).**
+Control de acceso (Práctica 1) está en las secciones 1 a 5 y Gestión de permisos en la [sección 9](#9-gestión-de-permisos-rf-gp-01-a-07). La suite y los defectos de la Práctica 2 no necesitan la aplicación levantada: están en [Pruebas](#pruebas) y [Defectos](#defectos).
 
 **Preparación.** Para leer la base de datos:
 
@@ -369,7 +371,7 @@ docker compose -f docker-compose.pruebas.yml run --rm --build pruebas
 Compila dentro de Docker y corre las dos suites. La primera vez tarda unos minutos. Termina con:
 
 ```
-Passed!  - Failed:     0, Passed:    45, Skipped:     0, Total:    45, ... - Inventario.Core.GestionPermisos.Pruebas.dll (net10.0)
+Passed!  - Failed:     0, Passed:    63, Skipped:     0, Total:    63, ... - Inventario.Core.GestionPermisos.Pruebas.dll (net10.0)
 Passed!  - Failed:     0, Passed:    44, Skipped:     0, Total:    44, ... - Inventario.Core.ControlAcceso.Pruebas.dll (net10.0)
 ```
 
@@ -381,33 +383,28 @@ Para correr una sola prueba, agrega un filtro al final del mismo comando:
 docker compose -f docker-compose.pruebas.yml run --rm --build pruebas --filter "FullyQualifiedName~AprobarDosVeces"
 ```
 
-### Gestión de permisos (45 pruebas)
+### Gestión de permisos (63 pruebas)
 
 Están en `backend/tests/Inventario.Core.GestionPermisos.Pruebas` y prueban la pieza directamente, sin la API ni PostgreSQL. Usan SQLite en memoria y un reloj controlado. En lugar de Control de acceso usan dos dobles de sus interfaces: `UsuarioActualFalso` dice quién hace la petición y `OtorgamientoFalso` anota los permisos otorgados.
 
 | Archivo | Qué prueba |
 |---|---|
-| [`TransicionesPruebas.cs`](backend/tests/Inventario.Core.GestionPermisos.Pruebas/TransicionesPruebas.cs) | La máquina de estados sola, sin base de datos (25 pruebas). |
-| [`SolicitudesPruebas.cs`](backend/tests/Inventario.Core.GestionPermisos.Pruebas/SolicitudesPruebas.cs) | RF-GP-01 a 07 a través de `IServicioSolicitudes`, como los usa la API. Lo guardado se lee con un contexto nuevo (20 pruebas). |
-
-Las que pide el enunciado:
-
-- **Transición válida** (RF-GP-03 y 04): `AprobarUnaPendienteLaDejaAprobadaConQuienAproboYCuando`, `AprobarDejaGuardadoQuienAproboYCuando`, `RechazarUnaPendienteConMotivoLaDejaRechazadaConQuienCuandoYElMotivo` y `RechazarConMotivoDejaGuardadosElEstadoYElMotivo`. Verifican el estado resultante y lo que la transición registra: quién, cuándo y el motivo.
-- **Transición prohibida** (RF-GP-06): `AprobarDosVecesLaMismaSolicitudSeRechazaYElEstadoNoCambia`, `PasarDeRechazadaAAplicadaSeRechazaYElEstadoNoCambia` y `UnaTransicionFueraDeLaTablaSeRechazaYLaSolicitudNoCambia`, que recorre las 13 combinaciones que no están en la tabla. Verifican el rechazo y que la solicitud quedó igual que antes.
+| [`TransicionesPruebas.cs`](backend/tests/Inventario.Core.GestionPermisos.Pruebas/TransicionesPruebas.cs) | La máquina de estados sola, sin base de datos (39 pruebas). |
+| [`SolicitudesPruebas.cs`](backend/tests/Inventario.Core.GestionPermisos.Pruebas/SolicitudesPruebas.cs) | RF-GP-01 a 07 a través de `IServicioSolicitudes`, como los usa la API. Lo guardado se lee con un contexto nuevo (24 pruebas). |
 
 Cada prueba marca sus tres fases con comentarios (`// Preparar`, `// Actuar`, `// Verificar`), verifica un solo comportamiento y su nombre dice cuál. Cada una arma su propio entorno, con una base en memoria nueva, así que no comparten datos: pasan en cualquier orden y por separado.
 
-Cada prueba lleva también el requisito que verifica, con `[Trait("Requisito", "RF-GP-0X")]`:
+Cada prueba lleva el ID del requisito que verifica, con `[Trait("Requisito", "RF-GP-0X")]` justo encima de su nombre:
 
-| Requisito | Pruebas |
-|---|---|
-| RF-GP-01 (6) | `UnEstandarCreaUnaSolicitudQueNaceEnPendiente`, `CrearConUnPermisoQueNoSePuedePedirSeRechazaSinGuardarNada` (4 casos), `NoSeCreaUnaSegundaSolicitudDelMismoPermisoMientrasLaPrimeraNoSeResuelve` |
-| RF-GP-02 (3) | `ElAdministradorVeSoloLasSolicitudesPendientes`, `UnEstandarSoloVeSusPropiasSolicitudes`, `UnEstandarNoPuedeConsultarLaSolicitudDeOtroUsuario` |
-| RF-GP-03 (2) | `AprobarUnaPendienteLaDejaAprobadaConQuienAproboYCuando`, `AprobarDejaGuardadoQuienAproboYCuando` |
-| RF-GP-04 (7) | `RechazarUnaPendienteConMotivoLaDejaRechazadaConQuienCuandoYElMotivo`, `RechazarConMotivoDejaGuardadosElEstadoYElMotivo`, `RechazarSinMotivoNoSeCompletaYLaSolicitudSiguePendiente` (3 casos), `RechazarSinMotivoNoCambiaLaSolicitudGuardada`, `UnMotivoDeMasDe500CaracteresNoSeAcepta` |
-| RF-GP-05 (5) | `ElSistemaAplicaUnaAprobadaYRegistraCuando`, `AlAprobarElSistemaOtorgaElPermisoAlSolicitanteSinOtroPaso`, `AlRechazarNoSeOtorgaNingunPermiso`, `SiOtorgarFallaLaSolicitudQuedaAprobadaSinAplicar`, `AlArrancarSeAplicanLasSolicitudesQueQuedaronAprobadas` |
-| RF-GP-06 (18) | `AprobarDosVecesLaMismaSolicitudSeRechazaYElEstadoNoCambia`, `AprobarUnaSolicitudRechazadaSeRechazaYSigueRechazadaSinPermiso`, `PasarDeRechazadaAAplicadaSeRechazaYElEstadoNoCambia`, `UnaTransicionFueraDeLaTablaSeRechazaYLaSolicitudNoCambia` (13 casos), `UnAdministradorNoPuedeMarcarAplicadaUnaSolicitudPorqueEsoLoHaceElSistema`, `LosUnicosEstadosTerminalesSonAplicadaYRechazada` |
-| RF-GP-07 (4) | `UnAdministradorNoApruebaSuPropiaSolicitud`, `UnAdministradorNoRechazaSuPropiaSolicitud`, `UnAdministradorNoPuedeAprobarSuPropiaSolicitud`, `OtroAdministradorSiPuedeAprobarLaSolicitudDeUnAdministrador` |
+| Requisito | Lo que se verifica | Pruebas |
+|---|---|---|
+| RF-GP-01 (7) | La solicitud nace Pendiente. | `UnEstandarCreaUnaSolicitudQueNaceEnPendiente`, `CrearConUnPermisoQueNoSePuedePedirSeRechazaSinGuardarNada` (4 casos), `NoSeCreaUnaSegundaSolicitudDelMismoPermisoMientrasLaPrimeraNoSeResuelve`, `TrasUnRechazoSePuedeVolverAPedirElMismoPermiso` |
+| RF-GP-02 (4) | El Administrador ve las pendientes; un Estándar no ve las de otros. | `ElAdministradorVeSoloLasSolicitudesPendientes`, `UnEstandarSoloVeSusPropiasSolicitudes`, `UnEstandarSinSolicitudesNoVeLasDeOtrosUsuarios`, `UnEstandarNoPuedeConsultarLaSolicitudDeOtroUsuario` |
+| RF-GP-03 (2) | Queda registrado quién aprobó y cuándo. | `AprobarUnaPendienteLaDejaAprobadaConQuienAproboYCuando`, `AprobarDejaGuardadoQuienAproboYCuando` |
+| RF-GP-04 (7) | Sin motivo (ausente o vacío) el rechazo no se completa y el estado no cambia; con motivo, el motivo queda guardado. | `RechazarUnaPendienteConMotivoLaDejaRechazadaConQuienCuandoYElMotivo`, `RechazarConMotivoDejaGuardadosElEstadoYElMotivo`, `RechazarSinMotivoNoSeCompletaYLaSolicitudSiguePendiente` (3 casos: nulo, vacío y espacios), `RechazarSinMotivoNoCambiaLaSolicitudGuardada`, `UnMotivoDeMasDe500CaracteresNoSeAcepta` |
+| RF-GP-05 (5) | Tras aprobar, la solicitud llega a Aplicada y el permiso queda otorgado. | `ElSistemaAplicaUnaAprobadaYRegistraCuando`, `AlAprobarElSistemaOtorgaElPermisoAlSolicitanteSinOtroPaso`, `AlRechazarNoSeOtorgaNingunPermiso`, `SiOtorgarFallaLaSolicitudQuedaAprobadaSinAplicar`, `AlArrancarSeAplicanLasSolicitudesQueQuedaronAprobadas` |
+| RF-GP-06 (33) | Aprobar dos veces, Rechazada → Aplicada y cualquier otra transición fuera de la tabla se rechazan y el estado no cambia. | `AprobarDosVecesLaMismaSolicitudSeRechazaYElEstadoNoCambia`, `AprobarOtraVezUnaSolicitudQueQuedoAprobadaSeRechazaYConservaQuienLaAprobo`, `AprobarUnaSolicitudRechazadaSeRechazaYSigueRechazadaSinPermiso`, `PasarDeRechazadaAAplicadaSeRechazaYElEstadoNoCambia`, `UnaTransicionFueraDeLaTablaSeRechazaYLaSolicitudNoCambia` (26 casos: las 13 combinaciones fuera de la tabla, cada una intentada por un Administrador y por el sistema), `LaTablaDeclaraSoloLasTresTransicionesDelEnunciadoConQuienLasEjecuta`, `UnAdministradorNoPuedeMarcarAplicadaUnaSolicitudPorqueEsoLoHaceElSistema`, `LosUnicosEstadosTerminalesSonAplicadaYRechazada` |
+| RF-GP-07 (5) | Un Administrador que aprueba o rechaza su propia solicitud recibe un rechazo. | `UnAdministradorNoApruebaSuPropiaSolicitud`, `UnAdministradorNoRechazaSuPropiaSolicitud`, `UnAdministradorNoPuedeAprobarSuPropiaSolicitud`, `UnAdministradorNoPuedeRechazarSuPropiaSolicitud`, `OtroAdministradorSiPuedeAprobarLaSolicitudDeUnAdministrador` |
 
 Para correr solo las de un requisito:
 
@@ -415,13 +412,34 @@ Para correr solo las de un requisito:
 docker compose -f docker-compose.pruebas.yml run --rm --build pruebas --filter "Requisito=RF-GP-06"
 ```
 
-La suite de Control de acceso no tiene pruebas con ese filtro, así que para ella el comando dice «No test matches the given testcase filter». Es normal: la línea que importa es la de `Inventario.Core.GestionPermisos.Pruebas.dll`, con 18 pruebas.
-
-Para comprobar que verifican lo que dicen, cada regla se rompió a propósito (15 mutantes; por ejemplo, agregar Rechazada → Aplicada a la tabla o quitar la regla de RF-GP-07). En todos los casos falló la prueba que nombra esa regla. El detalle está en la [bitácora](docs/bitacora-asignacion-2.md).
+La suite de Control de acceso no tiene pruebas con ese filtro, así que para ella el comando dice «No test matches the given testcase filter». Es normal: la línea que importa es la de `Inventario.Core.GestionPermisos.Pruebas.dll`, con 33 pruebas.
 
 ### Control de acceso (44 pruebas)
 
 Están en `backend/tests/Inventario.Core.ControlAcceso.Pruebas`. En lugar de PostgreSQL y SMTP usan SQLite en memoria, un reloj falso para provocar vencimientos y bloqueos, y una cola de correos falsa que guarda los enlaces. Cubren la política de contraseña y la validación de datos, el hash, registro y activación, sesión y bloqueo, recuperación, cambio y restablecimiento forzado de contraseña, y administración de usuarios.
+
+## Defectos
+
+Seis defectos de la **variante A** (matrícula 2025-1033, último dígito 3) plantados a propósito en el código de Gestión de permisos. Cada uno está en su etiqueta, `practica-2-defecto-1` a `practica-2-defecto-6`, sobre un commit cuyo padre es `practica-2`. Ese commit cambia solo un archivo de `backend/src/Inventario.Core.GestionPermisos` (ninguna prueba) y su mensaje dice qué archivo y qué línea cambió. Con cualquiera de ellos, el mismo comando de [Pruebas](#pruebas) termina con pruebas fallidas:
+
+```bash
+git checkout practica-2-defecto-1
+docker compose -f docker-compose.pruebas.yml run --rm --build pruebas
+git diff practica-2 practica-2-defecto-1 --stat
+```
+
+| Defecto | Requisito | Qué se plantó | Prueba que lo detecta | Comportamiento que comprueba | También fallan |
+|---|---|---|---|---|---|
+| 1 | RF-GP-06 | Al aprobar, «el estado es Pendiente» pasa a «el estado no es Rechazada» (`TransicionesSolicitud.cs`, línea 60) | `AprobarDosVecesLaMismaSolicitudSeRechazaYElEstadoNoCambia` | Aprobar por segunda vez una solicitud ya aplicada da conflicto, y la solicitud conserva su estado, quién la aprobó y cuándo, sin otorgar el permiso otra vez. | `AprobarOtraVezUnaSolicitudQueQuedoAprobadaSeRechazaYConservaQuienLaAprobo`, `UnaTransicionFueraDeLaTablaSeRechazaYLaSolicitudNoCambia` (Aprobada → Aprobada y Aplicada → Aprobada) |
+| 2 | RF-GP-06 | Se agrega la transición Rechazada → Aplicada a la tabla (`TransicionesSolicitud.cs`, líneas 53 y 54) | `PasarDeRechazadaAAplicadaSeRechazaYElEstadoNoCambia` | Pasar una solicitud Rechazada a Aplicada da conflicto y la solicitud queda igual que antes. | `LaTablaDeclaraSoloLasTresTransicionesDelEnunciadoConQuienLasEjecuta`, `LosUnicosEstadosTerminalesSonAplicadaYRechazada`, `UnaTransicionFueraDeLaTablaSeRechazaYLaSolicitudNoCambia` (Rechazada → Aplicada), `TrasUnRechazoSePuedeVolverAPedirElMismoPermiso` |
+| 3 | RF-GP-07 | Se elimina la verificación de que nadie resuelve su propia solicitud (`TransicionesSolicitud.cs`, líneas 80 a 83) | `UnAdministradorNoPuedeAprobarSuPropiaSolicitud` | Un Administrador que aprueba una solicitud creada por él recibe un rechazo, la solicitud sigue Pendiente y no se otorga nada. | `UnAdministradorNoPuedeRechazarSuPropiaSolicitud`, `UnAdministradorNoApruebaSuPropiaSolicitud`, `UnAdministradorNoRechazaSuPropiaSolicitud` |
+| 4 | RF-GP-02 | En la consulta de las solicitudes del usuario, «el solicitante es el usuario que consulta» pasa a «no es» (`ServicioSolicitudes.cs`, línea 110) | `UnEstandarSoloVeSusPropiasSolicitudes` | Un Estándar ve exactamente su solicitud y no la de otro usuario. | `UnEstandarSinSolicitudesNoVeLasDeOtrosUsuarios` |
+| 5 | RF-GP-06 | Se agrega la transición Aprobada → Pendiente a la tabla (`TransicionesSolicitud.cs`, líneas 53 y 54) | `LaTablaDeclaraSoloLasTresTransicionesDelEnunciadoConQuienLasEjecuta` | La tabla declara solo Pendiente → Aprobada, Aprobada → Aplicada y Pendiente → Rechazada, con quién ejecuta cada una. | `UnaTransicionFueraDeLaTablaSeRechazaYLaSolicitudNoCambia` (Aprobada → Pendiente): devolver una Aprobada a Pendiente da conflicto y la solicitud no cambia |
+| 6 | RF-GP-04 | Al rechazar, se elimina el guardado del motivo (`SolicitudPermiso.cs`, línea 72) | `RechazarConMotivoDejaGuardadosElEstadoYElMotivo` | Tras rechazar con motivo, la solicitud guardada está Rechazada y tiene ese motivo. | `RechazarUnaPendienteConMotivoLaDejaRechazadaConQuienCuandoYElMotivo` |
+
+Sobre el defecto 1: en esta pieza la operación de aprobar no tiene un `if` propio sobre el estado, porque todas las transiciones se resuelven en la tabla (RD-04). Su condición «el estado es Pendiente» es la búsqueda `t.Desde == desde` de la transición hacia Aprobada, y el defecto la cambia, solo para aprobar, por `desde != Rechazada`.
+
+Sobre los defectos 2 y 5: la suite los detecta sin importar si la transición agregada se declara para el Administrador o para el sistema, porque cada combinación fuera de la tabla se intenta con los dos y la tabla se compara con la del enunciado, escrita a mano.
 
 ## Estructura del repositorio
 

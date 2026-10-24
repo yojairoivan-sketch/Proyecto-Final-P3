@@ -69,6 +69,23 @@ public sealed class SolicitudesPruebas : IDisposable
     }
 
     [Fact]
+    [Trait("Requisito", "RF-GP-01")]
+    public async Task TrasUnRechazoSePuedeVolverAPedirElMismoPermiso()
+    {
+        // Preparar
+        var rechazada = await entorno.CrearSolicitudAsync(Entorno.Ana, "ListarUsuarios");
+        await entorno.Como(Entorno.Carla).RechazarAsync(rechazada, "Todavía no.");
+
+        // Actuar
+        var resultado = await entorno.Como(Entorno.Ana).CrearAsync("ListarUsuarios", "Ya terminé la capacitación.");
+
+        // Verificar
+        Assert.True(resultado.Exito, resultado.Mensaje);
+        Assert.Equal(EstadoSolicitud.Pendiente, entorno.Leer(resultado.Valor!.Id).Estado);
+        Assert.Equal(EstadoSolicitud.Rechazada, entorno.Leer(rechazada).Estado);
+    }
+
+    [Fact]
     [Trait("Requisito", "RF-GP-02")]
     public async Task ElAdministradorVeSoloLasSolicitudesPendientes()
     {
@@ -99,6 +116,22 @@ public sealed class SolicitudesPruebas : IDisposable
         // Verificar
         var unica = Assert.Single(mias.Valor!);
         Assert.Equal(deAna, unica.Id);
+    }
+
+    [Fact]
+    [Trait("Requisito", "RF-GP-02")]
+    public async Task UnEstandarSinSolicitudesNoVeLasDeOtrosUsuarios()
+    {
+        // Preparar
+        await entorno.CrearSolicitudAsync(Entorno.Beto, "ListarUsuarios");
+        await entorno.CrearSolicitudAsync(Entorno.Carla, "ReactivarUsuario");
+
+        // Actuar
+        var mias = await entorno.Como(Entorno.Ana).ListarMiasAsync();
+
+        // Verificar
+        Assert.True(mias.Exito, mias.Mensaje);
+        Assert.Empty(mias.Valor!);
     }
 
     [Fact]
@@ -263,6 +296,29 @@ public sealed class SolicitudesPruebas : IDisposable
 
     [Fact]
     [Trait("Requisito", "RF-GP-06")]
+    public async Task AprobarOtraVezUnaSolicitudQueQuedoAprobadaSeRechazaYConservaQuienLaAprobo()
+    {
+        // Preparar: Control de acceso falla al otorgar, así que la solicitud queda Aprobada sin aplicar.
+        var id = await entorno.CrearSolicitudAsync(Entorno.Ana);
+        entorno.Otorgamiento.FallarLaProxima = true;
+        await Record.ExceptionAsync(() => entorno.Como(Entorno.Carla).AprobarAsync(id));
+        var primera = entorno.Leer(id);
+        entorno.Reloj.Advance(TimeSpan.FromHours(1));
+
+        // Actuar
+        var segunda = await entorno.Como(Entorno.Dario).AprobarAsync(id);
+
+        // Verificar
+        Assert.Equal(TipoFallo.Conflicto, segunda.Fallo);
+        var guardada = entorno.Leer(id);
+        Assert.Equal(EstadoSolicitud.Aprobada, guardada.Estado);
+        Assert.Equal(Entorno.Carla.Id, guardada.ResueltaPorId);
+        Assert.Equal(primera.ResueltaEn, guardada.ResueltaEn);
+        Assert.Empty(entorno.Otorgamiento.Otorgados);
+    }
+
+    [Fact]
+    [Trait("Requisito", "RF-GP-06")]
     public async Task AprobarUnaSolicitudRechazadaSeRechazaYSigueRechazadaSinPermiso()
     {
         // Preparar
@@ -294,6 +350,23 @@ public sealed class SolicitudesPruebas : IDisposable
         Assert.Equal(TipoFallo.Prohibido, resultado.Fallo);
         Assert.Equal(EstadoSolicitud.Pendiente, entorno.Leer(id).Estado);
         Assert.Empty(entorno.Otorgamiento.Otorgados);
+    }
+
+    [Fact]
+    [Trait("Requisito", "RF-GP-07")]
+    public async Task UnAdministradorNoPuedeRechazarSuPropiaSolicitud()
+    {
+        // Preparar
+        var id = await entorno.CrearSolicitudAsync(Entorno.Carla, "ReactivarUsuario");
+
+        // Actuar
+        var resultado = await entorno.Como(Entorno.Carla).RechazarAsync(id, "Ya no la necesito.");
+
+        // Verificar
+        Assert.Equal(TipoFallo.Prohibido, resultado.Fallo);
+        var guardada = entorno.Leer(id);
+        Assert.Equal(EstadoSolicitud.Pendiente, guardada.Estado);
+        Assert.Null(guardada.MotivoRechazo);
     }
 
     [Fact]

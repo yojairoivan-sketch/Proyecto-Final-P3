@@ -121,33 +121,20 @@ public sealed class TransicionesPruebas
 
     /// <summary>
     /// RF-GP-06: las 13 combinaciones que no están en la tabla del enunciado
-    /// (Pendiente → Aprobada → Aplicada y Pendiente → Rechazada). Están escritas a mano y no se calculan
-    /// desde TransicionesSolicitud: si alguien agrega una transición indebida a la tabla, esta prueba lo detecta.
+    /// (Pendiente → Aprobada → Aplicada y Pendiente → Rechazada), cada una intentada por un Administrador y por el sistema.
+    /// Están escritas a mano y no se calculan desde TransicionesSolicitud: si alguien agrega una transición indebida
+    /// a la tabla, esta prueba lo detecta, la haya declarado para el Administrador o para el sistema.
     /// </summary>
     [Theory]
     [Trait("Requisito", "RF-GP-06")]
-    [InlineData(Pendiente, Pendiente)]
-    [InlineData(Pendiente, Aplicada)]
-    [InlineData(Aprobada, Pendiente)]
-    [InlineData(Aprobada, Aprobada)]
-    [InlineData(Aprobada, Rechazada)]
-    [InlineData(Aplicada, Pendiente)]
-    [InlineData(Aplicada, Aprobada)]
-    [InlineData(Aplicada, Aplicada)]
-    [InlineData(Aplicada, Rechazada)]
-    [InlineData(Rechazada, Pendiente)]
-    [InlineData(Rechazada, Aprobada)]
-    [InlineData(Rechazada, Aplicada)]
-    [InlineData(Rechazada, Rechazada)]
-    public void UnaTransicionFueraDeLaTablaSeRechazaYLaSolicitudNoCambia(EstadoSolicitud desde, EstadoSolicitud hacia)
+    [MemberData(nameof(FueraDeLaTabla))]
+    public void UnaTransicionFueraDeLaTablaSeRechazaYLaSolicitudNoCambia(EstadoSolicitud desde, EstadoSolicitud hacia, Ejecutor quien)
     {
         // Preparar
         var solicitud = En(desde);
         var antes = Foto.De(solicitud);
-        // Con el ejecutor y el motivo que la harían válida si existiera: así solo la tabla puede rechazarla.
-        var intento = hacia == Aplicada
-            ? new IntentoTransicion(Actor.Sistema, Despues.AddHours(1))
-            : new IntentoTransicion(Dario, Despues.AddHours(1), "Motivo escrito.");
+        // Con motivo y, si es un Administrador, uno que no pidió ni resolvió la solicitud: así solo la tabla puede rechazarla.
+        var intento = new IntentoTransicion(quien == Ejecutor.Sistema ? Actor.Sistema : Dario, Despues.AddHours(1), "Motivo escrito.");
 
         // Actuar
         var resultado = solicitud.CambiarEstado(hacia, intento);
@@ -155,6 +142,43 @@ public sealed class TransicionesPruebas
         // Verificar
         Assert.Equal(TipoFallo.Conflicto, resultado.Fallo);
         Assert.Equal(antes, Foto.De(solicitud));
+    }
+
+    public static TheoryData<EstadoSolicitud, EstadoSolicitud, Ejecutor> FueraDeLaTabla()
+    {
+        (EstadoSolicitud Desde, EstadoSolicitud Hacia)[] prohibidas =
+        [
+            (Pendiente, Pendiente), (Pendiente, Aplicada),
+            (Aprobada, Pendiente), (Aprobada, Aprobada), (Aprobada, Rechazada),
+            (Aplicada, Pendiente), (Aplicada, Aprobada), (Aplicada, Aplicada), (Aplicada, Rechazada),
+            (Rechazada, Pendiente), (Rechazada, Aprobada), (Rechazada, Aplicada), (Rechazada, Rechazada),
+        ];
+        var datos = new TheoryData<EstadoSolicitud, EstadoSolicitud, Ejecutor>();
+        foreach (var (desde, hacia) in prohibidas)
+        {
+            datos.Add(desde, hacia, Ejecutor.Administrador);
+            datos.Add(desde, hacia, Ejecutor.Sistema);
+        }
+        return datos;
+    }
+
+    [Fact]
+    [Trait("Requisito", "RF-GP-06")]
+    public void LaTablaDeclaraSoloLasTresTransicionesDelEnunciadoConQuienLasEjecuta()
+    {
+        // Preparar: la tabla del enunciado, escrita a mano.
+        var esperadas = new[]
+        {
+            (Pendiente, Aprobada, Ejecutor.Administrador),
+            (Aprobada, Aplicada, Ejecutor.Sistema),
+            (Pendiente, Rechazada, Ejecutor.Administrador),
+        };
+
+        // Actuar
+        var declaradas = TransicionesSolicitud.Permitidas.Select(t => (t.Desde, t.Hacia, t.Quien));
+
+        // Verificar
+        Assert.Equal(esperadas.Order(), declaradas.Order());
     }
 
     [Fact]
