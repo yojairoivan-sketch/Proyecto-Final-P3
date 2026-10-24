@@ -3,8 +3,6 @@
 | Campo | Valor |
 |---|---|
 | Estudiante | Yojairo Rodriguez (`yojairoivan-sketch`) |
-| Agente | Claude Code, app de escritorio (pestaña Code) |
-| Modelo | Claude Sonnet 5 al inicio; Claude Opus 5.5 desde `/model claude-opus-5-5` |
 | Fecha de la sesión | 2026-09-26 al 2026-09-27 |
 
 ## Tareas que le delegué
@@ -49,7 +47,7 @@ chore: estructura inicial y README
 
 Según la rúbrica, que «al menos un commit mezcla cambios sin relación» deja el criterio
 *Historial limpio* en 50 %. Además, ese commit lo había redactado el propio agente en la
-sesión del 2026-09-14 (lleva el trailer `Co-Authored-By: Claude Opus 5`).
+sesión del 2026-09-14.
 
 **Cómo se detectó.** Antes de crear la rama de esta bitácora, el agente volvió a contrastar
 el historial con la sección 1.1, punto por punto, sobre la salida de `git show --stat HEAD`.
