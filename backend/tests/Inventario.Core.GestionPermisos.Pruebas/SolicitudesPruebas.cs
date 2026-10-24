@@ -69,6 +69,23 @@ public sealed class SolicitudesPruebas : IDisposable
     }
 
     [Fact]
+    [Trait("Requisito", "RF-GP-01")]
+    public async Task TrasUnRechazoSePuedeVolverAPedirElMismoPermiso()
+    {
+        // Preparar
+        var rechazada = await entorno.CrearSolicitudAsync(Entorno.Ana, "ListarUsuarios");
+        await entorno.Como(Entorno.Carla).RechazarAsync(rechazada, "Todavía no.");
+
+        // Actuar
+        var resultado = await entorno.Como(Entorno.Ana).CrearAsync("ListarUsuarios", "Ya terminé la capacitación.");
+
+        // Verificar
+        Assert.True(resultado.Exito, resultado.Mensaje);
+        Assert.Equal(EstadoSolicitud.Pendiente, entorno.Leer(resultado.Valor!.Id).Estado);
+        Assert.Equal(EstadoSolicitud.Rechazada, entorno.Leer(rechazada).Estado);
+    }
+
+    [Fact]
     [Trait("Requisito", "RF-GP-02")]
     public async Task ElAdministradorVeSoloLasSolicitudesPendientes()
     {
