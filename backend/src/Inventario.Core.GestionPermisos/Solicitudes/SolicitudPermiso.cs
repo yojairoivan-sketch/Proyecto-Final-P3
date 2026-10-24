@@ -69,7 +69,6 @@ public sealed class SolicitudPermiso
         ResueltaPorId = administrador.UsuarioId;
         ResueltaPorNombre = administrador.Nombre;
         ResueltaEn = ahora;
-        MotivoRechazo = motivo;
     }
 
     internal void RegistrarAplicacion(DateTimeOffset ahora) => AplicadaEn = ahora;
