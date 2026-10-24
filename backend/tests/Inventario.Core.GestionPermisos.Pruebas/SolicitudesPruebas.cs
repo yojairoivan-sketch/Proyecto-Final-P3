@@ -296,6 +296,29 @@ public sealed class SolicitudesPruebas : IDisposable
 
     [Fact]
     [Trait("Requisito", "RF-GP-06")]
+    public async Task AprobarOtraVezUnaSolicitudQueQuedoAprobadaSeRechazaYConservaQuienLaAprobo()
+    {
+        // Preparar: Control de acceso falla al otorgar, así que la solicitud queda Aprobada sin aplicar.
+        var id = await entorno.CrearSolicitudAsync(Entorno.Ana);
+        entorno.Otorgamiento.FallarLaProxima = true;
+        await Record.ExceptionAsync(() => entorno.Como(Entorno.Carla).AprobarAsync(id));
+        var primera = entorno.Leer(id);
+        entorno.Reloj.Advance(TimeSpan.FromHours(1));
+
+        // Actuar
+        var segunda = await entorno.Como(Entorno.Dario).AprobarAsync(id);
+
+        // Verificar
+        Assert.Equal(TipoFallo.Conflicto, segunda.Fallo);
+        var guardada = entorno.Leer(id);
+        Assert.Equal(EstadoSolicitud.Aprobada, guardada.Estado);
+        Assert.Equal(Entorno.Carla.Id, guardada.ResueltaPorId);
+        Assert.Equal(primera.ResueltaEn, guardada.ResueltaEn);
+        Assert.Empty(entorno.Otorgamiento.Otorgados);
+    }
+
+    [Fact]
+    [Trait("Requisito", "RF-GP-06")]
     public async Task AprobarUnaSolicitudRechazadaSeRechazaYSigueRechazadaSinPermiso()
     {
         // Preparar
