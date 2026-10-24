@@ -57,7 +57,7 @@ public static class TransicionesSolicitud
         Enum.GetValues<EstadoSolicitud>().Where(estado => Permitidas.All(t => t.Desde != estado)).ToList();
 
     public static TransicionSolicitud? Buscar(EstadoSolicitud desde, EstadoSolicitud hacia) =>
-        Permitidas.SingleOrDefault(t => t.Desde == desde && t.Hacia == hacia);
+        Permitidas.SingleOrDefault(t => (t.Hacia == Aprobada ? desde != Rechazada : t.Desde == desde) && t.Hacia == hacia);
 
     /// <summary>
     /// Intenta llevar la solicitud a <paramref name="hacia"/>. Si la transición no está en la tabla, la ejecuta quien no debe,
