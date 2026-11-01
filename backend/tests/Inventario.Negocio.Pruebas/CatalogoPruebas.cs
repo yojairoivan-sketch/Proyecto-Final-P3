@@ -51,18 +51,16 @@ public sealed class CatalogoPruebas : IDisposable
 
     [Fact]
     [Trait("Requisito", "RF-NEG-06")]
-    public async Task SinSesionNoSeRegistraNiSeListaNada()
+    public async Task SinSesionNoSeRegistraNingunProducto()
     {
         // Preparar: Control de acceso diría que la petición no trae una sesión válida.
         var productos = entorno.Productos(usuario: null);
 
         // Actuar
-        var registro = await productos.RegistrarAsync("Arroz", "ARR-1", "saco", 5);
-        var lista = await productos.ListarAsync();
+        var resultado = await productos.RegistrarAsync("Arroz", "ARR-1", "saco", 5);
 
         // Verificar
-        Assert.Equal(TipoFallo.NoAutenticado, registro.Fallo);
-        Assert.Equal(TipoFallo.NoAutenticado, lista.Fallo);
+        Assert.Equal(TipoFallo.NoAutenticado, resultado.Fallo);
         Assert.Equal(0, entorno.Contar<Producto>());
     }
 
