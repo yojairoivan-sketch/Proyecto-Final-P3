@@ -1,4 +1,6 @@
+using System.Text.Encodings.Web;
 using System.Text.Json.Serialization;
+using System.Text.Unicode;
 using Inventario.Api;
 using Inventario.Api.Acceso;
 using Inventario.Api.Errores;
@@ -21,7 +23,12 @@ var cadenaConexion = builder.Configuration.GetConnectionString("Inventario")
 builder.Services.AddSingleton<TimeProvider>(new RelojDelSistema());
 builder.Services.AgregarErroresControlados();
 builder.Services.ConfigureHttpJsonOptions(opciones =>
-    opciones.SerializerOptions.Converters.Add(new JsonStringEnumConverter()));
+{
+    opciones.SerializerOptions.Converters.Add(new JsonStringEnumConverter());
+    opciones.SerializerOptions.Converters.Add(new DecimalesSinCerosDeMas());
+    // Las tildes y las comillas «» salen tal cual (no como á), así las respuestas se leen bien también con curl.
+    opciones.SerializerOptions.Encoder = JavaScriptEncoder.Create(UnicodeRanges.All);
+});
 
 // Piezas del Core. La API solo encola: nunca habla con el servidor SMTP (RF-NOT-08).
 builder.Services.AddColaCorreos(cadenaConexion);
