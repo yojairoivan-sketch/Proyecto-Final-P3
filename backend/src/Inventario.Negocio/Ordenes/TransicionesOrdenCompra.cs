@@ -31,7 +31,7 @@ public static class TransicionesOrdenCompra
     public static readonly IReadOnlyList<Transicion> Permitidas =
     [
         new(Borrador, Enviada, SoloAdministrador, "La orden tiene al menos una línea.",
-            Validar: orden => orden.Lineas.Count > 0 ? null : "No se puede enviar una orden sin líneas: agrégale al menos un producto."),
+            Validar: null),
         new(Borrador, Cancelada, CualquierRol, "Ninguna."),
         new(Enviada, Recibida, CualquierRol, "Ninguna. Al recibirla, la cantidad de cada línea se suma a la existencia del producto.",
             AlAplicar: (orden, quien, ahora) =>
