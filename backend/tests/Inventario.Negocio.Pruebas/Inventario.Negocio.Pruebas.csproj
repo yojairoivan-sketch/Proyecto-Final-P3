@@ -1,0 +1,31 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    RD-12: pruebas del módulo de negocio que corren sin interfaz y sin levantar la aplicación.
+    La máquina de estados de la orden se prueba en memoria, sin base de datos. Los servicios usan SQLite en memoria
+    y un reloj controlado; Control de acceso y Gestión de permisos se reemplazan por dobles de sus interfaces.
+    La prueba con Gestión de permisos real está en Inventario.Integracion.Pruebas.
+  -->
+
+  <PropertyGroup>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" />
+    <PackageReference Include="Microsoft.Extensions.TimeProvider.Testing" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="xunit" />
+    <PackageReference Include="xunit.runner.visualstudio" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Xunit" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Inventario.Negocio\Inventario.Negocio.csproj" />
+  </ItemGroup>
+
+</Project>

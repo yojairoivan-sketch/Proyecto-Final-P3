@@ -10,5 +10,7 @@
   <Folder Name="/tests/">
     <Project Path="tests/Inventario.Core.ControlAcceso.Pruebas/Inventario.Core.ControlAcceso.Pruebas.csproj" />
     <Project Path="tests/Inventario.Core.GestionPermisos.Pruebas/Inventario.Core.GestionPermisos.Pruebas.csproj" />
+    <Project Path="tests/Inventario.Integracion.Pruebas/Inventario.Integracion.Pruebas.csproj" />
+    <Project Path="tests/Inventario.Negocio.Pruebas/Inventario.Negocio.Pruebas.csproj" />
   </Folder>
 </Solution>

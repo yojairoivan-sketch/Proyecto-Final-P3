@@ -7,7 +7,7 @@ namespace Inventario.Core.GestionPermisos;
 public static class ServiciosGestionPermisos
 {
     /// <summary>
-    /// Registra la interfaz provista por Gestión de permisos. Requiere de Control de acceso
+    /// Registra las interfaces provistas por Gestión de permisos. Requiere de Control de acceso
     /// IUsuarioActual e IOtorgamientoPermisos, y un TimeProvider.
     /// </summary>
     public static IServiceCollection AddGestionPermisos(
@@ -24,6 +24,7 @@ public static class ServiciosGestionPermisos
             .UseSnakeCaseNamingConvention());
 
         services.AddScoped<IServicioSolicitudes, ServicioSolicitudes>();
+        services.AddScoped<IPermisosConcedidos, PermisosConcedidos>();
         return services;
     }
 

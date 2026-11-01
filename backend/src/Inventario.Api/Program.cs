@@ -1,7 +1,10 @@
+using System.Text.Encodings.Web;
 using System.Text.Json.Serialization;
+using System.Text.Unicode;
 using Inventario.Api;
 using Inventario.Api.Acceso;
 using Inventario.Api.Errores;
+using Inventario.Api.Negocio;
 using Inventario.Api.Permisos;
 using Inventario.Core.ColaCorreos;
 using Inventario.Core.ControlAcceso;
@@ -20,17 +23,26 @@ var cadenaConexion = builder.Configuration.GetConnectionString("Inventario")
 builder.Services.AddSingleton<TimeProvider>(new RelojDelSistema());
 builder.Services.AgregarErroresControlados();
 builder.Services.ConfigureHttpJsonOptions(opciones =>
-    opciones.SerializerOptions.Converters.Add(new JsonStringEnumConverter()));
+{
+    opciones.SerializerOptions.Converters.Add(new JsonStringEnumConverter());
+    opciones.SerializerOptions.Converters.Add(new DecimalesSinCerosDeMas());
+    // Las tildes y las comillas «» salen tal cual (no como á), así las respuestas se leen bien también con curl.
+    opciones.SerializerOptions.Encoder = JavaScriptEncoder.Create(UnicodeRanges.All);
+});
 
 // Piezas del Core. La API solo encola: nunca habla con el servidor SMTP (RF-NOT-08).
 builder.Services.AddColaCorreos(cadenaConexion);
 builder.Services.AddControlAcceso(cadenaConexion, opciones =>
     opciones.UrlPublica = builder.Configuration["URL_PUBLICA"] ?? opciones.UrlPublica);
-// Lo que se puede pedir sale de la tabla de operaciones del host, así el Core no conoce las del negocio (RD-03).
+// Lo que se puede pedir sale de la tabla de operaciones del host y de los permisos del negocio,
+// así el Core no conoce las operaciones del negocio (RD-03).
 builder.Services.AddGestionPermisos(cadenaConexion, opciones =>
-    opciones.PermisosSolicitables = Operaciones.Solicitables.Select(o => new PermisoSolicitable(o.Nombre, o.Solicitable!)).ToList());
+    opciones.PermisosSolicitables = Operaciones.Solicitables
+        .Select(o => new PermisoSolicitable(o.Nombre, o.Solicitable!))
+        .Concat(PermisosNegocio.Solicitables)
+        .ToList());
 
-// Módulo de negocio: depende del Core, nunca al revés (RD-03).
+// Módulo de negocio: depende del Core (IUsuarioActual, IPermisosConcedidos), nunca al revés (RD-03).
 builder.Services.AddNegocio(cadenaConexion);
 
 // La credencial de sesión se valida en cada petición contra Control de acceso.
@@ -55,6 +67,7 @@ app.MapearSesion();
 app.MapearUsuarios();
 app.MapearContrasenas();
 app.MapearSolicitudes();
+app.MapearNegocio();
 
 app.VerificarQueTodoEndpointDeclareSuOperacion();
 

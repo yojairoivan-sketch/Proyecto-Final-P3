@@ -238,6 +238,50 @@ public sealed class SolicitudesPruebas : IDisposable
 
     [Fact]
     [Trait("Requisito", "RF-GP-05")]
+    public async Task UnaSolicitudPendienteNoConcedeElPermiso()
+    {
+        // Preparar
+        await entorno.CrearSolicitudAsync(Entorno.Ana, "ListarUsuarios");
+
+        // Actuar
+        var concedido = await entorno.Concedidos().EstaConcedidoAsync(Entorno.Ana.Id, "ListarUsuarios");
+
+        // Verificar
+        Assert.False(concedido);
+    }
+
+    [Fact]
+    [Trait("Requisito", "RF-GP-05")]
+    public async Task AlAprobarElPermisoConstaComoConcedidoSoloParaElSolicitante()
+    {
+        // Preparar
+        var id = await entorno.CrearSolicitudAsync(Entorno.Ana, "ListarUsuarios");
+
+        // Actuar
+        await entorno.Como(Entorno.Carla).AprobarAsync(id);
+
+        // Verificar
+        Assert.True(await entorno.Concedidos().EstaConcedidoAsync(Entorno.Ana.Id, "ListarUsuarios"));
+        Assert.False(await entorno.Concedidos().EstaConcedidoAsync(Entorno.Beto.Id, "ListarUsuarios"));
+    }
+
+    [Fact]
+    [Trait("Requisito", "RF-GP-05")]
+    public async Task UnaSolicitudRechazadaNoConcedeElPermiso()
+    {
+        // Preparar
+        var id = await entorno.CrearSolicitudAsync(Entorno.Ana, "ListarUsuarios");
+        await entorno.Como(Entorno.Carla).RechazarAsync(id, "No lo necesitas.");
+
+        // Actuar
+        var concedido = await entorno.Concedidos().EstaConcedidoAsync(Entorno.Ana.Id, "ListarUsuarios");
+
+        // Verificar
+        Assert.False(concedido);
+    }
+
+    [Fact]
+    [Trait("Requisito", "RF-GP-05")]
     public async Task SiOtorgarFallaLaSolicitudQuedaAprobadaSinAplicar()
     {
         // Preparar

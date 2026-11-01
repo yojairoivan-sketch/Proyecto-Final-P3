@@ -1,3 +1,4 @@
+using Inventario.Core.ControlAcceso;
 using Inventario.Negocio.Productos;
 using Inventario.Negocio.Proveedores;
 
@@ -17,6 +18,10 @@ public sealed class OrdenDeCompra
 
     public DateTimeOffset CreadaEn { get; private set; }
     public DateTimeOffset ActualizadaEn { get; private set; }
+
+    /// <summary>Sube con cada cambio. Si dos usuarios cambian la misma orden a la vez, el segundo en guardar falla.</summary>
+    public int Version { get; private set; }
+
     public IReadOnlyList<LineaOrdenCompra> Lineas => lineas;
 
     private OrdenDeCompra()
@@ -31,45 +36,41 @@ public sealed class OrdenDeCompra
         ActualizadaEn = ahora,
     };
 
-    public void AgregarLinea(Producto producto, decimal cantidad, decimal costoUnitario, DateTimeOffset ahora)
+    /// <summary>Solo una orden en Borrador admite líneas, y cada producto va una sola vez. Si no se puede, nada cambia.</summary>
+    public Resultado AgregarLinea(Producto producto, decimal cantidad, decimal costoUnitario, DateTimeOffset ahora)
     {
         if (!TransicionesOrdenCompra.AdmiteCambiosEnLineas(Estado))
-            throw new InvalidOperationException($"Solo se agregan líneas a una orden en {EstadoOrdenCompra.Borrador}.");
-        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(cantidad);
-        ArgumentOutOfRangeException.ThrowIfNegative(costoUnitario);
+            return Resultado.Falla(TipoFallo.Conflicto,
+                $"Solo se agregan líneas a una orden en {EstadoOrdenCompra.Borrador}. Esta orden está {Estado}.");
+
+        if (lineas.Any(linea => linea.Producto == producto))
+            return Resultado.Falla(TipoFallo.Conflicto,
+                $"{producto.Nombre} ya está en la orden. Cada producto va en una sola línea.");
 
         lineas.Add(LineaOrdenCompra.Crear(this, producto, cantidad, costoUnitario));
-        ActualizadaEn = ahora;
+        Cambio(ahora);
+        return Resultado.Ok($"Se agregó {producto.Nombre} a la orden.");
     }
 
     /// <summary>
-    /// Cambia el estado consultando únicamente <see cref="TransicionesOrdenCompra"/> (RD-04).
-    /// Si la transición es prohibida, no existe, el rol no alcanza o no se cumple la condición,
-    /// se rechaza y el estado no cambia (RF-NEG-04).
+    /// Intenta pasar la orden a <paramref name="hacia"/>. Lo resuelve únicamente <see cref="TransicionesOrdenCompra"/> (RD-04):
+    /// si la transición no está permitida, la ejecuta un rol que no debe o no se cumple su condición, se rechaza
+    /// y la orden queda como estaba (RF-NEG-04).
     /// </summary>
-    public ResultadoTransicion CambiarEstado(EstadoOrdenCompra hacia, string rol, DateTimeOffset ahora)
+    public Resultado CambiarEstado(EstadoOrdenCompra hacia, Responsable quien, DateTimeOffset ahora) =>
+        TransicionesOrdenCompra.Resolver(this, hacia, quien, ahora);
+
+    // Solo la llama la tabla de transiciones, después de comprobar todo.
+    internal void PasarA(EstadoOrdenCompra hacia, DateTimeOffset ahora)
     {
-        if (TransicionesOrdenCompra.BuscarProhibida(Estado, hacia) is { } prohibida)
-            return ResultadoTransicion.Rechazada(prohibida.Motivo);
-
-        if (TransicionesOrdenCompra.EsTerminal(Estado))
-            return ResultadoTransicion.Rechazada($"La orden está {Estado}, un estado terminal: ya no cambia de estado.");
-
-        if (TransicionesOrdenCompra.Buscar(Estado, hacia) is not { } transicion)
-            return ResultadoTransicion.Rechazada($"No se puede pasar una orden de {Estado} a {hacia}.");
-
-        if (!transicion.Quien.Contains(rol))
-            return ResultadoTransicion.Rechazada(
-                $"Pasar una orden de {Estado} a {hacia} es solo para: {string.Join(" o ", transicion.Quien)}.");
-
-        if (transicion.Validar?.Invoke(this) is { } motivo)
-            return ResultadoTransicion.Rechazada(motivo);
-
-        var desde = Estado;
-        transicion.AlAplicar?.Invoke(this);
         Estado = hacia;
+        Cambio(ahora);
+    }
+
+    private void Cambio(DateTimeOffset ahora)
+    {
         ActualizadaEn = ahora;
-        return ResultadoTransicion.Aplicada(desde, hacia);
+        Version++;
     }
 
     public decimal Total => lineas.Sum(l => l.Subtotal);

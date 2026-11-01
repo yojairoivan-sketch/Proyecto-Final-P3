@@ -64,6 +64,26 @@ public static class Operaciones
     public static readonly Operacion AprobarSolicitud = new(nameof(AprobarSolicitud), SoloAdministrador);
     public static readonly Operacion RechazarSolicitud = new(nameof(RechazarSolicitud), SoloAdministrador);
 
+    // Módulo de negocio (inventario). Consultar, armar órdenes y sacar mercancía: cualquier usuario con sesión.
+    public static readonly Operacion ConsultarProveedores = new(nameof(ConsultarProveedores), ConSesion);
+    public static readonly Operacion ConsultarProductos = new(nameof(ConsultarProductos), ConSesion);
+    public static readonly Operacion ConsultarStockBajo = new(nameof(ConsultarStockBajo), ConSesion);
+    public static readonly Operacion ConsultarMovimientos = new(nameof(ConsultarMovimientos), ConSesion);
+    public static readonly Operacion RegistrarSalida = new(nameof(RegistrarSalida), ConSesion);
+    public static readonly Operacion ConsultarOrdenesCompra = new(nameof(ConsultarOrdenesCompra), ConSesion);
+    public static readonly Operacion CrearOrdenCompra = new(nameof(CrearOrdenCompra), ConSesion);
+    public static readonly Operacion AgregarLineaOrden = new(nameof(AgregarLineaOrden), ConSesion);
+
+    // Con sesión, y luego el negocio afina: qué rol hace cada transición lo dice la máquina de estados
+    // (TransicionesOrdenCompra), y ajustar la existencia exige ser Administrador o tener el permiso
+    // aprobado en Gestión de permisos (ServicioExistencias). Así cada regla está en un solo lugar.
+    public static readonly Operacion CambiarEstadoOrden = new(nameof(CambiarEstadoOrden), ConSesion);
+    public static readonly Operacion AjustarExistencia = new(nameof(AjustarExistencia), ConSesion);
+
+    // Solo Administrador: el catálogo del negocio.
+    public static readonly Operacion RegistrarProveedor = new(nameof(RegistrarProveedor), SoloAdministrador);
+    public static readonly Operacion RegistrarProducto = new(nameof(RegistrarProducto), SoloAdministrador);
+
     /// <summary>Todas las operaciones declaradas arriba.</summary>
     public static IReadOnlyList<Operacion> Todas { get; } = typeof(Operaciones)
         .GetFields(BindingFlags.Public | BindingFlags.Static)

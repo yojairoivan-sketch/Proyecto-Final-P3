@@ -1,0 +1,32 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Prueba de integración: el módulo de negocio con Gestión de permisos y Control de acceso reales, sin dobles
+    de ninguno y sin levantar la aplicación. Cada pieza usa su propia base SQLite en memoria, como cada una
+    tiene su propio esquema en PostgreSQL.
+  -->
+
+  <PropertyGroup>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" />
+    <PackageReference Include="Microsoft.Extensions.TimeProvider.Testing" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="xunit" />
+    <PackageReference Include="xunit.runner.visualstudio" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Xunit" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Inventario.Core.ControlAcceso\Inventario.Core.ControlAcceso.csproj" />
+    <ProjectReference Include="..\..\src\Inventario.Core.GestionPermisos\Inventario.Core.GestionPermisos.csproj" />
+    <ProjectReference Include="..\..\src\Inventario.Negocio\Inventario.Negocio.csproj" />
+  </ItemGroup>
+
+</Project>

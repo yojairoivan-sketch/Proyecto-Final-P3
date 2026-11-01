@@ -49,6 +49,9 @@ public sealed class Entorno : IDisposable
     public IServicioSolicitudes ComoSistema() =>
         new ServicioSolicitudes(NuevoContexto(), new UsuarioActualFalso(null), Otorgamiento, Reloj, Opciones);
 
+    /// <summary>La consulta que usa el módulo de negocio, con un contexto nuevo.</summary>
+    public IPermisosConcedidos Concedidos() => new PermisosConcedidos(NuevoContexto());
+
     /// <summary>Crea una solicitud que nace bien, para preparar las pruebas que parten de ella.</summary>
     public async Task<int> CrearSolicitudAsync(UsuarioAutenticado solicitante, string permiso = "ListarUsuarios")
     {

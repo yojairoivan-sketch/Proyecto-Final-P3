@@ -2,7 +2,8 @@
 
   <!--
     Módulo de negocio: inventario para un negocio pequeño (proyecto #6).
-    Depende del Core (Control de acceso, para los roles); el Core nunca depende de este proyecto (RD-03).
+    Depende del Core: de Control de acceso (quién es el usuario y su rol) y de Gestión de permisos
+    (si tiene aprobado un permiso). El Core nunca depende de este proyecto (RD-03).
   -->
 
   <ItemGroup>
@@ -12,6 +13,12 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Inventario.Core.ControlAcceso\Inventario.Core.ControlAcceso.csproj" />
+    <ProjectReference Include="..\Inventario.Core.GestionPermisos\Inventario.Core.GestionPermisos.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Inventario.Negocio.Pruebas" />
+    <InternalsVisibleTo Include="Inventario.Integracion.Pruebas" />
   </ItemGroup>
 
 </Project>
