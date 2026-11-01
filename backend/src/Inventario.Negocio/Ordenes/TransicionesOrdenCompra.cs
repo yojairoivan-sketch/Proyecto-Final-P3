@@ -40,6 +40,7 @@ public static class TransicionesOrdenCompra
                     linea.Producto.RegistrarEntrada(linea.Cantidad, orden, quien, ahora);
             }),
         new(Enviada, Cancelada, SoloAdministrador, "Ninguna."),
+        new(Cancelada, Borrador, CualquierRol, "Ninguna."),
     ];
 
     /// <summary>
