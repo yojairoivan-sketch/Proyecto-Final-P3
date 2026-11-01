@@ -23,6 +23,71 @@ namespace Inventario.Negocio.Migraciones
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.Entity("Inventario.Negocio.Existencias.MovimientoExistencia", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<decimal>("Cantidad")
+                        .HasPrecision(12, 2)
+                        .HasColumnType("numeric(12,2)")
+                        .HasColumnName("cantidad");
+
+                    b.Property<decimal>("ExistenciaResultante")
+                        .HasPrecision(12, 2)
+                        .HasColumnType("numeric(12,2)")
+                        .HasColumnName("existencia_resultante");
+
+                    b.Property<string>("Motivo")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("motivo");
+
+                    b.Property<int?>("OrdenDeCompraId")
+                        .HasColumnType("integer")
+                        .HasColumnName("orden_de_compra_id");
+
+                    b.Property<int>("ProductoId")
+                        .HasColumnType("integer")
+                        .HasColumnName("producto_id");
+
+                    b.Property<DateTimeOffset>("RegistradoEn")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("registrado_en");
+
+                    b.Property<string>("Tipo")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("tipo");
+
+                    b.Property<int>("UsuarioId")
+                        .HasColumnType("integer")
+                        .HasColumnName("usuario_id");
+
+                    b.Property<string>("UsuarioNombre")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("usuario_nombre");
+
+                    b.HasKey("Id")
+                        .HasName("pk_movimientos_existencia");
+
+                    b.HasIndex("OrdenDeCompraId")
+                        .HasDatabaseName("ix_movimientos_existencia_orden_de_compra_id");
+
+                    b.HasIndex("ProductoId", "RegistradoEn")
+                        .HasDatabaseName("ix_movimientos_existencia_producto_id_registrado_en");
+
+                    b.ToTable("movimientos_existencia", "inventario");
+                });
+
             modelBuilder.Entity("Inventario.Negocio.Ordenes.LineaOrdenCompra", b =>
                 {
                     b.Property<int>("Id")
@@ -89,6 +154,11 @@ namespace Inventario.Negocio.Migraciones
                         .HasColumnType("integer")
                         .HasColumnName("proveedor_id");
 
+                    b.Property<int>("Version")
+                        .IsConcurrencyToken()
+                        .HasColumnType("integer")
+                        .HasColumnName("version");
+
                     b.HasKey("Id")
                         .HasName("pk_ordenes_de_compra");
 
@@ -142,6 +212,11 @@ namespace Inventario.Negocio.Migraciones
                         .HasColumnType("character varying(20)")
                         .HasColumnName("unidad_medida");
 
+                    b.Property<int>("Version")
+                        .IsConcurrencyToken()
+                        .HasColumnType("integer")
+                        .HasColumnName("version");
+
                     b.HasKey("Id")
                         .HasName("pk_productos");
 
@@ -187,6 +262,26 @@ namespace Inventario.Negocio.Migraciones
                     b.ToTable("proveedores", "inventario");
                 });
 
+            modelBuilder.Entity("Inventario.Negocio.Existencias.MovimientoExistencia", b =>
+                {
+                    b.HasOne("Inventario.Negocio.Ordenes.OrdenDeCompra", "OrdenDeCompra")
+                        .WithMany()
+                        .HasForeignKey("OrdenDeCompraId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_movimientos_existencia_ordenes_de_compra_orden_de_compra_id");
+
+                    b.HasOne("Inventario.Negocio.Productos.Producto", "Producto")
+                        .WithMany("Movimientos")
+                        .HasForeignKey("ProductoId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_movimientos_existencia_productos_producto_id");
+
+                    b.Navigation("OrdenDeCompra");
+
+                    b.Navigation("Producto");
+                });
+
             modelBuilder.Entity("Inventario.Negocio.Ordenes.LineaOrdenCompra", b =>
                 {
                     b.HasOne("Inventario.Negocio.Ordenes.OrdenDeCompra", "OrdenDeCompra")
@@ -223,6 +318,11 @@ namespace Inventario.Negocio.Migraciones
             modelBuilder.Entity("Inventario.Negocio.Ordenes.OrdenDeCompra", b =>
                 {
                     b.Navigation("Lineas");
+                });
+
+            modelBuilder.Entity("Inventario.Negocio.Productos.Producto", b =>
+                {
+                    b.Navigation("Movimientos");
                 });
 #pragma warning restore 612, 618
         }

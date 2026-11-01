@@ -19,6 +19,9 @@ public sealed class OrdenDeCompra
     public DateTimeOffset CreadaEn { get; private set; }
     public DateTimeOffset ActualizadaEn { get; private set; }
 
+    /// <summary>Sube con cada cambio. Si dos usuarios cambian la misma orden a la vez, el segundo en guardar falla.</summary>
+    public int Version { get; private set; }
+
     public IReadOnlyList<LineaOrdenCompra> Lineas => lineas;
 
     private OrdenDeCompra()
@@ -67,6 +70,7 @@ public sealed class OrdenDeCompra
     private void Cambio(DateTimeOffset ahora)
     {
         ActualizadaEn = ahora;
+        Version++;
     }
 
     public decimal Total => lineas.Sum(l => l.Subtotal);

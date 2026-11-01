@@ -37,7 +37,7 @@ public static class TransicionesOrdenCompra
             AlAplicar: (orden, quien, ahora) =>
             {
                 foreach (var linea in orden.Lineas)
-                    linea.Producto.RegistrarEntrada(linea.Cantidad);
+                    linea.Producto.RegistrarEntrada(linea.Cantidad, orden, quien, ahora);
             }),
         new(Enviada, Cancelada, SoloAdministrador, "Ninguna."),
     ];
