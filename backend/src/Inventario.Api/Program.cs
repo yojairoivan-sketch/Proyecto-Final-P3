@@ -2,6 +2,7 @@ using System.Text.Json.Serialization;
 using Inventario.Api;
 using Inventario.Api.Acceso;
 using Inventario.Api.Errores;
+using Inventario.Api.Negocio;
 using Inventario.Api.Permisos;
 using Inventario.Core.ColaCorreos;
 using Inventario.Core.ControlAcceso;
@@ -26,11 +27,15 @@ builder.Services.ConfigureHttpJsonOptions(opciones =>
 builder.Services.AddColaCorreos(cadenaConexion);
 builder.Services.AddControlAcceso(cadenaConexion, opciones =>
     opciones.UrlPublica = builder.Configuration["URL_PUBLICA"] ?? opciones.UrlPublica);
-// Lo que se puede pedir sale de la tabla de operaciones del host, así el Core no conoce las del negocio (RD-03).
+// Lo que se puede pedir sale de la tabla de operaciones del host y de los permisos del negocio,
+// así el Core no conoce las operaciones del negocio (RD-03).
 builder.Services.AddGestionPermisos(cadenaConexion, opciones =>
-    opciones.PermisosSolicitables = Operaciones.Solicitables.Select(o => new PermisoSolicitable(o.Nombre, o.Solicitable!)).ToList());
+    opciones.PermisosSolicitables = Operaciones.Solicitables
+        .Select(o => new PermisoSolicitable(o.Nombre, o.Solicitable!))
+        .Concat(PermisosNegocio.Solicitables)
+        .ToList());
 
-// Módulo de negocio: depende del Core, nunca al revés (RD-03).
+// Módulo de negocio: depende del Core (IUsuarioActual, IPermisosConcedidos), nunca al revés (RD-03).
 builder.Services.AddNegocio(cadenaConexion);
 
 // La credencial de sesión se valida en cada petición contra Control de acceso.
@@ -55,6 +60,7 @@ app.MapearSesion();
 app.MapearUsuarios();
 app.MapearContrasenas();
 app.MapearSolicitudes();
+app.MapearNegocio();
 
 app.VerificarQueTodoEndpointDeclareSuOperacion();
 
