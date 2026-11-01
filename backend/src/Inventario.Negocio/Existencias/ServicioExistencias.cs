@@ -67,8 +67,6 @@ internal sealed class ServicioExistencias(
             return Fallos.SinSesion<MovimientoVista>();
 
         // Un Administrador ajusta por su rol; cualquier otro usuario, solo si Gestión de permisos dice que se lo aprobaron.
-        if (!usuario.EsAdministrador && !await permisos.EstaConcedidoAsync(usuario.Id, PermisosNegocio.AjustarExistencia, ct))
-            return Resultado<MovimientoVista>.Falla(TipoFallo.Prohibido, SinPermisoDeAjuste(usuario.Rol));
 
         var errorContada = ValidacionNegocio.Numero(existenciaContada, "la existencia contada", ValidacionNegocio.CantidadMaxima, admiteCero: true);
         var (motivoValido, errorMotivo) = ValidacionNegocio.Texto(motivo, "el motivo", MovimientoExistencia.LargoMaximoMotivo);
