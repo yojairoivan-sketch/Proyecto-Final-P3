@@ -55,12 +55,14 @@ public sealed class TasasExchangeRateApiPruebas
         Assert.Empty(api.Pedidas);
     }
 
-    [Fact]
+    [Theory]
     [Trait("Requisito", "RD-08")]
-    public async Task UnaClaveInvalidaSeRechazaConUnMensajeQueNoMuestraLaClave()
+    [InlineData("invalid-key")]
+    [InlineData("inactive-account")]
+    public async Task UnaClaveQueLaApiNoAceptaSeRechazaConUnMensajeQueNoMuestraLaClave(string error)
     {
-        // Preparar: así responde ExchangeRate-API a una clave que no existe, como la de .env.example.
-        var api = new ApiFalsa(HttpStatusCode.Forbidden, """{"result":"error","error-type":"invalid-key"}""");
+        // Preparar: así responde ExchangeRate-API (HTTP 403) a una clave inventada, como la de .env.example.
+        var api = new ApiFalsa(HttpStatusCode.Forbidden, $$"""{"result":"error","error-type":"{{error}}","extra-info":"Please contact support."}""");
         var tasas = Cliente(api, clave: "clave-de-ejemplo");
 
         // Actuar
@@ -68,14 +70,13 @@ public sealed class TasasExchangeRateApiPruebas
 
         // Verificar
         Assert.Equal(TipoFallo.NoDisponible, resultado.Fallo);
-        Assert.Contains("rechazó la clave", resultado.Mensaje);
+        Assert.Contains("no aceptó la clave de TASA_CAMBIO_API_CLAVE", resultado.Mensaje);
         Assert.DoesNotContain("clave-de-ejemplo", resultado.Mensaje);
     }
 
     [Theory]
     [Trait("Requisito", "RD-08")]
     [InlineData("""{"result":"error","error-type":"quota-reached"}""", TipoFallo.NoDisponible)]
-    [InlineData("""{"result":"error","error-type":"inactive-account"}""", TipoFallo.NoDisponible)]
     [InlineData("""{"result":"error","error-type":"unsupported-code"}""", TipoFallo.Validacion)]
     [InlineData("""{"result":"error","error-type":"algo-nuevo"}""", TipoFallo.NoDisponible)]
     [InlineData("<html>502 Bad Gateway</html>", TipoFallo.NoDisponible)]

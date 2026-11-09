@@ -45,8 +45,11 @@ internal sealed class TasasExchangeRateApi(HttpClient http, OpcionesTasasDeCambi
         registro.LogWarning("La API de tasas de cambio respondió con error: {Error}.", cuerpo?.TipoError ?? "respuesta inesperada");
         return cuerpo?.TipoError switch
         {
-            "invalid-key" => NoDisponible($"El servicio de tasas de cambio rechazó la clave de {OpcionesTasasDeCambio.VariableClave}. Revisa que sea una clave válida de exchangerate-api.com."),
-            "inactive-account" => NoDisponible("La cuenta del servicio de tasas de cambio no está activa todavía (falta confirmar el correo del registro)."),
+            // Para una clave inventada (como la de .env.example) la API responde a veces invalid-key y a veces
+            // inactive-account: las dos significan que la clave no sirve, así que el mensaje es el mismo.
+            "invalid-key" or "inactive-account" => NoDisponible(
+                $"El servicio de tasas de cambio no aceptó la clave de {OpcionesTasasDeCambio.VariableClave} (respondió «{cuerpo.TipoError}»). " +
+                "Pon en .env tu clave de exchangerate-api.com, con la cuenta ya confirmada."),
             "quota-reached" => NoDisponible("Se agotaron las consultas del mes en el servicio de tasas de cambio. Intenta de nuevo más adelante."),
             "unsupported-code" => Resultado<TasaDeCambio>.Falla(TipoFallo.Validacion, $"El servicio de tasas de cambio no conoce la moneda {hacia}."),
             _ => NoDisponible("El servicio de tasas de cambio respondió algo inesperado. Intenta de nuevo más tarde."),
