@@ -1,5 +1,5 @@
-# Pruebas automáticas (RD-12): las suites de Control de acceso, de Gestión de permisos, del módulo de negocio
-# y la de integración del negocio con Gestión de permisos.
+# Pruebas automáticas (RD-12): las suites de Control de acceso, de Gestión de permisos, del Manejador de documentos,
+# del módulo de negocio y la de integración del negocio con Gestión de permisos.
 # No necesitan .env, ni la base de datos, ni la API, así que corren desde un clon recién hecho:
 #   docker compose -f docker-compose.pruebas.yml run --rm --build pruebas
 # Va aparte de docker-compose.yml porque ese archivo exige las variables de .env antes de hacer cualquier cosa.
