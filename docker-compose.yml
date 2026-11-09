@@ -28,6 +28,8 @@ services:
       ADMIN_NOMBRE: ${ADMIN_NOMBRE:?Falta ADMIN_NOMBRE en .env}
       ADMIN_CORREO: ${ADMIN_CORREO:?Falta ADMIN_CORREO en .env}
       ADMIN_CONTRASENA: ${ADMIN_CONTRASENA:?Falta ADMIN_CONTRASENA en .env}
+      # Clave de la API externa de tasas de cambio (RD-10). Opcional: sin ella la API arranca y solo la cotización se rechaza.
+      TASA_CAMBIO_API_CLAVE: ${TASA_CAMBIO_API_CLAVE:-}
     depends_on:
       db:
         condition: service_healthy

@@ -37,7 +37,8 @@ public static class ErroresControlados
         problema.Extensions.Remove("exception");
         problema.Title = Titulo(estado);
 
-        if (excepcion is not null || estado >= 500)
+        // Un 503 sin excepción es un rechazo controlado de la API (un servicio externo no está disponible): su mensaje se respeta.
+        if (excepcion is not null || (estado >= 500 && estado != 503))
         {
             // El mensaje de la excepción se queda en el log; al usuario solo le llega un texto fijo.
             problema.Detail = estado switch
@@ -64,6 +65,7 @@ public static class ErroresControlados
         413 => "Petición demasiado grande",
         415 => "Tipo de contenido no soportado",
         423 => "Cuenta bloqueada",
+        503 => "Servicio no disponible",
         _ when estado >= 500 => "Error del servidor",
         _ => "Error",
     };
@@ -76,6 +78,7 @@ public static class ErroresControlados
         404 => "El recurso pedido no existe.",
         405 => "Esta ruta no acepta ese método HTTP.",
         415 => "El cuerpo debe enviarse como application/json.",
+        503 => "Un servicio del que depende esta operación no está disponible. Intenta de nuevo más tarde.",
         _ => "No se pudo completar la petición.",
     };
 }

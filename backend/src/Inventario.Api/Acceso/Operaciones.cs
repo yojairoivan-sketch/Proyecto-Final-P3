@@ -80,6 +80,7 @@ public static class Operaciones
     public static readonly Operacion ConsultarOrdenesCompra = new(nameof(ConsultarOrdenesCompra), ConSesion);
     public static readonly Operacion CrearOrdenCompra = new(nameof(CrearOrdenCompra), ConSesion);
     public static readonly Operacion AgregarLineaOrden = new(nameof(AgregarLineaOrden), ConSesion);
+    public static readonly Operacion CotizarOrden = new(nameof(CotizarOrden), ConSesion);
 
     // Con sesión, y luego el negocio afina: qué rol hace cada transición lo dice la máquina de estados
     // (TransicionesOrdenCompra), y ajustar la existencia exige ser Administrador o tener el permiso

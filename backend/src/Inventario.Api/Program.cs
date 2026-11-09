@@ -13,6 +13,7 @@ using Inventario.Core.ControlAcceso.Usuarios;
 using Inventario.Core.Documentos;
 using Inventario.Core.GestionPermisos;
 using Inventario.Negocio;
+using Inventario.Negocio.Cotizaciones;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
 
@@ -49,7 +50,9 @@ builder.Services.AddDocumentos(cadenaConexion, opciones =>
     opciones.Carpeta = builder.Configuration["DOCUMENTOS_CARPETA"] ?? opciones.Carpeta);
 
 // Módulo de negocio: depende del Core (IUsuarioActual, IPermisosConcedidos), nunca al revés (RD-03).
-builder.Services.AddNegocio(cadenaConexion);
+// La clave de la API de tasas de cambio llega solo por variable de entorno (RD-10). Si falta, la API arranca igual.
+builder.Services.AddNegocio(cadenaConexion, tasas =>
+    tasas.Clave = builder.Configuration[OpcionesTasasDeCambio.VariableClave]);
 
 // La credencial de sesión se valida en cada petición contra Control de acceso.
 builder.Services.AddHttpContextAccessor();

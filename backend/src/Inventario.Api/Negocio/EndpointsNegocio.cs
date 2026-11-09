@@ -1,5 +1,6 @@
 using Inventario.Api.Acceso;
 using Inventario.Core.ControlAcceso;
+using Inventario.Negocio.Cotizaciones;
 using Inventario.Negocio.Existencias;
 using Inventario.Negocio.Ordenes;
 using Inventario.Negocio.Productos;
@@ -87,6 +88,11 @@ public static class EndpointsNegocio
         ordenes.MapPost("/{id:int}/estado", async (int id, CambioDeEstado cambio, IServicioOrdenes servicio, CancellationToken ct) =>
             Responder("orden", await servicio.CambiarEstadoAsync(id, cambio.Hacia, ct)))
             .Requiere(Operaciones.CambiarEstadoOrden);
+
+        // Usa la API externa de tasas de cambio. Sin clave o con la API caída: 503 con un mensaje, y lo demás sigue.
+        ordenes.MapGet("/{id:int}/cotizacion", async (int id, string? moneda, IServicioCotizaciones servicio, CancellationToken ct) =>
+            Responder("cotizacion", await servicio.CotizarOrdenAsync(id, moneda, ct)))
+            .Requiere(Operaciones.CotizarOrden);
 
         return app;
     }
