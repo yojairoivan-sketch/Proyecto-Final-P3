@@ -9,5 +9,5 @@ name: inventario-pruebas
 services:
   pruebas:
     build:
-      context: ./backend
+      context: .
       target: pruebas

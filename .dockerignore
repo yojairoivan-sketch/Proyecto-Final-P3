@@ -1,0 +1,32 @@
+# Lo que nunca se copia a la imagen. El contexto de construcción es la raíz del repositorio.
+
+# Historial de git
+.git
+.gitignore
+.gitattributes
+
+# Secretos: .env se lee en compose, no se hornea en la imagen
+.env
+.env.*
+
+# Dependencias instaladas y carpetas de compilación (se instalan y compilan dentro de la imagen)
+**/node_modules
+**/dist
+**/bin
+**/obj
+**/TestResults
+**/*.user
+
+# Editores y sistema operativo
+.vs
+.vscode
+.idea
+**/.DS_Store
+**/Thumbs.db
+
+# Lo que no hace falta para construir
+docs
+*.md
+Dockerfile
+.dockerignore
+docker-compose*.yml

@@ -1,5 +1,8 @@
-# Levanta todo con: docker compose up --build
-# Las variables salen de .env (copia .env.example y complétalo). Si falta una obligatoria, compose se detiene y la nombra.
+# Levanta todo el proyecto con un solo comando:   docker compose up --build
+# Antes, una sola vez: copia .env.example como .env (trae un valor de ejemplo para cada variable).
+# La aplicación responde en http://localhost:8080 (o en el WEB_PUERTO de .env). Es el único puerto publicado:
+# la base de datos, la API, Mailpit y el enviador solo se ven dentro de la composición, por su nombre de servicio.
+# Para detenerlo: docker compose down   (los datos quedan en los volúmenes; down -v sí los borra).
 
 services:
   db:
@@ -8,8 +11,7 @@ services:
       POSTGRES_DB: ${POSTGRES_DB:?Falta POSTGRES_DB en .env}
       POSTGRES_USER: ${POSTGRES_USER:?Falta POSTGRES_USER en .env}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Falta POSTGRES_PASSWORD en .env}
-    # Sin puerto publicado: así no choca con otro PostgreSQL de la máquina.
-    # Para leer la base: docker compose exec db psql -U <POSTGRES_USER> -d <POSTGRES_DB>
+    # Sin puerto publicado. Para leer la base: docker compose exec db psql -U <POSTGRES_USER> -d <POSTGRES_DB>
     volumes:
       - datos-postgres:/var/lib/postgresql/data
     healthcheck:
@@ -17,10 +19,11 @@ services:
       interval: 5s
       timeout: 5s
       retries: 10
+    restart: unless-stopped
 
   api:
     build:
-      context: ./backend
+      context: .
       target: api
     environment:
       ConnectionStrings__Inventario: Host=db;Port=5432;Database=${POSTGRES_DB};Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD};Gss Encryption Mode=Disable
@@ -30,34 +33,43 @@ services:
       ADMIN_CONTRASENA: ${ADMIN_CONTRASENA:?Falta ADMIN_CONTRASENA en .env}
       # Clave de la API externa de tasas de cambio (RD-10). Opcional: sin ella la API arranca y solo la cotización se rechaza.
       TASA_CAMBIO_API_CLAVE: ${TASA_CAMBIO_API_CLAVE:-}
+    volumes:
+      # Los archivos de los documentos (RF-DOC-05): un volumen con nombre, fuera de la imagen.
+      - documentos:/datos/documentos
     depends_on:
       db:
         condition: service_healthy
     restart: unless-stopped
 
   web:
-    build: ./frontend
+    build:
+      context: .
+      target: web
     ports:
       - "${WEB_PUERTO:-8080}:80"
     depends_on:
       - api
+      - mailpit
     restart: unless-stopped
 
-  # Servidor SMTP de pruebas: recibe todo y lo muestra en http://localhost:8025. No envía nada afuera.
+  # Servidor SMTP de pruebas: recibe todos los correos y no envía nada afuera. Su bandeja se ve en
+  # http://localhost:8080/correo/ (nginx la reenvía); no publica un puerto propio.
   mailpit:
     image: axllent/mailpit:v1.31
-    ports:
-      - "127.0.0.1:${MAILPIT_PUERTO:-8025}:8025"
+    environment:
+      MP_WEBROOT: correo
+      # Acepta cualquier usuario y contraseña SMTP, como los de ejemplo de .env.example.
+      MP_SMTP_AUTH_ACCEPT_ANY: "true"
+      MP_SMTP_AUTH_ALLOW_INSECURE: "true"
     restart: unless-stopped
 
-  # Proceso independiente que entrega la cola de correos (RF-NOT-09). No arranca con `up`:
-  #   docker compose run --rm enviador              una pasada
-  #   docker compose run --rm enviador --vigilar 10 repite cada 10 segundos
+  # Proceso independiente que entrega la cola de correos (RF-NOT-09): revisa la cola cada 5 segundos.
+  # Una pasada suelta, si la quieres: docker compose run --rm enviador
   enviador:
     build:
-      context: ./backend
+      context: .
       target: enviador
-    profiles: ["herramientas"]
+    command: ["--vigilar", "5"]
     environment:
       ConnectionStrings__Inventario: Host=db;Port=5432;Database=${POSTGRES_DB};Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD};Gss Encryption Mode=Disable
       SMTP_HOST: ${SMTP_HOST:?Falta SMTP_HOST en .env}
@@ -69,8 +81,12 @@ services:
     depends_on:
       db:
         condition: service_healthy
+    restart: unless-stopped
 
   # Las pruebas automáticas (RD-12) están en docker-compose.pruebas.yml: así corren sin .env.
 
 volumes:
+  # Usuarios, solicitudes, inventario y registros de documentos (RD-09).
   datos-postgres:
+  # Contenido de los documentos subidos (RF-DOC-05).
+  documentos:

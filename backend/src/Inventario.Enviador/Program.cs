@@ -1,3 +1,4 @@
+using System.Runtime.InteropServices;
 using Inventario.Core.ColaCorreos;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -10,6 +11,8 @@ using Microsoft.Extensions.Logging;
 
 var builder = Host.CreateApplicationBuilder(args);
 builder.Logging.SetMinimumLevel(LogLevel.Warning);
+// El fallo de una consulta ya se informa abajo con un mensaje corto; EF Core no lo repite con todo el detalle.
+builder.Logging.AddFilter("Microsoft.EntityFrameworkCore.Database.Command", LogLevel.None);
 
 var cadena = builder.Configuration.GetConnectionString("Inventario");
 if (string.IsNullOrWhiteSpace(cadena))
@@ -42,6 +45,12 @@ Console.CancelKeyPress += (_, e) =>
     e.Cancel = true;
     cancelar.Cancel();
 };
+// docker compose stop / down mandan SIGTERM: se termina la pasada en curso y se sale sin esperar a que lo maten.
+using var alTerminar = PosixSignalRegistration.Create(PosixSignal.SIGTERM, contexto =>
+{
+    contexto.Cancel = true;
+    cancelar.Cancel();
+});
 
 Console.WriteLine($"Servidor SMTP: {smtp}");
 
@@ -49,13 +58,22 @@ try
 {
     do
     {
-        await using (var alcance = host.Services.CreateAsyncScope())
+        try
         {
+            await using var alcance = host.Services.CreateAsyncScope();
             var procesador = alcance.ServiceProvider.GetRequiredService<ProcesadorCola>();
             var resumen = await procesador.ProcesarPendientesAsync(cancelar.Token);
-            Console.WriteLine(resumen is { Enviados: 0, ConError: 0 }
-                ? $"[{Hora()}] No hay correos pendientes."
-                : $"[{Hora()}] Enviados: {resumen.Enviados}. Con error (siguen pendientes): {resumen.ConError}.");
+            // Vigilando, solo se escribe cuando hubo algo que enviar: si no, el log se llenaría cada pocos segundos.
+            if (!vigilar || resumen is not { Enviados: 0, ConError: 0 })
+                Console.WriteLine(resumen is { Enviados: 0, ConError: 0 }
+                    ? $"[{Hora()}] No hay correos pendientes."
+                    : $"[{Hora()}] Enviados: {resumen.Enviados}. Con error (siguen pendientes): {resumen.ConError}.");
+        }
+        catch (Exception ex) when (vigilar && ex is not OperationCanceledException)
+        {
+            // Por ejemplo, la base todavía no tiene la tabla de la cola porque la API no terminó de arrancar.
+            // Vigilando, se avisa y se reintenta en la próxima pasada en vez de terminar el proceso.
+            Console.Error.WriteLine($"[{Hora()}] No se pudo procesar la cola: {ex.Message} Se reintenta en {segundos} s.");
         }
 
         if (vigilar)
