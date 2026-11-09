@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Pieza del Core: Manejador de documentos. Responde «¿qué archivos subiste y quién puede verlos?».
+    Requiere Control de acceso (quién es el usuario y qué rol tiene), solo por su interfaz IUsuarioActual.
+    Nunca referencia al módulo de negocio (RD-03).
+  -->
+
+  <ItemGroup>
+    <PackageReference Include="EFCore.NamingConventions" />
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Inventario.Core.ControlAcceso\Inventario.Core.ControlAcceso.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Inventario.Core.Documentos.Pruebas" />
+  </ItemGroup>
+
+</Project>

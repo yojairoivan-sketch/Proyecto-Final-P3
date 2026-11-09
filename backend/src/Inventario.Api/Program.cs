@@ -9,6 +9,7 @@ using Inventario.Api.Permisos;
 using Inventario.Core.ColaCorreos;
 using Inventario.Core.ControlAcceso;
 using Inventario.Core.ControlAcceso.Usuarios;
+using Inventario.Core.Documentos;
 using Inventario.Core.GestionPermisos;
 using Inventario.Negocio;
 using Microsoft.AspNetCore.Authentication;
@@ -42,6 +43,10 @@ builder.Services.AddGestionPermisos(cadenaConexion, opciones =>
         .Concat(PermisosNegocio.Solicitables)
         .ToList());
 
+// Manejador de documentos: los archivos van a una carpeta que en compose es el volumen «documentos» (RF-DOC-05).
+builder.Services.AddDocumentos(cadenaConexion, opciones =>
+    opciones.Carpeta = builder.Configuration["DOCUMENTOS_CARPETA"] ?? opciones.Carpeta);
+
 // Módulo de negocio: depende del Core (IUsuarioActual, IPermisosConcedidos), nunca al revés (RD-03).
 builder.Services.AddNegocio(cadenaConexion);
 
@@ -74,6 +79,7 @@ app.VerificarQueTodoEndpointDeclareSuOperacion();
 await app.Services.MigrarColaCorreosAsync();
 await app.Services.MigrarControlAccesoAsync();
 await app.Services.MigrarGestionPermisosAsync();
+await app.Services.MigrarDocumentosAsync();
 await app.Services.MigrarNegocioAsync();
 app.Logger.LogInformation("{Mensaje}", await app.Services.AsegurarAdministradorInicialAsync(
     builder.Configuration["ADMIN_NOMBRE"], builder.Configuration["ADMIN_CORREO"], builder.Configuration["ADMIN_CONTRASENA"]));
