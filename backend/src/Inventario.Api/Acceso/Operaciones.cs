@@ -64,6 +64,13 @@ public static class Operaciones
     public static readonly Operacion AprobarSolicitud = new(nameof(AprobarSolicitud), SoloAdministrador);
     public static readonly Operacion RechazarSolicitud = new(nameof(RechazarSolicitud), SoloAdministrador);
 
+    // Manejador de documentos: cualquier usuario con sesión. Qué documentos ve, descarga o elimina cada uno
+    // (los suyos; un Administrador, los de todos) lo decide la pieza en el servidor (ServicioDocumentos), una sola vez.
+    public static readonly Operacion SubirDocumento = new(nameof(SubirDocumento), ConSesion);
+    public static readonly Operacion ConsultarDocumentos = new(nameof(ConsultarDocumentos), ConSesion);
+    public static readonly Operacion DescargarDocumento = new(nameof(DescargarDocumento), ConSesion);
+    public static readonly Operacion EliminarDocumento = new(nameof(EliminarDocumento), ConSesion);
+
     // Módulo de negocio (inventario). Consultar, armar órdenes y sacar mercancía: cualquier usuario con sesión.
     public static readonly Operacion ConsultarProveedores = new(nameof(ConsultarProveedores), ConSesion);
     public static readonly Operacion ConsultarProductos = new(nameof(ConsultarProductos), ConSesion);

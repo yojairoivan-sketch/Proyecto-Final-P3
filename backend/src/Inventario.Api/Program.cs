@@ -3,6 +3,7 @@ using System.Text.Json.Serialization;
 using System.Text.Unicode;
 using Inventario.Api;
 using Inventario.Api.Acceso;
+using Inventario.Api.Documentos;
 using Inventario.Api.Errores;
 using Inventario.Api.Negocio;
 using Inventario.Api.Permisos;
@@ -72,6 +73,7 @@ app.MapearSesion();
 app.MapearUsuarios();
 app.MapearContrasenas();
 app.MapearSolicitudes();
+app.MapearDocumentos();
 app.MapearNegocio();
 
 app.VerificarQueTodoEndpointDeclareSuOperacion();

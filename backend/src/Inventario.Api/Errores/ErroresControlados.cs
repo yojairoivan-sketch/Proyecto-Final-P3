@@ -40,9 +40,12 @@ public static class ErroresControlados
         if (excepcion is not null || estado >= 500)
         {
             // El mensaje de la excepción se queda en el log; al usuario solo le llega un texto fijo.
-            problema.Detail = estado >= 500
-                ? "Ocurrió un error inesperado. Intenta de nuevo más tarde."
-                : "La petición no tiene el formato esperado. Revisa que el cuerpo sea JSON válido.";
+            problema.Detail = estado switch
+            {
+                >= 500 => "Ocurrió un error inesperado. Intenta de nuevo más tarde.",
+                413 => "La petición es demasiado grande.",
+                _ => "La petición no tiene el formato esperado. Revisa que el cuerpo sea JSON válido.",
+            };
         }
         else
         {
