@@ -22,6 +22,7 @@ public static class RespuestasHttp
             TipoFallo.NoEncontrado => StatusCodes.Status404NotFound,
             TipoFallo.Conflicto => StatusCodes.Status409Conflict,
             TipoFallo.Bloqueado => StatusCodes.Status423Locked,
+            TipoFallo.NoDisponible => StatusCodes.Status503ServiceUnavailable,
             _ => StatusCodes.Status400BadRequest,
         });
 }

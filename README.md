@@ -13,17 +13,18 @@ Instituto Tecnológico de las Américas (ITLA) — Cuatrimestre **2026-C-3**
 
 Aplicación web para que un negocio pequeño lleve el control de su inventario: **órdenes de compra** a proveedores, **movimientos de stock** y **alertas de stock bajo**. Como todos los proyectos del curso, tiene dos partes: el **Core** (la misma especificación para los 25 proyectos) y el **módulo de negocio** (inventario).
 
-## Estado: Práctica 3 — El módulo de negocio, sus pruebas y su integración
+## Estado: Práctica 4 — El proyecto en un contenedor, con documentos y una API externa
 
-Entregado en la etiqueta `practica-3`:
+Entregado en la etiqueta `practica-4`:
 
-- **El módulo de negocio funcionando** (RF-NEG-02 a 06 y 09): siete funcionalidades separables sobre proveedores, productos, órdenes de compra y movimientos de existencia, todas detrás de una sesión válida y de su verificación de rol. La máquina de estados de la orden de compra vive en un solo punto del código. Ver [cómo provocar cada funcionalidad](#8-módulo-de-negocio-inventario-rf-neg-02-a-06-y-09).
-- **Una operación del negocio depende de Gestión de permisos:** ajustar la existencia es para Administradores. Un Estándar la pide con una solicitud y solo puede ajustar cuando un Administrador se la aprueba ([funcionalidad 6](#funcionalidad-6-ajuste-por-conteo-físico-con-gestión-de-permisos)).
-- **La suite de la máquina de estados** (`Inventario.Negocio.Pruebas`): al menos una prueba por cada fila de las tablas de [`docs/maquina-de-estados.md`](docs/maquina-de-estados.md) y por los estados terminales, además de pruebas de cada funcionalidad.
-- **Una prueba de integración** (`Inventario.Integracion.Pruebas`) con Control de acceso, Gestión de permisos y el negocio reales, sin dobles y sin la aplicación levantada.
-- **Cuatro defectos plantados**, cada uno en su etiqueta `practica-3-defecto-1` a `practica-3-defecto-4`, sobre un commit cuyo padre es `practica-3`. Ver [Defectos](#defectos).
-- Las cuatro suites corren con [un solo comando](#pruebas). Control de acceso y Gestión de permisos siguen como antes (secciones 1 a 5 y 9).
-- Entró por el pull request [#17](https://github.com/yojairoivan-sketch/Proyecto-Final-P3/pull/17).
+- **El Manejador de documentos** (pieza 3 del Core, RF-DOC-01 a 05): subir un archivo registrando nombre, tipo, tamaño, fecha y quién lo subió; listar solo los propios (un Administrador ve los de todos) y nunca los eliminados; descargar y eliminar solo su dueño o un Administrador, verificado en el servidor (RD-06); eliminar es lógico. Un archivo ausente, vacío o de más de 10 MB se rechaza con un mensaje (RD-07). Tiene pantalla, `/documentos`. Ver [cómo provocar cada criterio](#10-manejador-de-documentos-rf-doc-01-a-05).
+- **Todo el proyecto con un solo comando** desde un clon limpio: `cp .env.example .env` y `docker compose up --build`. Hay un `Dockerfile` y un `.dockerignore` en la raíz, y solo la aplicación publica un puerto (http://localhost:8080). Ver [Contenedor](#contenedor).
+- **Los datos sobreviven a `docker compose down`:** los archivos de los documentos viven en el volumen con nombre `documentos`, y la base (usuarios, solicitudes, inventario y registros de documentos) en `datos-postgres`. Ver la [sección 7](#7-reinicio-y-persistencia-rd-09-y-rf-doc-05).
+- **Una API externa con su clave como secreto:** cotizar una orden de compra en otra moneda usa la tasa de cambio de ExchangeRate-API. La clave llega por la variable `TASA_CAMBIO_API_CLAVE` desde `.env`, que no se versiona. Sin clave, o con la API caída, la cotización se rechaza con un mensaje y lo demás sigue funcionando. Ver [API externa](#api-externa).
+- **Pruebas nuevas:** la suite del Manejador de documentos (35) y las de la cotización y el cliente de la API (27). Todas siguen corriendo con [un solo comando](#pruebas). Control de acceso, Gestión de permisos y el negocio siguen como antes (secciones 1 a 5, 8 y 9).
+- Entró por el pull request [#18](https://github.com/yojairoivan-sketch/Proyecto-Final-P3/pull/18).
+
+Antes, en la etiqueta `practica-3`: el **módulo de negocio** (RF-NEG-02 a 06 y 09), con siete funcionalidades y la máquina de estados de la orden de compra en un solo punto; una operación que depende de Gestión de permisos (ajustar la existencia); la suite de la máquina de estados; una prueba de integración, y **cuatro defectos plantados** en `practica-3-defecto-1` a `practica-3-defecto-4` ([detalle](#práctica-3-máquina-de-la-orden-de-compra-e-integración)). Entró por el pull request [#17](https://github.com/yojairoivan-sketch/Proyecto-Final-P3/pull/17).
 
 Antes, en la etiqueta `practica-2`: la **suite de Gestión de permisos ampliada** a 63 pruebas, con cada requisito de RF-GP-01 a RF-GP-07 nombrado en sus pruebas, y **seis defectos plantados (variante A)** en las etiquetas `practica-2-defecto-1` a `practica-2-defecto-6` ([detalle](#práctica-2-gestión-de-permisos-variante-a)). Entró por el pull request [#16](https://github.com/yojairoivan-sketch/Proyecto-Final-P3/pull/16).
 
@@ -33,7 +34,7 @@ Antes, en la etiqueta `practica-1`: **Control de acceso completo** (RF-CA-01 a R
 
 ## Diagrama de componentes
 
-Un solo contenedor (la aplicación) con las seis piezas del Core y el módulo de negocio. Cada flecha va de la pieza que **requiere** a la que **provee**, y la etiqueta dice para qué. El Core nunca apunta al módulo de negocio (RD-03).
+Las seis piezas del Core y el módulo de negocio viven dentro de la API (los contenedores están en [Contenedor](#contenedor)). Cada flecha va de la pieza que **requiere** a la que **provee**, y la etiqueta dice para qué. El Core nunca apunta al módulo de negocio (RD-03).
 
 ```mermaid
 flowchart LR
@@ -41,7 +42,7 @@ flowchart LR
         ACC["<b>Control de acceso</b><br/>¿quién eres y qué rol tienes?<br/>✅ Práctica 1"]
         NOTI["<b>Notificaciones</b><br/>avisos y cola de correos<br/>✅ cola mínima · S11–S12"]
         PERM["<b>Gestión de permisos</b><br/>solicitud → aprobación<br/>✅ Asignación 2"]
-        DOC["<b>Manejador de documentos</b><br/>subir, listar, borrado lógico<br/>S9"]
+        DOC["<b>Manejador de documentos</b><br/>subir, listar, borrado lógico<br/>✅ Práctica 4"]
         REP["<b>Reportes</b><br/>agregación filtrada por rol<br/>S12"]
         AUD["<b>Auditoría</b><br/>quién hizo qué y cuándo<br/>S14"]
     end
@@ -69,84 +70,87 @@ Casi todas las piezas registran sus acciones en Auditoría; esa flecha punteada 
 | Control de acceso | `backend/src/Inventario.Core.ControlAcceso` | `IUsuarioActual` («¿quién es y qué rol?»), `IOtorgamientoPermisos` («desde ahora este usuario puede ejecutar esta operación»), `IServicioCuentas`, `IServicioSesiones`, `IServicioContrasenas`, `IServicioUsuarios` |
 | Gestión de permisos | `backend/src/Inventario.Core.GestionPermisos` | `IServicioSolicitudes` (pedir, consultar, aprobar y rechazar), `IPermisosConcedidos` («¿este usuario tiene aprobado este permiso?») y la máquina de estados `TransicionesSolicitud` |
 | Notificaciones (cola de correos) | `backend/src/Inventario.Core.ColaCorreos` | `IColaCorreos.EncolarAsync` y `ProcesadorCola` |
-| Módulo de negocio | `backend/src/Inventario.Negocio` | `IServicioProveedores`, `IServicioProductos`, `IServicioOrdenes`, `IServicioExistencias` y la máquina de estados `TransicionesOrdenCompra` |
+| Manejador de documentos | `backend/src/Inventario.Core.Documentos` | `IServicioDocumentos` (subir, listar, consultar, descargar y eliminar) e `IAlmacenArchivos` (dónde vive el contenido de cada archivo) |
+| Módulo de negocio | `backend/src/Inventario.Negocio` | `IServicioProveedores`, `IServicioProductos`, `IServicioOrdenes`, `IServicioExistencias`, `IServicioCotizaciones` y la máquina de estados `TransicionesOrdenCompra`. Requiere `ITasasDeCambio`, que implementa el cliente de la API externa |
 | Host de la API | `backend/src/Inventario.Api` | Endpoints HTTP delgados y la tabla de roles por operación (`Acceso/Operaciones.cs`) |
 | Enviador | `backend/src/Inventario.Enviador` | Proceso aparte que entrega la cola por SMTP |
 
-Cada pieza tiene su propio esquema en PostgreSQL (`control_acceso`, `gestion_permisos`, `cola_correos` e `inventario`). Ninguna lee las tablas de otra: todo pasa por interfaces. Por ejemplo, Gestión de permisos pregunta quién es el usuario con `IUsuarioActual` y otorga el permiso aprobado con `IOtorgamientoPermisos`; nunca toca las tablas de Control de acceso. Del mismo modo, el negocio le pregunta a Gestión de permisos con `IPermisosConcedidos` si un usuario tiene aprobado un permiso, sin conocer los estados de una solicitud. Ningún proyecto `Inventario.Core.*` referencia a `Inventario.Negocio`.
+Cada pieza tiene su propio esquema en PostgreSQL (`control_acceso`, `gestion_permisos`, `cola_correos`, `documentos` e `inventario`). Ninguna lee las tablas de otra: todo pasa por interfaces. Por ejemplo, Gestión de permisos pregunta quién es el usuario con `IUsuarioActual` y otorga el permiso aprobado con `IOtorgamientoPermisos`; nunca toca las tablas de Control de acceso. Del mismo modo, el negocio le pregunta a Gestión de permisos con `IPermisosConcedidos` si un usuario tiene aprobado un permiso, sin conocer los estados de una solicitud. Ningún proyecto `Inventario.Core.*` referencia a `Inventario.Negocio`.
 
 ## Requisitos
 
 - **Docker Desktop** con Docker Compose v2 (`docker compose version`), ya iniciado.
 - **Git**. Los comandos de abajo funcionan en Git Bash y en PowerShell, salvo los de `curl`, que están escritos para **Git Bash** (en Windows PowerShell 5.1, `curl` es otro comando).
-- Puertos libres: **8080** (la aplicación) y **8025** (Mailpit). PostgreSQL no publica puerto, así que no choca con otro que tengas instalado.
+- El puerto **8080** libre. Es el único que publica el proyecto: PostgreSQL, la API y Mailpit solo se ven dentro de la composición, así que no chocan con otros que tengas instalados. Si el 8080 está ocupado, cambia `WEB_PUERTO` y `URL_PUBLICA` en `.env`.
 
 No hace falta instalar .NET, Node ni PostgreSQL: todo se compila y corre dentro de Docker.
 
-## Cómo ejecutarlo
+## Contenedor
+
+El proyecto completo corre en contenedores y arranca con **un solo comando**. Desde un clon limpio:
 
 ```bash
 git clone https://github.com/yojairoivan-sketch/Proyecto-Final-P3.git
 cd Proyecto-Final-P3
-git checkout practica-3
+git checkout practica-4
 cp .env.example .env
+docker compose up --build
 ```
 
-Abre `.env` y completa los valores vacíos (la tabla de abajo dice qué es cada uno):
+Copiar `.env.example` a `.env` es el único paso previo: trae un valor de ejemplo para cada variable (en PowerShell, `Copy-Item .env.example .env`). La primera vez tarda unos minutos, porque descarga las imágenes y compila. Está listo cuando el registro de `api` dice `Now listening on: http://[::]:8080`. Si quieres recuperar la terminal, agrega `-d`: `docker compose up --build -d`.
 
-- `POSTGRES_PASSWORD`: cualquier contraseña.
-- `ADMIN_NOMBRE`, `ADMIN_CORREO` y `ADMIN_CONTRASENA`: el primer Administrador. La contraseña debe tener de 8 a 128 caracteres, con letras y números.
-- `SMTP_REMITENTE` y, si quieres que el correo llegue a una bandeja real, el resto de `SMTP_*` (ver [Correo real](#correo-real-gmail)). Con los valores por defecto los correos llegan a Mailpit.
-
-Después:
-
-```bash
-docker compose up --build -d
-```
-
-La primera vez tarda unos minutos, porque descarga las imágenes y compila. Cuando termine:
-
-| Qué | Dónde |
+| Qué | Dirección |
 |---|---|
-| Aplicación (React) | http://localhost:8080 |
-| API | http://localhost:8080/api (por ejemplo, http://localhost:8080/api/salud) |
-| Bandeja de Mailpit (correo de pruebas) | http://localhost:8025 |
+| **La aplicación** (React) | **http://localhost:8080** |
+| La API | http://localhost:8080/api (por ejemplo, http://localhost:8080/api/salud) |
+| La bandeja del correo de pruebas (Mailpit) | http://localhost:8080/correo/ |
 
-La portada dice «API: conectada». Para ver los registros de la API: `docker compose logs api`.
+La portada dice «API: conectada». El primer Administrador se crea al arrancar con los datos de `.env`; con los de ejemplo, entra con **`admin@inventario.local`** y **`Admin12345`**.
 
-**Enviar los correos.** Las operaciones solo dejan los correos en la cola. Para entregarlos, corre el enviador:
+**Para detenerlo:** `Ctrl+C` en la terminal de `up` (o `docker compose stop`), y luego `docker compose down`. `down` borra los contenedores, pero no los volúmenes: los datos y los documentos vuelven en el siguiente `docker compose up`. Solo `docker compose down -v` borra los volúmenes.
 
-```bash
-docker compose run --rm enviador
-```
+**La receta.** [`Dockerfile`](Dockerfile), en la raíz, construye la imagen de la aplicación en etapas: `api`, `web`, `enviador` y `pruebas`, y cada servicio elige la suya con `target`. [`.dockerignore`](.dockerignore) deja fuera el historial de git, `.env`, `node_modules`, `bin`, `obj` y `dist`.
 
-Hace una pasada y termina. Si prefieres que los envíe solo cada 10 segundos, déjalo corriendo en otra terminal con `docker compose run --rm enviador --vigilar 10` (Ctrl+C lo detiene).
+**La composición** ([`docker-compose.yml`](docker-compose.yml)). Los servicios se encuentran por su nombre (`db`, `api`, `mailpit`), nunca por `localhost`. No hay pasos a mano: la API crea o actualiza sus tablas al arrancar.
 
-Para apagar todo: `docker compose down`. Los datos quedan en el volumen y vuelven en el siguiente `up`. `docker compose down -v` sí borra la base.
+| Servicio | Qué hace | Puerto publicado |
+|---|---|---|
+| `web` | nginx con la aplicación React. Reenvía `/api/` a `api` y `/correo/` a `mailpit`. | `8080` (o `WEB_PUERTO`) |
+| `api` | La API (.NET 10), con las piezas del Core y el negocio. Al arrancar crea las tablas y el primer Administrador. | ninguno |
+| `db` | PostgreSQL 17. | ninguno |
+| `enviador` | Proceso aparte que entrega la cola de correos cada 5 segundos (RF-NOT-09). | ninguno |
+| `mailpit` | Servidor SMTP de pruebas: recibe los correos y no envía nada afuera. | ninguno |
+
+| Volumen | Qué guarda |
+|---|---|
+| `datos-postgres` | La base de datos: usuarios, sesiones, solicitudes, inventario y los registros de los documentos (RD-09). |
+| `documentos` | El contenido de los documentos subidos, montado en `/datos/documentos` del servicio `api` (RF-DOC-05). Nunca queda dentro de la imagen. |
+
+Los registros se ven con `docker compose logs api` (o `web`, `enviador`). Para leer la base: `docker compose exec db psql -U inventario -d inventario`.
 
 ### Variables de entorno
 
-Todas van en `.env`, que nunca se sube al repositorio. `.env.example` trae los nombres y solo los valores que no son secretos.
+Todas van en `.env`, que nunca se sube al repositorio (`.gitignore` lo excluye). [`.env.example`](.env.example) las trae todas, cada una con un valor de ejemplo con el que el proyecto arranca. Para un uso real, cambia las contraseñas y pon tu clave de la API.
 
-| Variable | Para qué | Obligatoria |
+| Variable | Para qué | Valor de ejemplo |
 |---|---|---|
-| `POSTGRES_DB` | Nombre de la base de datos. | Sí (trae `inventario`) |
-| `POSTGRES_USER` | Usuario de la base de datos. | Sí (trae `inventario`) |
-| `POSTGRES_PASSWORD` | Contraseña de ese usuario. | Sí, la eliges tú |
-| `URL_PUBLICA` | Dirección con la que se abre la aplicación; con ella se arman los enlaces de los correos. | Sí (trae `http://localhost:8080`) |
-| `ADMIN_NOMBRE` | Nombre del primer Administrador, que se crea al arrancar si no existe. | Sí |
-| `ADMIN_CORREO` | Correo con el que entra ese Administrador. | Sí |
-| `ADMIN_CONTRASENA` | Su contraseña (8 a 128 caracteres, con letras y números). | Sí |
-| `SMTP_HOST` | Servidor de correo saliente. | Sí (trae `mailpit`) |
-| `SMTP_PUERTO` | Puerto de ese servidor. | Sí (trae `1025`) |
-| `SMTP_SEGURIDAD` | `Ninguna`, `StartTls` o `SslAlConectar`. | Sí (trae `Ninguna`) |
-| `SMTP_USUARIO` | Usuario del servidor de correo. | Solo si el servidor pide autenticación |
-| `SMTP_CONTRASENA` | Contraseña de ese usuario (en Gmail, una contraseña de aplicación). | Solo si el servidor pide autenticación |
-| `SMTP_REMITENTE` | Dirección que aparece como remitente. | Sí |
-| `WEB_PUERTO` | Puerto de la aplicación en tu máquina, si el 8080 está ocupado. Si lo cambias, cambia también `URL_PUBLICA`. | No (8080) |
-| `MAILPIT_PUERTO` | Puerto de la bandeja de Mailpit, si el 8025 está ocupado. | No (8025) |
+| `POSTGRES_DB` | Nombre de la base de datos. | `inventario` |
+| `POSTGRES_USER` | Usuario de la base de datos. | `inventario` |
+| `POSTGRES_PASSWORD` | Contraseña de ese usuario. | `clave-de-ejemplo-123` |
+| `URL_PUBLICA` | Dirección con la que se abre la aplicación; con ella se arman los enlaces de los correos. | `http://localhost:8080` |
+| `WEB_PUERTO` | Puerto de tu equipo en el que responde la aplicación. Si lo cambias, cambia también `URL_PUBLICA`. | `8080` |
+| `ADMIN_NOMBRE` | Nombre del primer Administrador, que se crea al arrancar si no existe. | `Administrador` |
+| `ADMIN_CORREO` | Correo con el que entra ese Administrador. | `admin@inventario.local` |
+| `ADMIN_CONTRASENA` | Su contraseña (8 a 128 caracteres, con letras y números). | `Admin12345` |
+| `SMTP_HOST` | Servidor de correo saliente. | `mailpit` |
+| `SMTP_PUERTO` | Puerto de ese servidor. | `1025` |
+| `SMTP_SEGURIDAD` | `Ninguna`, `StartTls` o `SslAlConectar`. | `Ninguna` |
+| `SMTP_USUARIO` | Usuario del servidor de correo. Mailpit acepta cualquiera. | `inventario` |
+| `SMTP_CONTRASENA` | Su contraseña (en Gmail, una contraseña de aplicación). | `clave-de-ejemplo` |
+| `SMTP_REMITENTE` | Dirección que aparece como remitente. | `inventario@inventario.local` |
+| `TASA_CAMBIO_API_CLAVE` | Clave de ExchangeRate-API (ver [API externa](#api-externa)). Con el valor de ejemplo, la cotización se rechaza con un mensaje y lo demás funciona. | `clave-de-ejemplo` |
 
-Si falta una variable obligatoria, `docker compose` se detiene y dice cuál. Solo el enviador recibe las variables `SMTP_*`: la API no las tiene, así que una operación nunca habla con el servidor de correo.
+Si falta una variable obligatoria, `docker compose` se detiene y dice cuál. Solo el enviador recibe las variables `SMTP_*`, así que una operación de la API nunca habla con el servidor de correo; y solo la API recibe `TASA_CAMBIO_API_CLAVE`.
 
 ### Correo real (Gmail)
 
@@ -159,15 +163,82 @@ Para que los correos lleguen a una bandeja real (por ejemplo, al registrarte con
    - `SMTP_SEGURIDAD=StartTls`
    - `SMTP_USUARIO` y `SMTP_REMITENTE`: tu dirección de Gmail.
    - `SMTP_CONTRASENA`: la contraseña de aplicación, sin espacios.
-3. Después de cada operación que manda correo, corre `docker compose run --rm enviador` (o déjalo con `--vigilar 10`). El correo llega a la bandeja del destinatario y su enlace abre `URL_PUBLICA`.
+3. Aplica el cambio con `docker compose up -d`, que vuelve a crear el enviador con las variables nuevas. Desde ahí, cada correo llega a la bandeja del destinatario en unos segundos y su enlace abre `URL_PUBLICA`.
 
-No hace falta reiniciar la API: el enviador lee `.env` cada vez que se ejecuta.
+## API externa
+
+| | |
+|---|---|
+| **Qué API es** | [ExchangeRate-API](https://www.exchangerate-api.com), tasas de cambio entre monedas. Exige una clave; el plan gratis la da al registrarse. |
+| **Qué operación la usa** | **Cotizar una orden de compra en otra moneda** (funcionalidad 8 del negocio): `GET /api/ordenes/{id}/cotizacion?moneda=USD`. Los costos del inventario se registran en pesos dominicanos (DOP). La operación toma el total de la orden, le pide a la API la tasa DOP → moneda y devuelve el total convertido, redondeado a 2 decimales. Sirve, por ejemplo, para pagarle en dólares a un proveedor del exterior. |
+| **Variable** | `TASA_CAMBIO_API_CLAVE`, en `.env`. Compose se la pasa solo a `api`, y el código la lee de la variable de entorno (RD-10). |
+| **Código** | [`TasasExchangeRateApi.cs`](backend/src/Inventario.Negocio/Cotizaciones/TasasExchangeRateApi.cs) (el cliente de la API) y [`ServicioCotizaciones.cs`](backend/src/Inventario.Negocio/Cotizaciones/ServicioCotizaciones.cs) (la operación). |
+
+La clave no está en el código, ni en el `Dockerfile`, ni en `docker-compose.yml`, ni en la imagen, ni en ningún commit: solo en tu `.env`, que `.gitignore` excluye. La API la recibe en la ruta de la URL, así que esa URL nunca se escribe en el registro.
+
+**Para usar tu clave:** regístrate gratis en https://www.exchangerate-api.com, confirma tu correo, copia la clave que te dan y ponla en `.env` (`TASA_CAMBIO_API_CLAVE=tu-clave`). Después corre `docker compose up -d`, que vuelve a crear `api` con la variable nueva.
+
+**Un ejemplo real.** Esta es la orden de la [sección 8](#funcionalidad-3-armar-una-orden-de-compra) (10 sacos de arroz a 850 DOP y 24 botellas de aceite a 210.50 DOP), cotizada en dólares:
+
+```bash
+curl -s "$API/ordenes/$ORDEN/cotizacion?moneda=USD" -H "$E"
+```
+
+Respuesta obtenida el 9 de noviembre de 2026, hora de República Dominicana (formateada para leerla):
+
+```json
+{
+  "mensaje": "La orden 3 suma 13,552.00 DOP, unos 222.79 USD con la tasa de ExchangeRate-API.",
+  "cotizacion": {
+    "ordenId": 3,
+    "proveedor": "Molinos del Norte",
+    "estado": "Borrador",
+    "monedaOrden": "DOP",
+    "total": 13552,
+    "moneda": "USD",
+    "tasa": 0.01644,
+    "totalConvertido": 222.79,
+    "tasaActualizadaEn": "2026-11-10T00:00:01+00:00",
+    "fuente": "ExchangeRate-API"
+  }
+}
+```
+
+Para esa cotización, ExchangeRate-API respondió esto a `GET https://v6.exchangerate-api.com/v6/<clave>/pair/DOP/USD` (sin la clave):
+
+```json
+{
+  "result": "success",
+  "documentation": "https://www.exchangerate-api.com/docs",
+  "terms_of_use": "https://www.exchangerate-api.com/terms",
+  "time_last_update_unix": 1794268801,
+  "time_last_update_utc": "Tue, 10 Nov 2026 00:00:01 +0000",
+  "time_next_update_unix": 1794355201,
+  "time_next_update_utc": "Wed, 11 Nov 2026 00:00:01 +0000",
+  "base_code": "DOP",
+  "target_code": "USD",
+  "conversion_rate": 0.01644
+}
+```
+
+La cuenta: 13 552 DOP × 0.01644 = 222.79 USD, redondeado a 2 decimales.
+
+**Sin clave o con la API caída (RD-07, RD-08).** La cotización responde **503** con un mensaje que se entiende, y el resto del proyecto sigue funcionando:
+
+| Situación | Respuesta |
+|---|---|
+| La clave de ejemplo de `.env.example` | 503: «El servicio de tasas de cambio no aceptó la clave de TASA_CAMBIO_API_CLAVE (respondió «invalid-key»). Pon en .env tu clave de exchangerate-api.com, con la cuenta ya confirmada.» Para una clave inventada, la API a veces responde `inactive-account` en vez de `invalid-key`; el mensaje es el mismo. |
+| `TASA_CAMBIO_API_CLAVE` vacía o sin definir | 503: «La cotización en otra moneda no está disponible: falta la clave de la API de tasas de cambio (variable TASA_CAMBIO_API_CLAVE en .env).» No se llama a la API. |
+| La API no responde (sin red, caída o más de 10 s) | 503: «El servicio de tasas de cambio no respondió. Intenta de nuevo en unos minutos.» |
+| Se agotaron las consultas del mes | 503: «Se agotaron las consultas del mes en el servicio de tasas de cambio…» |
+
+Lo que pasa cuando la API no responde se comprueba en las pruebas, sin internet: `SiLaApiNoRespondeSeRechazaSinExcepcion` y `SiLaApiTardaDemasiadoSeRechazaSinExcepcion` ([Pruebas](#pruebas)). Para verlo en la aplicación, apaga la red del equipo y repite la cotización. Las filas para provocar cada caso están en la [funcionalidad 8](#funcionalidad-8-cotizar-una-orden-en-otra-moneda-api-externa).
 
 ## Cómo provocar cada criterio de aceptación
 
 Control de acceso y Gestión de permisos se pueden probar desde la interfaz (http://localhost:8080) o armando la petición a mano con `curl`; el módulo de negocio, con `curl`. Los `curl` de abajo son para **Git Bash**. En los textos que mandes con `curl` (por ejemplo un motivo de rechazo), no uses tildes: en Windows, `curl.exe` manda los argumentos en otra codificación y la API responde «La petición no tiene el formato esperado». Desde la interfaz las tildes funcionan bien.
 
-Control de acceso (Práctica 1) está en las secciones 1 a 5, el módulo de negocio (Práctica 3) en la [sección 8](#8-módulo-de-negocio-inventario-rf-neg-02-a-06-y-09) y Gestión de permisos en la [sección 9](#9-gestión-de-permisos-rf-gp-01-a-07). Las suites y los defectos no necesitan la aplicación levantada: están en [Pruebas](#pruebas) y [Defectos](#defectos).
+Control de acceso (Práctica 1) está en las secciones 1 a 5, el módulo de negocio (Práctica 3) en la [sección 8](#8-módulo-de-negocio-inventario-rf-neg-02-a-06-y-09), Gestión de permisos en la [sección 9](#9-gestión-de-permisos-rf-gp-01-a-07) y el Manejador de documentos (Práctica 4) en la [sección 10](#10-manejador-de-documentos-rf-doc-01-a-05). Para los `curl`, usa los datos del Administrador de `.env` (con los de ejemplo, `admin@inventario.local` y `Admin12345`). Las suites y los defectos no necesitan la aplicación levantada: están en [Pruebas](#pruebas) y [Defectos](#defectos).
 
 **Preparación.** Para leer la base de datos:
 
@@ -189,7 +260,7 @@ TOKEN=$(curl -s http://localhost:8080/api/acceso/sesion -H 'Content-Type: applic
 |---|---|---|
 | Registro | En `/registro` crea una cuenta con tu correo y una contraseña válida (por ejemplo `clave1234`). | «Cuenta creada. Te enviamos un correo con el enlace para activarla.» |
 | Login antes de activar | En `/iniciar-sesion` entra con esa cuenta. | «La cuenta no está activa. Ábrela con el enlace que te enviamos por correo.» (403) |
-| El correo sale por la cola | `docker compose run --rm enviador` y abre el correo (en tu bandeja o en http://localhost:8025). | Llega «Activa tu cuenta de Inventario» con el enlace. |
+| El correo sale por la cola | Espera unos segundos (el enviador revisa la cola cada 5) y abre http://localhost:8080/correo/ (o tu bandeja, si configuraste Gmail). | Llega «Activa tu cuenta de Inventario» con el enlace. |
 | Abrir el enlace | Ábrelo. | «Cuenta activada. Ya puedes iniciar sesión.» |
 | Abrirlo por segunda vez | Vuelve a abrir el mismo enlace. | «Este enlace de activación ya se usó…» (400). La cuenta no cambia. |
 | Correo duplicado | Regístrate otra vez con el mismo correo. | «Ya existe una cuenta con ese correo.» (409) |
@@ -232,7 +303,8 @@ La contraseña no aparece en ninguna columna, y los dos hashes son distintos. Es
 | ConsultarMiCuenta, CerrarSesion, CambiarMiContrasena, ConsultarPermisosSolicitables, CrearSolicitudPermiso, ConsultarMisSolicitudes, ConsultarSolicitud | Administrador o Estándar |
 | CambiarRol, DesactivarUsuario, ForzarRestablecimiento, ConsultarSolicitudesPendientes, AprobarSolicitud, RechazarSolicitud | Administrador |
 | ListarUsuarios, ReactivarUsuario | Administrador, o quien recibió ese permiso con una solicitud aprobada ([sección 9](#9-gestión-de-permisos-rf-gp-01-a-07)) |
-| Negocio: ConsultarProveedores, ConsultarProductos, ConsultarStockBajo, ConsultarMovimientos, RegistrarSalida, ConsultarOrdenesCompra, CrearOrdenCompra, AgregarLineaOrden | Administrador o Estándar |
+| Documentos: SubirDocumento, ConsultarDocumentos, DescargarDocumento, EliminarDocumento | Administrador o Estándar; luego la pieza deja ver, descargar y eliminar cada documento solo a su dueño o a un Administrador ([sección 10](#10-manejador-de-documentos-rf-doc-01-a-05)) |
+| Negocio: ConsultarProveedores, ConsultarProductos, ConsultarStockBajo, ConsultarMovimientos, RegistrarSalida, ConsultarOrdenesCompra, CrearOrdenCompra, AgregarLineaOrden, CotizarOrden | Administrador o Estándar |
 | Negocio: RegistrarProveedor, RegistrarProducto | Administrador |
 | Negocio: CambiarEstadoOrden | Administrador o Estándar; luego la máquina de estados dice qué rol hace cada transición ([`TransicionesOrdenCompra.cs`](backend/src/Inventario.Negocio/Ordenes/TransicionesOrdenCompra.cs)) |
 | Negocio: AjustarExistencia | Administrador o Estándar; luego el negocio exige ser Administrador o tener el permiso aprobado en Gestión de permisos ([`ServicioExistencias.cs`](backend/src/Inventario.Negocio/Existencias/ServicioExistencias.cs)) |
@@ -254,39 +326,45 @@ Las dos últimas filas no repiten la regla en dos lugares: `Operaciones.cs` exig
 | Para comprobar | Haz esto | Resultado esperado |
 |---|---|---|
 | Respuesta idéntica | En `/recuperar` pide el código con un correo inexistente y con uno registrado. | Los dos: «Si el correo corresponde a una cuenta activa, te enviamos un código…». |
-| Código por la cola | `docker compose run --rm enviador` y abre el correo «Código para restablecer tu contraseña…». | Trae el código y el enlace `/restablecer?codigo=...`, que vence en 30 minutos. |
+| Código por la cola | Espera unos segundos y abre en http://localhost:8080/correo/ el correo «Código para restablecer tu contraseña…». | Trae el código y el enlace `/restablecer?codigo=...`, que vence en 30 minutos. |
 | Usar el código | Abre el enlace y define una contraseña nueva. | «Contraseña cambiada…». |
 | Usarlo otra vez | Vuelve a enviar el mismo código. | «Este código de recuperación ya se usó…» (400). La contraseña no cambia. |
 | Contraseña vieja y nueva | Inicia sesión con la vieja y luego con la nueva. | La vieja da 401; la nueva entra. |
 | Credencial emitida antes | Guarda un `TOKEN` antes de restablecer y úsalo después: `curl -i http://localhost:8080/api/yo -H "Authorization: Bearer $TOKEN"` | 401. |
 | Código vencido | Pide otro código, corre en `psql` `update control_acceso.codigos_recuperacion set vence_en = now() - interval '1 minute' where not usado;` y úsalo. | «El código de recuperación venció. Pide uno nuevo.» (400). La contraseña no cambia. |
-| Restablecimiento forzado | Como Administrador, en `/usuarios` pulsa «Forzar restablecimiento» en otro usuario. | Su contraseña anterior y sus sesiones dejan de servir en ese momento. Al correr el enviador le llega «Un administrador restableció tu contraseña…» con el código. |
+| Restablecimiento forzado | Como Administrador, en `/usuarios` pulsa «Forzar restablecimiento» en otro usuario. | Su contraseña anterior y sus sesiones dejan de servir en ese momento. En unos segundos le llega «Un administrador restableció tu contraseña…» con el código. |
 | Cambio con la actual incorrecta | En `/cuenta`, cambia la contraseña escribiendo mal la actual. | «La contraseña actual no es correcta. La contraseña no cambió.» (400) |
 | Cambio correcto | Cambia la contraseña con la actual correcta. | Todas las sesiones se cierran (también la actual) y hay que entrar con la nueva. La nueva también debe cumplir la política. |
 
 ### 6. Correo por cola (RF-NOT-08, 09, 12 y 13)
 
-1. Apaga el servidor de correo de pruebas: `docker compose stop mailpit`.
-2. Registra un usuario nuevo en `/registro`. La operación termina bien: la API nunca habla con el servidor SMTP.
-3. En `psql`: `select id, destinatario, estado, intentos, ultimo_error from cola_correos.correos_en_cola order by id;`. El correo está **Pendiente**.
-4. Corre el enviador con el servidor apagado: `docker compose run --rm enviador`. El correo cuenta como «Con error (siguen pendientes)». En la tabla sigue Pendiente, con `intentos = 1` y el error en `ultimo_error`.
-5. Enciende el servidor (`docker compose start mailpit`) y corre el enviador **dos veces**. La primera lo envía («Enviados: …»); la segunda dice «No hay correos pendientes.». En Mailpit el correo aparece una sola vez.
+El enviador es un proceso aparte (el servicio `enviador`) que revisa la cola cada 5 segundos. La API nunca habla con el servidor SMTP: solo deja el correo en la cola.
 
-Si usas Gmail en vez de Mailpit, el paso 1 se hace apuntando el enviador a un servidor que no existe solo para esa ejecución: `docker compose run --rm -e SMTP_HOST=no-existe.invalid enviador`.
+1. Apaga el servidor de correo de pruebas: `docker compose stop mailpit`.
+2. Registra un usuario nuevo en `/registro`. La operación termina bien.
+3. En `psql`: `select id, destinatario, estado, intentos, ultimo_error from cola_correos.correos_en_cola order by id;`. El correo está **Pendiente**; con cada pasada del enviador `intentos` sube y `ultimo_error` dice por qué no salió (por ejemplo, `SocketException: Name or service not known`). `docker compose logs enviador` muestra «Con error (siguen pendientes): 1».
+4. Enciende el servidor: `docker compose start mailpit`. En unos segundos el enviador lo entrega («Enviados: 1» en `docker compose logs enviador`) y en la tabla queda **Enviado**. En http://localhost:8080/correo/ aparece una sola vez: las pasadas siguientes no lo vuelven a mandar.
+
+Para ver que la cola guarda el correo aunque no haya enviador: `docker compose stop enviador`, registra a alguien (queda Pendiente con `intentos = 0`) y `docker compose start enviador`. Si usas Gmail en vez de Mailpit, esta es la forma de probarlo.
 
 Las credenciales SMTP solo están en `.env` (fuera del repositorio) y se leen como variables de entorno.
 
-### 7. Reinicio (RD-09)
+### 7. Reinicio y persistencia (RD-09 y RF-DOC-05)
 
-```bash
-docker compose restart
-```
+Los datos viven en dos volúmenes con nombre, fuera de la imagen y de los contenedores: `datos-postgres` (la base) y `documentos` (los archivos subidos).
 
-Los usuarios siguen ahí: entra con cualquiera de ellos. También sobreviven a `docker compose down` + `docker compose up -d`, porque la base vive en el volumen `datos-postgres`.
+1. Sube un documento en `/documentos` (o como en la [sección 10](#10-manejador-de-documentos-rf-doc-01-a-05)).
+2. `docker compose down` (sin `-v`): borra los contenedores.
+3. `docker compose up -d`: los vuelve a crear.
+4. Inicia sesión con el mismo usuario: entra sin problema. En `/documentos` el documento sigue en el listado, y «Descargar» trae el mismo contenido. Con `curl`, repite el listado y la descarga de la sección 10.
+
+`docker volume ls` muestra los dos volúmenes (`<carpeta>_datos-postgres` y `<carpeta>_documentos`). Para ver los archivos guardados: `docker compose exec -T api sh -c 'ls -l $DOCUMENTOS_CARPETA'`. Cada archivo tiene un nombre que genera la aplicación; el nombre original está en la tabla `documentos.documentos`.
+
+`docker compose restart` también lo conserva todo.
 
 ### 8. Módulo de negocio: inventario (RF-NEG-02 a 06 y 09)
 
-El negocio lleva el inventario de una tienda pequeña: a quién se le compra, qué productos hay y cuántos, las órdenes de compra y cada movimiento de la existencia. Son siete funcionalidades separables: cada una tiene su servicio, sus endpoints y sus pruebas, y se puede probar sin las demás.
+El negocio lleva el inventario de una tienda pequeña: a quién se le compra, qué productos hay y cuántos, las órdenes de compra y cada movimiento de la existencia. Son ocho funcionalidades separables: cada una tiene su servicio, sus endpoints y sus pruebas, y se puede probar sin las demás.
 
 | # | Funcionalidad | Endpoints | Pruebas |
 |---|---|---|---|
@@ -297,6 +375,7 @@ El negocio lleva el inventario de una tienda pequeña: a quién se le compra, qu
 | 5 | Salidas de mercancía e historial de movimientos | `POST /api/productos/{id}/salidas`, `GET /api/productos/{id}/movimientos` | `ExistenciasPruebas` |
 | 6 | Ajuste por conteo físico, con permiso de Gestión de permisos | `POST /api/productos/{id}/ajuste` | `ExistenciasPruebas`, `AjusteConPermisoPruebas` (integración) |
 | 7 | Alerta de stock bajo | `GET /api/productos/stock-bajo` | `CatalogoPruebas` |
+| 8 | Cotizar una orden en otra moneda, con la [API externa](#api-externa) | `GET /api/ordenes/{id}/cotizacion?moneda=USD` | `CotizacionesPruebas`, `TasasExchangeRateApiPruebas` |
 
 **Protegidas por Control de acceso (RF-NEG-06).** Todos los endpoints del negocio declaran su operación en [`Operaciones.cs`](backend/src/Inventario.Api/Acceso/Operaciones.cs) (tabla de la [sección 4](#4-roles-y-administración-rf-ca-04-05-06-08-20-y-21-rd-06)): sin sesión válida dan 401 y con un rol que no alcanza, 403. Los servicios del negocio vuelven a exigir la sesión, así que tampoco se ejecutan sin ella si alguien los llama sin pasar por la API.
 
@@ -308,7 +387,7 @@ El negocio lleva el inventario de una tienda pequeña: a quién se le compra, qu
 
 ```bash
 token() { curl -s http://localhost:8080/api/acceso/sesion -H 'Content-Type: application/json' -d "{\"correo\":\"$1\",\"contrasena\":\"$2\"}" | sed -nE 's/.*"token":"([^"]+)".*/\1/p'; }
-TOKEN_ADMIN=$(token admin@tu-correo.com TuClaveDeAdmin1)
+TOKEN_ADMIN=$(token admin@inventario.local Admin12345)
 TOKEN_EST=$(token estandar@tu-correo.com clave1234)
 API=http://localhost:8080/api; J='Content-Type: application/json'; A="Authorization: Bearer $TOKEN_ADMIN"; E="Authorization: Bearer $TOKEN_EST"
 primer_id() { tee /dev/stderr | grep -o '"id":[0-9]*' | head -1 | cut -d: -f2; }
@@ -404,6 +483,19 @@ Si en lugar de aprobar la solicitud un Administrador la rechaza (sección 9), el
 |---|---|---|
 | Productos por debajo de su punto de reorden | `curl -s $API/productos/stock-bajo -H "$E"` | Solo el arroz (existencia 3, punto de reorden 5), con `"stockBajo":true`. El aceite (20 de 12) no sale. |
 
+#### Funcionalidad 8: cotizar una orden en otra moneda (API externa)
+
+Usa la tasa de cambio de ExchangeRate-API ([API externa](#api-externa)). Los costos de las órdenes están en pesos dominicanos (DOP).
+
+| Para comprobar | Haz esto | Resultado esperado |
+|---|---|---|
+| Con la clave de ejemplo de `.env.example` | `curl -i "$API/ordenes/$ORDEN/cotizacion?moneda=USD" -H "$E"` | 503: «El servicio de tasas de cambio no aceptó la clave de TASA_CAMBIO_API_CLAVE (respondió «invalid-key»)…» (o «inactive-account»). |
+| El resto sigue funcionando | `curl -s $API/ordenes/$ORDEN -H "$E"` | 200 con la orden. |
+| Con tu clave en `.env` | Pon tu clave en `.env`, corre `docker compose up -d` y repite la cotización. | 200: «La orden … suma 13,552.00 DOP, unos … USD con la tasa de ExchangeRate-API.», con `tasa`, `totalConvertido` y `tasaActualizadaEn` (ver el [ejemplo real](#api-externa)). |
+| Moneda inválida (RD-07) | `curl -i "$API/ordenes/$ORDEN/cotizacion?moneda=DOLAR" -H "$E"` y luego con `moneda=DOP` | 400: «Indica la moneda con su código de tres letras (moneda), por ejemplo USD o EUR.» y 400: «Los costos de la orden ya están en DOP. Elige otra moneda, por ejemplo USD o EUR.» No se llama a la API. |
+| Orden que no existe | `curl -i "$API/ordenes/9999/cotizacion?moneda=USD" -H "$E"` | 404: «La orden de compra no existe.» |
+| Sin sesión | `curl -i "$API/ordenes/$ORDEN/cotizacion?moneda=USD"` | 401: «Necesitas iniciar sesión para usar esta operación.» |
+
 #### Reinicio (RD-09)
 
 `docker compose restart` y, con los mismos tokens, `curl -s $API/ordenes -H "$E"` y `curl -s $API/productos/$ARROZ/movimientos -H "$E"`. Las órdenes, los productos con su existencia y todos los movimientos siguen ahí.
@@ -451,7 +543,7 @@ stateDiagram-v2
 
 ```bash
 token() { curl -s http://localhost:8080/api/acceso/sesion -H 'Content-Type: application/json' -d "{\"correo\":\"$1\",\"contrasena\":\"$2\"}" | sed -nE 's/.*"token":"([^"]+)".*/\1/p'; }
-TOKEN_ADMIN=$(token admin@tu-correo.com TuClaveDeAdmin1)
+TOKEN_ADMIN=$(token admin@inventario.local Admin12345)
 TOKEN_EST=$(token estandar@tu-correo.com clave1234)
 echo "$TOKEN_ADMIN / $TOKEN_EST"
 ```
@@ -482,15 +574,66 @@ Sobre «Rechazada → Aplicada»: ninguna operación de la API pasa una solicitu
 
 Si la aplicación se detuviera justo entre aprobar y otorgar el permiso, la solicitud quedaría Aprobada. Al arrancar, la API aplica las que hayan quedado así.
 
-### 10. Historial
+### 10. Manejador de documentos (RF-DOC-01 a 05)
+
+Pieza 3 del Core, en [`backend/src/Inventario.Core.Documentos`](backend/src/Inventario.Core.Documentos). Todas sus operaciones exigen una sesión válida. La regla «solo el dueño o un Administrador» vive en [`ServicioDocumentos.cs`](backend/src/Inventario.Core.Documentos/ServicioDocumentos.cs), en el servidor: también se rechaza a quien llama a la API directamente, sin pasar por la pantalla (RD-06).
+
+| Operación | Endpoint | Quién |
+|---|---|---|
+| SubirDocumento (RF-DOC-01) | `POST /api/documentos`, un formulario multipart con el archivo en el campo `archivo` | Cualquier usuario con sesión |
+| ConsultarDocumentos (RF-DOC-01 y 02) | `GET /api/documentos` (el listado) y `GET /api/documentos/{id}` (un registro) | Cada usuario ve los suyos y un Administrador, los de todos. Con `?eliminados=true` (solo el Administrador) el listado incluye los eliminados. |
+| DescargarDocumento (RF-DOC-03) | `GET /api/documentos/{id}/contenido` | Su dueño o un Administrador |
+| EliminarDocumento (RF-DOC-04) | `DELETE /api/documentos/{id}` | Su dueño o un Administrador |
+
+**Dónde queda guardado (RF-DOC-05).** El registro está en la tabla `documentos.documentos` de PostgreSQL: nombre, tipo, tamaño en bytes, fecha, quién lo subió (`subido_por_id` y `subido_por_nombre`) y, si se eliminó, cuándo y quién (`eliminado_en` y `eliminado_por_id`). El contenido está en el volumen `documentos`, con un nombre que genera la aplicación, nunca el que mandó el usuario. Un documento puede pesar hasta 10 MB.
+
+**En la interfaz:** enlace «Documentos» de la barra (`/documentos`). Tiene «Subir un documento», la tabla con «Descargar» y «Eliminar» y, para un Administrador, la casilla «Mostrar también los eliminados».
+
+**Preparación con `curl`.** Necesitas dos usuarios Estándar, Ana (la dueña) y Beto (otro usuario), y el Administrador. La función `cuenta` registra una cuenta, espera su correo de activación en Mailpit y abre el enlace. Si ya tienes dos cuentas Estándar activas, sáltala y usa las tuyas en `token`. En Git Bash:
+
+```bash
+API=http://localhost:8080/api; J='Content-Type: application/json'
+token() { curl -s $API/acceso/sesion -H "$J" -d "{\"correo\":\"$1\",\"contrasena\":\"$2\"}" | sed -nE 's/.*"token":"([^"]+)".*/\1/p'; }
+cuenta() {
+  curl -s $API/acceso/registro -H "$J" -d "{\"nombre\":\"$1\",\"correo\":\"$2\",\"contrasena\":\"clave1234\"}"; echo
+  for i in $(seq 20); do ID=$(curl -s "http://localhost:8080/correo/api/v1/search?query=to:$2" | grep -o '"ID":"[^"]*"' | head -1 | cut -d'"' -f4); [ -n "$ID" ] && break; sleep 1; done
+  curl -s $API/acceso/activar -H "$J" -d "{\"token\":\"$(curl -s http://localhost:8080/correo/view/$ID.txt | grep -o 'token=[A-Za-z0-9_-]*' | cut -d= -f2)\"}"; echo
+}
+cuenta Ana ana@ejemplo.com; cuenta Beto beto@ejemplo.com
+TOKEN_ANA=$(token ana@ejemplo.com clave1234); TOKEN_BETO=$(token beto@ejemplo.com clave1234); TOKEN_ADMIN=$(token admin@inventario.local Admin12345)
+printf 'Factura 0042: 12 cajas de agua\n' > factura.txt
+echo "$TOKEN_ANA / $TOKEN_BETO / $TOKEN_ADMIN"
+```
+
+`cuenta` imprime «Cuenta creada…» y «Cuenta activada. Ya puedes iniciar sesión.» por cada usuario, y la última línea muestra los tres tokens. Sigue las filas en orden: cada una usa lo que dejó la anterior.
+
+| Para comprobar | Haz esto | Resultado esperado |
+|---|---|---|
+| Subir (RF-DOC-01) | `DOC=$(curl -s $API/documentos -H "Authorization: Bearer $TOKEN_ANA" -F "archivo=@factura.txt;type=text/plain" \| tee /dev/stderr \| grep -o '"id":[0-9]*' \| head -1 \| cut -d: -f2); echo; echo $DOC` | 201: «Documento «factura.txt» subido.», con `nombre`, `tipo` (`text/plain`), `tamanoBytes` (31), `subidoEn`, `subidoPorId` y `subidoPorNombre` (Ana). El número queda en `DOC`. En la interfaz: «Subir un documento». |
+| El registro se consulta | `curl -s $API/documentos/$DOC -H "Authorization: Bearer $TOKEN_ANA"`. En la base: `docker compose exec -T db psql -U inventario -d inventario -c "select id, nombre, tipo, tamano_bytes, subido_en, subido_por_id, subido_por_nombre, eliminado_en from documentos.documentos"` | Los mismos cinco datos: nombre, tipo, tamaño, fecha y quién lo subió. |
+| Listar lo propio (RF-DOC-02) | `curl -s $API/documentos -H "Authorization: Bearer $TOKEN_ANA"` y luego con `$TOKEN_BETO` | Ana ve su documento. Beto recibe `[]`: no ve los de otros usuarios. |
+| El Administrador ve los de todos | `curl -s $API/documentos -H "Authorization: Bearer $TOKEN_ADMIN"` | El documento de Ana, con `"subidoPorNombre":"Ana"`. |
+| Descargar (RF-DOC-03) | `curl -s $API/documentos/$DOC/contenido -H "Authorization: Bearer $TOKEN_ANA"` y luego con `$TOKEN_ADMIN` | Los dos reciben `Factura 0042: 12 cajas de agua`. Con `-i` se ve `Content-Disposition: attachment; filename=factura.txt`. En la interfaz: «Descargar». |
+| Otro Estándar no descarga (RF-DOC-03, RD-06) | `curl -i $API/documentos/$DOC/contenido -H "Authorization: Bearer $TOKEN_BETO"` | 403: «El documento … no es tuyo. Solo quien lo subió o un Administrador puede descargarlo.» |
+| Otro Estándar no elimina (RD-06) | `curl -i -X DELETE $API/documentos/$DOC -H "Authorization: Bearer $TOKEN_BETO"` | 403: «El documento … no es tuyo. Solo quien lo subió o un Administrador puede eliminarlo.» Sigue en el listado de Ana. |
+| Sin sesión | `curl -i $API/documentos` y `curl -i $API/documentos -F "archivo=@factura.txt"` | 401: «Necesitas iniciar sesión para usar esta operación.» No se guarda nada. |
+| Archivo vacío o ausente (RD-07) | `: > vacio.txt; curl -i $API/documentos -H "Authorization: Bearer $TOKEN_ANA" -F "archivo=@vacio.txt"` y `curl -i -X POST $API/documentos -H "Authorization: Bearer $TOKEN_ANA"` | 400: «El archivo está vacío. Sube un archivo con contenido.» y 400: «Envía el archivo en un formulario multipart/form-data, en el campo «archivo».» Ninguno se guarda. |
+| Archivo de más de 10 MB (RD-07) | `head -c 11000000 /dev/zero > grande.bin; curl -i $API/documentos -H "Authorization: Bearer $TOKEN_ANA" -F "archivo=@grande.bin"` | 413: «El archivo pasa del máximo de 10 MB. No se guardó.» |
+| Eliminar (RF-DOC-04) | `curl -i -X DELETE $API/documentos/$DOC -H "Authorization: Bearer $TOKEN_ANA"`. En la interfaz: «Eliminar». | 200: «Documento «factura.txt» eliminado. Ya no aparece en el listado; su registro se conserva.» |
+| Ya no se lista ni se descarga | Repite el listado y la descarga de Ana. | `[]` y 404: «El documento … no existe o fue eliminado.» |
+| El registro sigue (eliminación lógica) | Repite la consulta a la base de arriba o, como Administrador: `curl -s "$API/documentos?eliminados=true" -H "Authorization: Bearer $TOKEN_ADMIN"` | La fila sigue ahí, con `eliminado_en` y `eliminado_por_id`. El archivo también sigue en el volumen: `docker compose exec -T api sh -c 'ls -l $DOCUMENTOS_CARPETA'`. |
+| Persistencia (RF-DOC-05) | Sigue la [sección 7](#7-reinicio-y-persistencia-rd-09-y-rf-doc-05). | El documento se lista y se descarga después de `docker compose down` y `up`. |
+
+### 11. Historial
 
 ```bash
 git log --oneline --graph --all
 git ls-files
-git log -p | grep -iE "SMTP_CONTRASENA=|POSTGRES_PASSWORD=|ADMIN_CONTRASENA="
+git log --all -p | grep -iE "TASA_CAMBIO_API_CLAVE=|SMTP_CONTRASENA=|POSTGRES_PASSWORD=|ADMIN_CONTRASENA="
+git log --all --oneline -- .env
 ```
 
-Cada funcionalidad entró por su pull request, fusionado con merge commit. `.env` no está en el repositorio. La búsqueda solo encuentra las líneas vacías de `.env.example` y el propio comando de arriba en este README.
+Cada funcionalidad entró por su pull request, fusionado con merge commit. `.env` no está en ningún commit: el último comando no imprime nada. La búsqueda solo encuentra las líneas de `.env.example` (vacías en los commits viejos y con los valores de ejemplo desde la Práctica 4) y líneas de este README que las nombran: estos comandos y el `TASA_CAMBIO_API_CLAVE=tu-clave` de [API externa](#api-externa). Ninguna clave real.
 
 ## Pruebas
 
@@ -500,16 +643,17 @@ Un solo comando, desde la raíz del repositorio. Funciona en un clon recién hec
 docker compose -f docker-compose.pruebas.yml run --rm --build pruebas
 ```
 
-Compila dentro de Docker y corre las cuatro suites. La primera vez tarda unos minutos. Termina con:
+Compila dentro de Docker y corre las cinco suites. La primera vez tarda unos minutos. Termina con:
 
 ```
-Passed!  - Failed:     0, Passed:   119, Skipped:     0, Total:   119, ... - Inventario.Negocio.Pruebas.dll (net10.0)
+Passed!  - Failed:     0, Passed:   146, Skipped:     0, Total:   146, ... - Inventario.Negocio.Pruebas.dll (net10.0)
+Passed!  - Failed:     0, Passed:    35, Skipped:     0, Total:    35, ... - Inventario.Core.Documentos.Pruebas.dll (net10.0)
 Passed!  - Failed:     0, Passed:     5, Skipped:     0, Total:     5, ... - Inventario.Integracion.Pruebas.dll (net10.0)
 Passed!  - Failed:     0, Passed:    66, Skipped:     0, Total:    66, ... - Inventario.Core.GestionPermisos.Pruebas.dll (net10.0)
 Passed!  - Failed:     0, Passed:    44, Skipped:     0, Total:    44, ... - Inventario.Core.ControlAcceso.Pruebas.dll (net10.0)
 ```
 
-Las cuatro líneas pueden salir en otro orden. Si tienes el SDK de .NET 10 instalado, también sirve `dotnet test backend/Inventario.slnx`.
+Las cinco líneas pueden salir en otro orden. Si tienes el SDK de .NET 10 instalado, también sirve `dotnet test backend/Inventario.slnx`.
 
 Para correr una sola prueba, agrega un filtro al final del mismo comando:
 
@@ -517,11 +661,30 @@ Para correr una sola prueba, agrega un filtro al final del mismo comando:
 docker compose -f docker-compose.pruebas.yml run --rm --build pruebas --filter "FullyQualifiedName~CancelarUnaOrdenRecibida"
 ```
 
-En las suites del negocio, de integración y de Gestión de permisos, cada prueba marca sus tres fases con comentarios (`// Preparar`, `// Actuar`, `// Verificar`), su nombre dice qué comportamiento verifica y lleva el requisito con `[Trait("Requisito", "...")]`. En las cuatro suites, cada prueba arma su propio entorno, con bases en memoria nuevas, así que no comparten datos: pasan en cualquier orden y por separado.
+En las suites del negocio, de integración, de Gestión de permisos y del Manejador de documentos, cada prueba marca sus tres fases con comentarios (`// Preparar`, `// Actuar`, `// Verificar`), su nombre dice qué comportamiento verifica y lleva el requisito con `[Trait("Requisito", "...")]`. En las cinco suites, cada prueba arma su propio entorno, con bases en memoria nuevas, así que no comparten datos: pasan en cualquier orden y por separado.
 
-### Módulo de negocio (119 pruebas)
+### Manejador de documentos (35 pruebas)
 
-Están en `backend/tests/Inventario.Negocio.Pruebas` y prueban el negocio sin la API ni PostgreSQL. La máquina de estados se prueba en memoria, sin base de datos. Los servicios usan SQLite en memoria y un reloj controlado, y en lugar del Core usan dos dobles de sus interfaces: `UsuarioActualFalso` (Control de acceso) dice quién hace la petición y `PermisosConcedidosFalso` (Gestión de permisos) dice qué permisos están aprobados y anota cada consulta.
+Están en [`backend/tests/Inventario.Core.Documentos.Pruebas`](backend/tests/Inventario.Core.Documentos.Pruebas/DocumentosPruebas.cs) y prueban la pieza por `IServicioDocumentos`, como la usa la API, sin la API ni PostgreSQL. Usan SQLite en memoria, una carpeta temporal propia de cada prueba como almacén, un reloj controlado y, en lugar de Control de acceso, `UsuarioActualFalso`, que dice quién hace la petición (o que no hay sesión). Lo guardado se lee con un contexto nuevo y desde la carpeta del almacén.
+
+| Requisito | Lo que se verifica | Pruebas |
+|---|---|---|
+| RF-DOC-01 (11) | Subir registra nombre, tipo, tamaño, fecha y quién lo subió, y el registro se consulta con todos esos datos. | `SubirRegistraNombreTipoTamanoFechaYQuienLoSubio`, `ElContenidoSubidoQuedaEnElAlmacen`, `ElRegistroSeConsultaConTodosSusDatos`, `ElNombreGuardadoNoTraeCarpetas` (4 casos), `UnTipoSinFormaValidaSeGuardaComoGenerico` (4 casos) |
+| RF-DOC-02 (5) | El listado no trae eliminados ni documentos de otros, salvo para el Administrador. | `UnEstandarSoloVeSusDocumentos`, `ElListadoNoIncluyeLosEliminados`, `ElAdministradorVeLosDeTodosSinLosEliminados`, `ElAdministradorPuedePedirTambienLosEliminados`, `UnEstandarNoPuedePedirLosEliminados` |
+| RF-DOC-03 (6) | Solo el dueño o un Administrador descargan; otro usuario recibe un rechazo. | `ElDuenoDescargaElMismoContenidoQueSubio`, `UnAdministradorDescargaElDocumentoDeOtro`, `OtroEstandarRecibeUnRechazoAlDescargar`, `OtroEstandarRecibeUnRechazoAlConsultarElRegistro`, `UnDocumentoEliminadoYaNoSeDescarga`, `DescargarUnDocumentoQueNoExisteSeRechaza` |
+| RF-DOC-04 (4) | Eliminar es lógico: el registro y el archivo siguen; solo el dueño o un Administrador eliminan. | `EliminarEsLogicoElRegistroYElArchivoSiguenGuardados`, `OtroEstandarRecibeUnRechazoAlEliminarYElDocumentoSigue`, `UnAdministradorEliminaElDocumentoDeOtro`, `EliminarDosVecesElMismoDocumentoSeRechazaLaSegunda` |
+| RD-06 (5, más 3 que también llevan RF-DOC-03 o 04) | Sin sesión no se hace nada, y otro usuario es rechazado aunque llame al servicio directamente. | `SinSesionNoSeSubeNada`, `SinSesionNoSeLeeNingunDocumento` (3 casos: listar, consultar y descargar), `SinSesionNoSeElimina`, y las tres `OtroEstandarRecibeUnRechazo…` |
+| RD-07 (4) | Un archivo ausente, vacío o de más del máximo se rechaza y no deja ni registro ni archivo. | `SubirSinArchivoSeRechazaSinGuardarNada`, `SubirUnArchivoVacioSeRechazaSinGuardarNada`, `SubirUnArchivoQuePasaDelMaximoSeRechazaSinGuardarNada`, `UnArchivoDelTamanoMaximoSeAcepta` |
+
+Para correr solo las de un requisito:
+
+```bash
+docker compose -f docker-compose.pruebas.yml run --rm --build pruebas --filter "Requisito=RF-DOC-03"
+```
+
+### Módulo de negocio (146 pruebas)
+
+Están en `backend/tests/Inventario.Negocio.Pruebas` y prueban el negocio sin la API, ni PostgreSQL, ni internet. La máquina de estados se prueba en memoria, sin base de datos. Los servicios usan SQLite en memoria y un reloj controlado, y en lugar del Core usan dos dobles de sus interfaces: `UsuarioActualFalso` (Control de acceso) dice quién hace la petición y `PermisosConcedidosFalso` (Gestión de permisos) dice qué permisos están aprobados y anota cada consulta.
 
 | Archivo | Qué prueba |
 |---|---|
@@ -529,6 +692,8 @@ Están en `backend/tests/Inventario.Negocio.Pruebas` y prueban el negocio sin la
 | [`OrdenesPruebas.cs`](backend/tests/Inventario.Negocio.Pruebas/OrdenesPruebas.cs) | Funcionalidades 3 y 4 por `IServicioOrdenes`: armar la orden, y que lo que decide la máquina de estados es lo que queda guardado (21 pruebas). |
 | [`ExistenciasPruebas.cs`](backend/tests/Inventario.Negocio.Pruebas/ExistenciasPruebas.cs) | Funcionalidades 5 y 6 por `IServicioExistencias`: salidas, historial y el ajuste según lo que responda Gestión de permisos (18 pruebas). |
 | [`CatalogoPruebas.cs`](backend/tests/Inventario.Negocio.Pruebas/CatalogoPruebas.cs) | Funcionalidades 1, 2 y 7: proveedores, productos y stock bajo (15 pruebas). |
+| [`CotizacionesPruebas.cs`](backend/tests/Inventario.Negocio.Pruebas/CotizacionesPruebas.cs) | Funcionalidad 8 por `IServicioCotizaciones`, con la API reemplazada por `TasasFalsas`: la cuenta y el redondeo, que cotizar no cambia la orden, que una moneda inválida o una orden inexistente no llegan a la API, y que si la API falla la cotización se rechaza y el resto del negocio sigue (13 pruebas). |
+| [`TasasExchangeRateApiPruebas.cs`](backend/tests/Inventario.Negocio.Pruebas/TasasExchangeRateApiPruebas.cs) | El cliente real de ExchangeRate-API con respuestas HTTP simuladas, sin internet: la clave sale de las opciones (RD-10), y sin clave, con una clave que la API no acepta, con un error, con un cuerpo que no es JSON, sin conexión o con una espera vencida devuelve un fallo controlado, nunca una excepción (RD-07, RD-08) (14 pruebas). |
 
 Para correr solo la máquina de estados:
 
@@ -631,26 +796,29 @@ Sobre los defectos 2 y 5: la suite los detecta sin importar si la transición ag
 
 ```
 .
+├── Dockerfile                          # la receta de la imagen: etapas api, web, enviador y pruebas
+├── .dockerignore                       # lo que no entra a la imagen: .git, .env, node_modules, bin, obj, dist
+├── docker-compose.yml                  # todo el proyecto: docker compose up --build
+├── docker-compose.pruebas.yml          # las pruebas, sin .env
+├── .env.example                        # todas las variables, con valores de ejemplo
 ├── backend/
 │   ├── Inventario.slnx                 # solución .NET 10
-│   ├── Dockerfile                      # etapas api, enviador y pruebas
 │   ├── src/
 │   │   ├── Inventario.Api/             # host: endpoints, Operaciones.cs, errores
 │   │   ├── Inventario.Core.ControlAcceso/
 │   │   ├── Inventario.Core.GestionPermisos/   # pieza 2: solicitudes y su máquina de estados
+│   │   ├── Inventario.Core.Documentos/        # pieza 3: registros y almacén de los documentos
 │   │   ├── Inventario.Core.ColaCorreos/
 │   │   ├── Inventario.Enviador/        # consola que entrega la cola
-│   │   └── Inventario.Negocio/         # módulo de inventario: servicios y máquina de la orden de compra
+│   │   └── Inventario.Negocio/         # módulo de inventario: servicios, máquina de la orden y cotización con la API externa
 │   └── tests/                          # pruebas xUnit (RD-12), sin la aplicación levantada
 │       ├── Inventario.Core.ControlAcceso.Pruebas/
 │       ├── Inventario.Core.GestionPermisos.Pruebas/
-│       ├── Inventario.Negocio.Pruebas/        # máquina de estados de la orden y servicios del negocio
+│       ├── Inventario.Core.Documentos.Pruebas/
+│       ├── Inventario.Negocio.Pruebas/        # máquina de estados de la orden, servicios del negocio y cliente de la API
 │       └── Inventario.Integracion.Pruebas/    # negocio + Gestión de permisos + Control de acceso reales
-├── frontend/                           # React 19 + TypeScript + Vite, servido por nginx
-├── docs/                               # máquina de estados y bitácoras
-├── docker-compose.yml
-├── docker-compose.pruebas.yml          # las pruebas, sin .env
-└── .env.example
+├── frontend/                           # React 19 + TypeScript + Vite; nginx.conf
+└── docs/                               # máquina de estados y bitácoras
 ```
 
 ## Tecnologías
@@ -662,7 +830,8 @@ Sobre los defectos 2 y 5: la suite los detecta sin importar si la transición ag
 | Frontend | React 19 + TypeScript + Vite, servido por nginx |
 | Base de datos | PostgreSQL 17 |
 | Correo | MailKit; Mailpit para pruebas locales |
-| Entorno | Docker Compose |
+| API externa | ExchangeRate-API (tasas de cambio), con `HttpClient` |
+| Entorno | Docker (un `Dockerfile` en etapas) y Docker Compose |
 
 En la declaración de la semana 1 el stack decía .NET 9. Se cambió a **.NET 10**, la versión LTS actual: el soporte de .NET 9 termina el 10 de noviembre de 2026, antes de que acabe el cuatrimestre.
 
@@ -675,4 +844,7 @@ En la declaración de la semana 1 el stack decía .NET 9. Se cambió a **.NET 10
 - **Dos máquinas de estados independientes (RF-NEG-09):** la de Gestión de permisos vive en el Core y la de la orden de compra en el módulo de negocio. No comparten código, y cambiar una no obliga a tocar la otra. Son dos suites de pruebas aparte.
 - **El negocio pregunta, no lee (RD-01):** para saber si un usuario tiene aprobado `AjustarExistencia`, el negocio usa `IPermisosConcedidos` de Gestión de permisos, que responde sí o no. No lee sus tablas ni conoce los estados de una solicitud.
 - **Concurrencia:** la orden de compra y el producto llevan un número de versión. Si dos personas reciben la misma orden o mueven la misma existencia a la vez, la segunda recibe un 409 y no se guarda nada a medias.
+- **Documentos (RF-DOC):** el archivo se guarda con un nombre que genera la aplicación (un GUID), así que el nombre que manda el usuario nunca decide una ruta. La descarga sale siempre como adjunto y con `X-Content-Type-Options: nosniff`, para que un archivo subido no se abra dentro de la aplicación. Si el registro no se puede guardar, el archivo se borra: no quedan archivos sin dueño.
+- **API externa:** el negocio define lo que necesita (`ITasasDeCambio`) y el cliente de ExchangeRate-API lo implementa. Así la operación se prueba con un doble, y el cliente con respuestas HTTP simuladas. Cualquier problema de la API es un `TipoFallo.NoDisponible` (503) con su mensaje, nunca una excepción.
+- **Un solo puerto:** nginx es la única entrada. Resuelve `api` y `mailpit` en cada petición con el DNS de Docker, así que si uno se detiene, lo demás sigue respondiendo.
 - **Bitácoras con el agente:** [`docs/bitacora-asignacion-1.md`](docs/bitacora-asignacion-1.md) y [`docs/bitacora-asignacion-2.md`](docs/bitacora-asignacion-2.md).

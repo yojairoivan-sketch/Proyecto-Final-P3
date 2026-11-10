@@ -3,14 +3,17 @@ using System.Text.Json.Serialization;
 using System.Text.Unicode;
 using Inventario.Api;
 using Inventario.Api.Acceso;
+using Inventario.Api.Documentos;
 using Inventario.Api.Errores;
 using Inventario.Api.Negocio;
 using Inventario.Api.Permisos;
 using Inventario.Core.ColaCorreos;
 using Inventario.Core.ControlAcceso;
 using Inventario.Core.ControlAcceso.Usuarios;
+using Inventario.Core.Documentos;
 using Inventario.Core.GestionPermisos;
 using Inventario.Negocio;
+using Inventario.Negocio.Cotizaciones;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
 
@@ -42,8 +45,14 @@ builder.Services.AddGestionPermisos(cadenaConexion, opciones =>
         .Concat(PermisosNegocio.Solicitables)
         .ToList());
 
+// Manejador de documentos: los archivos van a una carpeta que en compose es el volumen «documentos» (RF-DOC-05).
+builder.Services.AddDocumentos(cadenaConexion, opciones =>
+    opciones.Carpeta = builder.Configuration["DOCUMENTOS_CARPETA"] ?? opciones.Carpeta);
+
 // Módulo de negocio: depende del Core (IUsuarioActual, IPermisosConcedidos), nunca al revés (RD-03).
-builder.Services.AddNegocio(cadenaConexion);
+// La clave de la API de tasas de cambio llega solo por variable de entorno (RD-10). Si falta, la API arranca igual.
+builder.Services.AddNegocio(cadenaConexion, tasas =>
+    tasas.Clave = builder.Configuration[OpcionesTasasDeCambio.VariableClave]);
 
 // La credencial de sesión se valida en cada petición contra Control de acceso.
 builder.Services.AddHttpContextAccessor();
@@ -67,6 +76,7 @@ app.MapearSesion();
 app.MapearUsuarios();
 app.MapearContrasenas();
 app.MapearSolicitudes();
+app.MapearDocumentos();
 app.MapearNegocio();
 
 app.VerificarQueTodoEndpointDeclareSuOperacion();
@@ -74,6 +84,7 @@ app.VerificarQueTodoEndpointDeclareSuOperacion();
 await app.Services.MigrarColaCorreosAsync();
 await app.Services.MigrarControlAccesoAsync();
 await app.Services.MigrarGestionPermisosAsync();
+await app.Services.MigrarDocumentosAsync();
 await app.Services.MigrarNegocioAsync();
 app.Logger.LogInformation("{Mensaje}", await app.Services.AsegurarAdministradorInicialAsync(
     builder.Configuration["ADMIN_NOMBRE"], builder.Configuration["ADMIN_CORREO"], builder.Configuration["ADMIN_CONTRASENA"]));

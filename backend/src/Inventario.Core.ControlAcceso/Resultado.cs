@@ -10,6 +10,9 @@ public enum TipoFallo
     Bloqueado,
     Prohibido,
     NoEncontrado,
+
+    /// <summary>Un servicio externo del que depende la operación no está configurado o no respondió.</summary>
+    NoDisponible,
 }
 
 /// <summary>

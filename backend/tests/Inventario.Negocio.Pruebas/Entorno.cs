@@ -1,5 +1,6 @@
 using Inventario.Core.ControlAcceso;
 using Inventario.Core.GestionPermisos;
+using Inventario.Negocio.Cotizaciones;
 using Inventario.Negocio.Existencias;
 using Inventario.Negocio.Ordenes;
 using Inventario.Negocio.Productos;
@@ -51,6 +52,12 @@ public sealed class Entorno : IDisposable
 
     public IServicioExistencias Existencias(UsuarioAutenticado? usuario) =>
         new ServicioExistencias(NuevoContexto(), new UsuarioActualFalso(usuario), Permisos, Reloj);
+
+    /// <summary>La API externa de tasas de cambio reemplazada por un doble: cada prueba decide qué responde.</summary>
+    public TasasFalsas Tasas { get; } = new();
+
+    public IServicioCotizaciones Cotizaciones(UsuarioAutenticado? usuario) =>
+        new ServicioCotizaciones(NuevoContexto(), new UsuarioActualFalso(usuario), Tasas);
 
     // ---- Preparación: datos que nacen bien, para las pruebas que parten de ellos ----
 
@@ -160,4 +167,29 @@ public sealed class PermisosConcedidosFalso : IPermisosConcedidos
         Consultas.Add((usuarioId, permiso));
         return Task.FromResult(Concedidos.Contains((usuarioId, permiso)));
     }
+}
+
+/// <summary>
+/// Doble de ITasasDeCambio: responde la tasa o el fallo que la prueba le diga, sin salir a internet, y anota cada consulta.
+/// El cliente real de la API se prueba aparte en TasasExchangeRateApiPruebas, con respuestas HTTP simuladas.
+/// </summary>
+public sealed class TasasFalsas : ITasasDeCambio
+{
+    public static readonly DateTimeOffset Publicada = new(2026, 11, 9, 0, 0, 1, TimeSpan.Zero);
+
+    public Resultado<TasaDeCambio>? Respuesta { get; set; }
+    public List<(string Desde, string Hacia)> Consultas { get; } = [];
+
+    public string Fuente => "Tasas de prueba";
+
+    public Task<Resultado<TasaDeCambio>> ObtenerAsync(string desde, string hacia, CancellationToken ct = default)
+    {
+        Consultas.Add((desde, hacia));
+        return Task.FromResult(Respuesta ?? throw new InvalidOperationException("La prueba no dijo qué tasa responder."));
+    }
+
+    public void Responder(decimal valor) =>
+        Respuesta = Resultado<TasaDeCambio>.Ok(new TasaDeCambio("DOP", "USD", valor, Publicada));
+
+    public void Fallar(TipoFallo fallo, string mensaje) => Respuesta = Resultado<TasaDeCambio>.Falla(fallo, mensaje);
 }

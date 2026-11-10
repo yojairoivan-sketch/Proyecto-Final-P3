@@ -1,5 +1,6 @@
 import { NavLink, Route, Routes } from 'react-router'
 import Activar from './paginas/Activar'
+import Documentos from './paginas/Documentos'
 import IniciarSesion from './paginas/IniciarSesion'
 import Inicio from './paginas/Inicio'
 import MiCuenta from './paginas/MiCuenta'
@@ -26,6 +27,7 @@ export default function App() {
             <>
               <NavLink to="/cuenta">Mi cuenta</NavLink>
               <NavLink to="/permisos">Permisos</NavLink>
+              <NavLink to="/documentos">Documentos</NavLink>
               {(usuario.rol === 'Administrador' || usuario.permisos.includes('ListarUsuarios')) && (
                 <NavLink to="/usuarios">Usuarios</NavLink>
               )}
@@ -53,6 +55,7 @@ export default function App() {
           <Route path="/cuenta" element={<MiCuenta />} />
           <Route path="/usuarios" element={<Usuarios />} />
           <Route path="/permisos" element={<Permisos />} />
+          <Route path="/documentos" element={<Documentos />} />
           <Route path="/recuperar" element={<Recuperar />} />
           <Route path="/restablecer" element={<Restablecer />} />
           <Route path="*" element={<p>Esta página no existe.</p>} />
