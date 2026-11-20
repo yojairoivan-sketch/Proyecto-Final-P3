@@ -60,6 +60,9 @@ public sealed class RangoFechasPruebas
     [InlineData("2026-11-01", "2026-02-30", "hasta «2026-02-30» no es válida")]
     [InlineData("2026-12-01", "2026-11-01", "es posterior a hasta")]
     [InlineData("2024-01-01", "2026-11-30", "no puede pasar de 731 días")]
+    [InlineData("9999-12-30", "9999-12-31", "entre 1900 y 2100")]
+    [InlineData("0001-01-01", "0001-01-02", "entre 1900 y 2100")]
+    [InlineData("2026-11-01", "2101-01-01", "entre 1900 y 2100")]
     public void UnRangoInvalidoSeRechazaConUnMensajeQueDiceQueCorregir(string? desde, string? hasta, string mensaje)
     {
         // Preparar

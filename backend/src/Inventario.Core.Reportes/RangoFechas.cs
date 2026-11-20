@@ -17,6 +17,10 @@ public sealed record RangoFechas(DateOnly Desde, DateOnly Hasta)
     /// <summary>Hasta dos años por consulta, para que un reporte nunca recorra la base entera sin querer.</summary>
     public const int MaximoDias = 731;
 
+    /// <summary>Años que se aceptan. Fuera de ellos no hay datos, y cerca de los extremos de DateOnly el fin del rango no existe.</summary>
+    public const int PrimerAnio = 1900;
+    public const int UltimoAnio = 2100;
+
     public DateTimeOffset Inicio => Medianoche(Desde);
 
     public DateTimeOffset FinExclusivo => Medianoche(Hasta.AddDays(1));
@@ -32,6 +36,8 @@ public sealed record RangoFechas(DateOnly Desde, DateOnly Hasta)
         if (!Fecha(hasta, out var fin))
             return Error($"La fecha hasta «{hasta.Trim()}» no es válida. Usa el formato AAAA-MM-DD, por ejemplo 2026-11-30.");
 
+        if (inicio.Year is < PrimerAnio or > UltimoAnio || fin.Year is < PrimerAnio or > UltimoAnio)
+            return Error($"Las fechas deben estar entre {PrimerAnio} y {UltimoAnio}.");
         if (inicio > fin)
             return Error($"La fecha desde ({inicio:yyyy-MM-dd}) es posterior a hasta ({fin:yyyy-MM-dd}). Invierte las fechas.");
         if (fin.DayNumber - inicio.DayNumber + 1 > MaximoDias)
