@@ -103,7 +103,7 @@ internal sealed class ServicioSolicitudes(
         await notificador.NotificarAdministradoresAsync(
             $"Nueva solicitud de permiso: {solicitud.Permiso}",
             $"{solicitud.SolicitanteNombre} ({solicitud.SolicitanteCorreo}) pidió el permiso {solicitud.Permiso} " +
-            $"(solicitud {solicitud.Id}).{(justificacion is null ? "" : $" Justificación: {justificacion}")} " +
+            $"(solicitud {solicitud.Id}).{(justificacion is null ? "" : $" Justificación: «{justificacion}».")} " +
             "Apruébala o recházala en las solicitudes pendientes.",
             ct);
 
