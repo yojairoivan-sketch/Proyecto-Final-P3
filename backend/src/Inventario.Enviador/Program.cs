@@ -15,6 +15,8 @@ var builder = Host.CreateApplicationBuilder(args);
 builder.Logging.SetMinimumLevel(LogLevel.Warning);
 // El fallo de una consulta ya se informa abajo con un mensaje corto; EF Core no lo repite con todo el detalle.
 builder.Logging.AddFilter("Microsoft.EntityFrameworkCore.Database.Command", LogLevel.None);
+// Al primer arranque la tabla de la cola todavía no existe (la crea la API): eso tampoco se vuelca como traza.
+builder.Logging.AddFilter("Microsoft.EntityFrameworkCore.Query", LogLevel.None);
 
 var cadena = builder.Configuration.GetConnectionString("Inventario");
 if (string.IsNullOrWhiteSpace(cadena))
