@@ -21,7 +21,8 @@ Entregado en la etiqueta `practica-5`:
 - **Notificaciones** (pieza 4, RF-NOT-01 a 07): crear una solicitud avisa a los Administradores activos; resolverla avisa al solicitante con el resultado y el motivo; recibir una orden de compra avisa a los Administradores (el evento del negocio). Cada uno ve y marca solo las suyas, cada aviso llega a la bandeja interna y por correo, y cada usuario puede apagar el correo sin perder la bandeja. Ver [Notificaciones](#notificaciones).
 - **La cola de correos completa** (RF-NOT-08 a 13): un correo que falla se reintenta hasta **5 veces** (`COLA_MAX_INTENTOS`) y luego queda Fallido con su último error; el Administrador consulta la cola en `GET /api/cola-correos`. Ver [cómo provocar un fallo](#cómo-provocar-un-fallo-de-envío).
 - **Reportes con agregación** (pieza 5, RF-REP-01 a 05): solicitudes de permiso por mes y estado, y «¿cuánto le compramos a cada proveedor en el período?». Agrupan en PostgreSQL, filtran por rango de fechas y un Estándar solo cuenta lo suyo. Ver [Reportes](#reportes).
-- **Pruebas nuevas:** suites de Notificaciones (20), Cola de correos (17) y Reportes (9), más 14 en Gestión de permisos, 10 en el negocio y 2 de integración con las piezas reales. Todas con [un solo comando](#pruebas): 368 en total.
+- **Pantallas nuevas:** `/notificaciones` (la bandeja, marcar como leída, el canal de correo y, para un Administrador, la cola de correos) y `/reportes` (los dos reportes con su rango de fechas).
+- **Pruebas nuevas:** suites de Notificaciones (20), Cola de correos (17) y Reportes (12), más 14 en Gestión de permisos, 10 en el negocio y 2 de integración con las piezas reales. Todas con [un solo comando](#pruebas): 371 en total.
 - Los seis frentes de las prácticas anteriores siguen igual (secciones 1 a 10).
 
 Antes, en la etiqueta `practica-4`:
@@ -269,6 +270,8 @@ Una operación que se rechaza (por ejemplo, rechazar sin motivo) no avisa a nadi
 
 Sin sesión, todas responden 401. Las notificaciones viven en el esquema `notificaciones` de PostgreSQL (`notificaciones` y `preferencias`).
 
+**En la interfaz:** enlace «Notificaciones» de la barra (`/notificaciones`). Muestra cuántas tienes sin leer, la lista (las no leídas en negrita) con el filtro «todas / solo las no leídas / solo las leídas», el botón «Marcar como leída» y la casilla «Recibir también un correo por cada notificación». Un Administrador ve además la «Cola de correos»: cuántos hay en cada estado y cada correo con su estado, intentos, fechas y último error.
+
 ### Cola de correos: procesador, reintentos y máximo de intentos
 
 - **El procesador** es el servicio `enviador` de compose (un proceso aparte, RF-NOT-09): cada 5 segundos toma los correos Pendientes y los entrega. Para ejecutarlo a mano, una sola pasada: `docker compose stop enviador` y después `docker compose run --rm enviador --una-vez` (escribe «Enviados: N…» o «No hay correos pendientes.»). Vuelve a dejarlo vigilando con `docker compose start enviador`.
@@ -339,9 +342,10 @@ Pieza 5 del Core ([`Inventario.Core.Reportes`](backend/src/Inventario.Core.Repor
 | Del Core (RF-REP-01): solicitudes de permiso por mes y por estado | `GET /api/reportes/solicitudes?desde=AAAA-MM-DD&hasta=AAAA-MM-DD` | Cuántas solicitudes se crearon en el período, por estado (`porEstado`) y por mes y estado (`porMes`). |
 | Del negocio (RF-REP-02, RF-NEG-08): **«¿Cuánto le compramos a cada proveedor en el período?»** | `GET /api/reportes/compras-por-proveedor?desde=AAAA-MM-DD&hasta=AAAA-MM-DD` | Por proveedor: cuántas órdenes se **recibieron** en el período, el monto total (suma de cantidad × costo de sus líneas, en DOP) y el promedio por orden. Las órdenes en Borrador, Enviada o Cancelada no cuentan. Sirve para saber a quién se le compra más y negociar con él. |
 
-- **Rango de fechas (RF-REP-05).** `desde` y `hasta` son obligatorias, en formato `AAAA-MM-DD`, y son días en **UTC** (RD-11): el rango va desde `desde` a las 00:00 UTC hasta el final de `hasta`, con los dos días completos. Hasta 731 días por consulta. Una fecha que no es fecha, `desde` posterior a `hasta` o un rango más largo responden 400 con un mensaje que dice qué corregir. El reporte de solicitudes usa la fecha de creación; el de compras, la fecha en que la orden se recibió.
+- **Rango de fechas (RF-REP-05).** `desde` y `hasta` son obligatorias, en formato `AAAA-MM-DD`, y son días en **UTC** (RD-11): el rango va desde `desde` a las 00:00 UTC hasta el final de `hasta`, con los dos días completos. Hasta 731 días por consulta, con fechas entre 1900 y 2100. Una fecha que no es fecha o que está fuera de esos años, `desde` posterior a `hasta` o un rango más largo responden 400 con un mensaje que dice qué corregir. El reporte de solicitudes usa la fecha de creación; el de compras, la fecha en que la orden se recibió.
 - **Rol (RF-REP-04).** Un Administrador ve los datos de todos. Un Estándar solo cuenta sus propias solicitudes y las órdenes que él creó; la respuesta lo dice con `"soloLasMias":true`.
 - Los dos exigen sesión (401 sin ella).
+- **En la interfaz:** enlace «Reportes» de la barra (`/reportes`): «Desde» y «Hasta» (por defecto, del primer día del mes a hoy) y «Consultar» muestran las dos tablas tal como las devuelve la API.
 
 **Cómo consultarlos.** Con la preparación de [Notificaciones](#cómo-provocar-cada-evento) (que dejó solicitudes de Elena y Pablo y la orden que recibió Elena), y una orden más del Administrador:
 
@@ -768,7 +772,7 @@ docker compose -f docker-compose.pruebas.yml run --rm --build pruebas
 Compila dentro de Docker y corre las ocho suites. La primera vez tarda unos minutos. Termina con:
 
 ```
-Passed!  - Failed:     0, Passed:     9, Skipped:     0, Total:     9, ... - Inventario.Core.Reportes.Pruebas.dll (net10.0)
+Passed!  - Failed:     0, Passed:    12, Skipped:     0, Total:    12, ... - Inventario.Core.Reportes.Pruebas.dll (net10.0)
 Passed!  - Failed:     0, Passed:    17, Skipped:     0, Total:    17, ... - Inventario.Core.ColaCorreos.Pruebas.dll (net10.0)
 Passed!  - Failed:     0, Passed:    80, Skipped:     0, Total:    80, ... - Inventario.Core.GestionPermisos.Pruebas.dll (net10.0)
 Passed!  - Failed:     0, Passed:    20, Skipped:     0, Total:    20, ... - Inventario.Core.Notificaciones.Pruebas.dll (net10.0)
@@ -796,7 +800,7 @@ Cada una cubre los criterios de [`docs/criterios-notificaciones-reportes.md`](do
 |---|---|
 | [`Inventario.Core.Notificaciones.Pruebas`](backend/tests/Inventario.Core.Notificaciones.Pruebas/NotificacionesPruebas.cs) (20) | La pieza con dobles de Control de acceso (`DirectorioFalso`) y de la cola (`ColaFalsa`): a quién llega cada aviso, el correo encolado o no según la preferencia de cada usuario, ver y marcar solo las propias (también un Administrador), los filtros y que sin sesión no se hace nada (RF-NOT-01, 02, 04 a 07, RD-06). |
 | [`Inventario.Core.ColaCorreos.Pruebas`](backend/tests/Inventario.Core.ColaCorreos.Pruebas/ColaCorreosPruebas.cs) (17) | Reintentos: antes del máximo sigue Pendiente con su error, al llegar al máximo queda Fallido, y uno que falló y después sale queda Enviado con sus intentos; `COLA_MAX_INTENTOS` válido e inválido; encolar no intenta nada; la consulta de la cola con su resumen y su filtro (RF-NOT-08, 10, 11). El procesador usa `FOR UPDATE SKIP LOCKED`, propio de PostgreSQL: lo comprueba el recorrido de [cómo provocar un fallo](#cómo-provocar-un-fallo-de-envío). |
-| [`Inventario.Core.Reportes.Pruebas`](backend/tests/Inventario.Core.Reportes.Pruebas/RangoFechasPruebas.cs) (9) | El rango de fechas: los dos días completos en UTC, un solo día, los meses recortados y cada rango inválido con su mensaje (RF-REP-05). |
+| [`Inventario.Core.Reportes.Pruebas`](backend/tests/Inventario.Core.Reportes.Pruebas/RangoFechasPruebas.cs) (12) | El rango de fechas: los dos días completos en UTC, un solo día, los meses recortados y cada rango inválido con su mensaje, incluidas las fechas fuera de 1900–2100 (RF-REP-05, RD-07). |
 | [`AvisosPruebas.cs`](backend/tests/Inventario.Core.GestionPermisos.Pruebas/AvisosPruebas.cs) y [`ReporteSolicitudesPruebas.cs`](backend/tests/Inventario.Core.GestionPermisos.Pruebas/ReporteSolicitudesPruebas.cs) (Gestión de permisos, 14) | Crear avisa solo a los Administradores; aprobar y rechazar avisan al solicitante (con el motivo); una resolución rechazada no avisa. El reporte de solicitudes por mes y estado, lo de cada rol, dos rangos y el último día (RF-NOT-01, 02, RF-REP-01, 04, 05). |
 | [`AvisosNegocioPruebas.cs`](backend/tests/Inventario.Negocio.Pruebas/AvisosNegocioPruebas.cs) y [`ReporteComprasPruebas.cs`](backend/tests/Inventario.Negocio.Pruebas/ReporteComprasPruebas.cs) (negocio, 10) | Recibir una orden avisa a los Administradores y las demás transiciones no; el reporte de compras por proveedor, lo que ve un Estándar, dos rangos, un rango sin compras y uno inválido (RF-NOT-03, RF-REP-02, 04, 05). |
 | [`NotificacionesIntegracionPruebas.cs`](backend/tests/Inventario.Integracion.Pruebas/NotificacionesIntegracionPruebas.cs) (integración, 2) | Con Control de acceso, Gestión de permisos, Notificaciones y la cola **reales**: un Administrador desactivado no recibe nada y los correos se encolan solo para los activos; con el correo apagado, el rechazo llega solo a la bandeja. |
