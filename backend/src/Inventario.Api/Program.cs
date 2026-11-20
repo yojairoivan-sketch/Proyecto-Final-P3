@@ -81,6 +81,7 @@ app.MapearUsuarios();
 app.MapearContrasenas();
 app.MapearSolicitudes();
 app.MapearNotificaciones();
+app.MapearColaCorreos();
 app.MapearDocumentos();
 app.MapearNegocio();
 

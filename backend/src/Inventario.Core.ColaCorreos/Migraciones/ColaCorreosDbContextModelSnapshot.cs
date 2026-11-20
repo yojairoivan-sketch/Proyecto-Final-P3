@@ -72,6 +72,10 @@ namespace Inventario.Core.ColaCorreos.Migraciones
                         .HasColumnType("character varying(1000)")
                         .HasColumnName("ultimo_error");
 
+                    b.Property<DateTimeOffset?>("UltimoIntentoEn")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("ultimo_intento_en");
+
                     b.HasKey("Id")
                         .HasName("pk_correos_en_cola");
 

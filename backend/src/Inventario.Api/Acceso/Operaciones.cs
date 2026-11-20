@@ -69,6 +69,8 @@ public static class Operaciones
     public static readonly Operacion ConsultarSolicitudesPendientes = new(nameof(ConsultarSolicitudesPendientes), SoloAdministrador);
     public static readonly Operacion AprobarSolicitud = new(nameof(AprobarSolicitud), SoloAdministrador);
     public static readonly Operacion RechazarSolicitud = new(nameof(RechazarSolicitud), SoloAdministrador);
+    // RF-NOT-11: el estado de cada correo de la cola. Un Estándar recibe 403.
+    public static readonly Operacion ConsultarColaCorreos = new(nameof(ConsultarColaCorreos), SoloAdministrador);
 
     // Manejador de documentos: cualquier usuario con sesión. Qué documentos ve, descarga o elimina cada uno
     // (los suyos; un Administrador, los de todos) lo decide la pieza en el servidor (ServicioDocumentos), una sola vez.
