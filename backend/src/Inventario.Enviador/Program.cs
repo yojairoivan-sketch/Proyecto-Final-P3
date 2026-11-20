@@ -7,6 +7,8 @@ using Microsoft.Extensions.Logging;
 
 // Enviador de la cola de correos (RF-NOT-09). Uso:
 //   Inventario.Enviador              una pasada: envía los pendientes y termina
+//   Inventario.Enviador --una-vez    lo mismo; sirve para `docker compose run --rm enviador --una-vez`,
+//                                    que reemplaza el --vigilar 5 del servicio
 //   Inventario.Enviador --vigilar N  repite la pasada cada N segundos (30 si no se indica)
 
 var builder = Host.CreateApplicationBuilder(args);
