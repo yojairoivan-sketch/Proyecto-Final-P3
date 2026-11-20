@@ -6,6 +6,7 @@ using Inventario.Negocio.Existencias;
 using Inventario.Negocio.Ordenes;
 using Inventario.Negocio.Productos;
 using Inventario.Negocio.Proveedores;
+using Inventario.Negocio.Reportes;
 using System.Globalization;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
@@ -54,6 +55,9 @@ public sealed class Entorno : IDisposable
 
     public IServicioExistencias Existencias(UsuarioAutenticado? usuario) =>
         new ServicioExistencias(NuevoContexto(), new UsuarioActualFalso(usuario), Permisos, Reloj);
+
+    public IReporteCompras ReporteCompras(UsuarioAutenticado? usuario) =>
+        new ReporteCompras(NuevoContexto(), new UsuarioActualFalso(usuario));
 
     /// <summary>La API externa de tasas de cambio reemplazada por un doble: cada prueba decide qué responde.</summary>
     public TasasFalsas Tasas { get; } = new();

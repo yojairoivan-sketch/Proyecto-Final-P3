@@ -51,6 +51,11 @@ public sealed class Entorno : IDisposable
     public IServicioSolicitudes ComoSistema() =>
         new ServicioSolicitudes(NuevoContexto(), new UsuarioActualFalso(null), Otorgamiento, Reloj, Opciones, Notificador);
 
+    /// <summary>El reporte de solicitudes con un contexto nuevo y <paramref name="usuario"/> como usuario actual.</summary>
+    public IReporteSolicitudes Reporte(UsuarioAutenticado usuario) => new ReporteSolicitudes(NuevoContexto(), new UsuarioActualFalso(usuario));
+
+    public IReporteSolicitudes ReporteSinSesion() => new ReporteSolicitudes(NuevoContexto(), new UsuarioActualFalso(null));
+
     /// <summary>La consulta que usa el módulo de negocio, con un contexto nuevo.</summary>
     public IPermisosConcedidos Concedidos() => new PermisosConcedidos(NuevoContexto());
 
