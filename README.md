@@ -289,7 +289,7 @@ cuenta() {
   curl -s $API/acceso/activar -H "$J" -d "{\"token\":\"$(curl -s http://localhost:8080/correo/view/$ID.txt | grep -o 'token=[A-Za-z0-9_-]*' | cut -d= -f2)\"}"; echo
 }
 primer_id() { tee /dev/stderr | grep -o '"id":[0-9]*' | head -1 | cut -d: -f2; }
-bandeja() { curl -s "$API/notificaciones$2" -H "Authorization: Bearer $1"; echo; }
+bandeja() { curl -s "$API/notificaciones${2:-}" -H "Authorization: Bearer $1"; echo; }
 cuenta Elena elena@ejemplo.com; cuenta Pablo pablo@ejemplo.com; cuenta Rosa rosa@ejemplo.com
 TOKEN_ADMIN=$(token admin@inventario.local Admin12345); AD="Authorization: Bearer $TOKEN_ADMIN"
 ROSA_ID=$(curl -s $API/yo -H "Authorization: Bearer $(token rosa@ejemplo.com clave1234)" | grep -o '"id":[0-9]*' | cut -d: -f2)
@@ -324,10 +324,10 @@ Se ven tres «Cuenta activada. Ya puedes iniciar sesión.», el cambio de rol de
 
 | Para comprobar | Haz esto | Resultado esperado |
 |---|---|---|
-| La operación no depende del servidor de correo (RF-NOT-08) | `docker compose stop mailpit` y después `curl -s -w ' [%{http_code}]\n' $API/solicitudes -H "$PA" -H "$J" -d '{"permiso":"ReactivarUsuario"}'` | 201 enseguida. Los correos para los dos Administradores quedan en la cola. |
-| Se reintenta (RF-NOT-10) | Unos 20 segundos después: `curl -s "$API/cola-correos?estado=Pendiente" -H "$AD"` | Los dos correos «Nueva solicitud de permiso: ReactivarUsuario» siguen Pendientes con `"intentos"` de 1 en adelante y `"ultimoError":"SocketException: Name or service not known"`. |
-| Agotados los 5 intentos queda Fallido (RF-NOT-10) | Con Mailpit apagado, unos dos minutos después: `curl -s "$API/cola-correos?estado=Fallido" -H "$AD"` y `docker compose logs enviador` | Los dos correos con `"estado":"Fallido","intentos":5` y su `"ultimoError"`. El enviador escribió «Fallidos (agotaron los 5 intentos): 2». |
-| Un Fallido no se vuelve a intentar | `docker compose start mailpit`, espera 10 segundos y repite `curl -s "$API/cola-correos?estado=Fallido" -H "$AD"` | Siguen Fallido con 5 intentos: no llegan a Mailpit. (Si enciendes Mailpit **antes** del quinto intento, el correo sale en la siguiente pasada y queda Enviado con los intentos que llevaba.) |
+| La operación no depende del servidor de correo (RF-NOT-08) | `docker compose stop mailpit` y después `curl -s -w ' [%{http_code}]\n' $API/solicitudes -H "$PA" -H "$J" -d '{"permiso":"ReactivarUsuario"}'` | 201 enseguida. Los correos para los Administradores («Nueva solicitud de permiso: ReactivarUsuario») quedan en la cola. |
+| Se reintenta (RF-NOT-10) | Unos 20 segundos después: `curl -s "$API/cola-correos?estado=Pendiente" -H "$AD"` | Esos correos siguen Pendientes con `"intentos"` de 1 en adelante y `"ultimoError":"SocketException: Name or service not known"` (el nombre `mailpit` ya no existe en la red). Cada intento fallido tarda unos segundos, así que una pasada con varios correos tarda más que 5 s. |
+| Agotados los 5 intentos queda Fallido (RF-NOT-10) | Con Mailpit apagado, unos dos minutos después: `curl -s "$API/cola-correos?estado=Fallido" -H "$AD"` y `docker compose logs enviador` | Cada uno con `"estado":"Fallido","intentos":5` y su `"ultimoError"`, y `"pendientes":0`. El enviador escribió «Fallidos (agotaron los 5 intentos): N» en la pasada del quinto intento. |
+| Un Fallido no se vuelve a intentar | `docker compose start mailpit`, espera 10 segundos y repite `curl -s "$API/cola-correos?estado=Fallido" -H "$AD"` | Siguen Fallido con 5 intentos y el mismo `ultimoIntentoEn`: no llegan a Mailpit. (Si enciendes Mailpit **antes** del quinto intento, el correo sale en la siguiente pasada y queda Enviado con los intentos que llevaba.) Mailpit guarda los correos en memoria: al detenerlo, su bandeja vuelve vacía, pero la cola de la aplicación conserva el estado de cada correo. |
 | Correr el procesador dos veces no duplica (RF-NOT-12) | Con Mailpit encendido: `docker compose stop enviador`, luego `curl -s $API/solicitudes -H "$PA" -H "$J" -d '{"permiso":"AjustarExistencia"}'; echo`, y después `docker compose run --rm enviador --una-vez` dos veces seguidas | La primera pasada: «Enviados: 2…». La segunda: «No hay correos pendientes.» En Mailpit, cada Administrador tiene ese correo una sola vez. Al terminar: `docker compose start enviador`. |
 
 ## Reportes
