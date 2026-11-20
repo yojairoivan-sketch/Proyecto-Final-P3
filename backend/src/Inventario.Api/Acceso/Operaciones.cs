@@ -50,6 +50,12 @@ public static class Operaciones
     public static readonly Operacion ConsultarMisSolicitudes = new(nameof(ConsultarMisSolicitudes), ConSesion);
     public static readonly Operacion ConsultarSolicitud = new(nameof(ConsultarSolicitud), ConSesion);
 
+    // Notificaciones: cada uno ve y marca solo las suyas; eso lo decide la pieza en el servidor (RD-06).
+    public static readonly Operacion ConsultarMisNotificaciones = new(nameof(ConsultarMisNotificaciones), ConSesion);
+    public static readonly Operacion MarcarNotificacionLeida = new(nameof(MarcarNotificacionLeida), ConSesion);
+    public static readonly Operacion ConsultarPreferenciasNotificacion = new(nameof(ConsultarPreferenciasNotificacion), ConSesion);
+    public static readonly Operacion CambiarPreferenciasNotificacion = new(nameof(CambiarPreferenciasNotificacion), ConSesion);
+
     // Solo Administrador. Las que dicen qué permiten se pueden pedir con una solicitud de permiso.
     // CambiarRol y las de solicitudes no: un Estándar nunca cambia roles (RF-CA-08) ni ve solicitudes ajenas (RF-GP-02).
     // DesactivarUsuario tampoco, porque podría dejar el sistema sin Administradores activos.
@@ -63,6 +69,8 @@ public static class Operaciones
     public static readonly Operacion ConsultarSolicitudesPendientes = new(nameof(ConsultarSolicitudesPendientes), SoloAdministrador);
     public static readonly Operacion AprobarSolicitud = new(nameof(AprobarSolicitud), SoloAdministrador);
     public static readonly Operacion RechazarSolicitud = new(nameof(RechazarSolicitud), SoloAdministrador);
+    // RF-NOT-11: el estado de cada correo de la cola. Un Estándar recibe 403.
+    public static readonly Operacion ConsultarColaCorreos = new(nameof(ConsultarColaCorreos), SoloAdministrador);
 
     // Manejador de documentos: cualquier usuario con sesión. Qué documentos ve, descarga o elimina cada uno
     // (los suyos; un Administrador, los de todos) lo decide la pieza en el servidor (ServicioDocumentos), una sola vez.
@@ -87,6 +95,10 @@ public static class Operaciones
     // aprobado en Gestión de permisos (ServicioExistencias). Así cada regla está en un solo lugar.
     public static readonly Operacion CambiarEstadoOrden = new(nameof(CambiarEstadoOrden), ConSesion);
     public static readonly Operacion AjustarExistencia = new(nameof(AjustarExistencia), ConSesion);
+
+    // Reportes: cualquier usuario con sesión. Un Estándar solo cuenta lo suyo; eso lo decide cada reporte (RF-REP-04).
+    public static readonly Operacion ConsultarReporteSolicitudes = new(nameof(ConsultarReporteSolicitudes), ConSesion);
+    public static readonly Operacion ConsultarReporteCompras = new(nameof(ConsultarReporteCompras), ConSesion);
 
     // Solo Administrador: el catálogo del negocio.
     public static readonly Operacion RegistrarProveedor = new(nameof(RegistrarProveedor), SoloAdministrador);

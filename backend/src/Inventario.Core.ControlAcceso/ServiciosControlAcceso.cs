@@ -29,6 +29,7 @@ public static class ServiciosControlAcceso
         services.AddScoped<IServicioUsuarios, ServicioUsuarios>();
         services.AddScoped<IServicioContrasenas, ServicioContrasenas>();
         services.AddScoped<IOtorgamientoPermisos, OtorgamientoPermisos>();
+        services.AddScoped<IDirectorioUsuarios, DirectorioUsuarios>();
         return services;
     }
 

@@ -12,6 +12,7 @@
     <ProjectReference Include="..\Inventario.Core.Documentos\Inventario.Core.Documentos.csproj" />
     <ProjectReference Include="..\Inventario.Negocio\Inventario.Negocio.csproj" />
     <ProjectReference Include="..\Inventario.Core.GestionPermisos\Inventario.Core.GestionPermisos.csproj" />
+    <ProjectReference Include="..\Inventario.Core.Notificaciones\Inventario.Core.Notificaciones.csproj" />
   </ItemGroup>
 
 </Project>

@@ -6,12 +6,15 @@ using Inventario.Api.Acceso;
 using Inventario.Api.Documentos;
 using Inventario.Api.Errores;
 using Inventario.Api.Negocio;
+using Inventario.Api.Notificaciones;
 using Inventario.Api.Permisos;
+using Inventario.Api.Reportes;
 using Inventario.Core.ColaCorreos;
 using Inventario.Core.ControlAcceso;
 using Inventario.Core.ControlAcceso.Usuarios;
 using Inventario.Core.Documentos;
 using Inventario.Core.GestionPermisos;
+using Inventario.Core.Notificaciones;
 using Inventario.Negocio;
 using Inventario.Negocio.Cotizaciones;
 using Microsoft.AspNetCore.Authentication;
@@ -37,6 +40,8 @@ builder.Services.ConfigureHttpJsonOptions(opciones =>
 builder.Services.AddColaCorreos(cadenaConexion);
 builder.Services.AddControlAcceso(cadenaConexion, opciones =>
     opciones.UrlPublica = builder.Configuration["URL_PUBLICA"] ?? opciones.UrlPublica);
+// Notificaciones: bandeja interna y correo por la cola (RF-NOT-06). Gestión de permisos y el negocio avisan por INotificador.
+builder.Services.AddNotificaciones(cadenaConexion);
 // Lo que se puede pedir sale de la tabla de operaciones del host y de los permisos del negocio,
 // así el Core no conoce las operaciones del negocio (RD-03).
 builder.Services.AddGestionPermisos(cadenaConexion, opciones =>
@@ -76,13 +81,17 @@ app.MapearSesion();
 app.MapearUsuarios();
 app.MapearContrasenas();
 app.MapearSolicitudes();
+app.MapearNotificaciones();
+app.MapearColaCorreos();
 app.MapearDocumentos();
 app.MapearNegocio();
+app.MapearReportes();
 
 app.VerificarQueTodoEndpointDeclareSuOperacion();
 
 await app.Services.MigrarColaCorreosAsync();
 await app.Services.MigrarControlAccesoAsync();
+await app.Services.MigrarNotificacionesAsync();
 await app.Services.MigrarGestionPermisosAsync();
 await app.Services.MigrarDocumentosAsync();
 await app.Services.MigrarNegocioAsync();

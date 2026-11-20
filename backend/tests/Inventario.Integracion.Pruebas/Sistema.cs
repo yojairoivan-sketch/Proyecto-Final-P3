@@ -1,9 +1,11 @@
+using Inventario.Core.ColaCorreos;
 using Inventario.Core.ControlAcceso;
 using Inventario.Core.ControlAcceso.Permisos;
 using Inventario.Core.ControlAcceso.Seguridad;
 using Inventario.Core.ControlAcceso.Sesiones;
 using Inventario.Core.GestionPermisos;
 using Inventario.Core.GestionPermisos.Solicitudes;
+using Inventario.Core.Notificaciones;
 using Inventario.Negocio;
 using Inventario.Negocio.Existencias;
 using Inventario.Negocio.Productos;
@@ -16,7 +18,7 @@ using Microsoft.Extensions.Time.Testing;
 namespace Inventario.Integracion.Pruebas;
 
 /// <summary>
-/// Control de acceso, Gestión de permisos y el módulo de negocio reales, conectados como los conecta el host,
+/// Control de acceso, Gestión de permisos, Notificaciones, la Cola de correos y el módulo de negocio reales, conectados como los conecta el host,
 /// pero sin la API: cada «petición» valida la credencial en Control de acceso y arma los servicios con un contexto nuevo.
 /// Cada pieza tiene su propia base SQLite en memoria (en PostgreSQL, su propio esquema). Ningún doble reemplaza a ninguna.
 /// Cada prueba crea su propio sistema, así que no comparten datos y pasan en cualquier orden.
@@ -28,6 +30,8 @@ public sealed class Sistema : IDisposable
     private readonly SqliteConnection baseControlAcceso = new("DataSource=:memory:");
     private readonly SqliteConnection baseGestionPermisos = new("DataSource=:memory:");
     private readonly SqliteConnection baseNegocio = new("DataSource=:memory:");
+    private readonly SqliteConnection baseNotificaciones = new("DataSource=:memory:");
+    private readonly SqliteConnection baseCola = new("DataSource=:memory:");
     private readonly List<DbContext> contextos = [];
     private readonly OpcionesControlAcceso opcionesAcceso = new() { UrlPublica = "http://localhost:8080" };
 
@@ -36,11 +40,13 @@ public sealed class Sistema : IDisposable
 
     public Sistema()
     {
-        foreach (var conexion in new[] { baseControlAcceso, baseGestionPermisos, baseNegocio })
+        foreach (var conexion in new[] { baseControlAcceso, baseGestionPermisos, baseNegocio, baseNotificaciones, baseCola })
             conexion.Open();
         ControlAcceso().Database.EnsureCreated();
         GestionPermisos().Database.EnsureCreated();
         Negocio().Database.EnsureCreated();
+        Notificaciones().Database.EnsureCreated();
+        Cola().Database.EnsureCreated();
     }
 
     public FakeTimeProvider Reloj { get; } = new(new DateTimeOffset(2026, 10, 31, 12, 0, 0, TimeSpan.Zero));
@@ -63,7 +69,23 @@ public sealed class Sistema : IDisposable
 
     // Una petición de quien trae esa credencial a cada pieza, como en la API.
     public async Task<IServicioSolicitudes> SolicitudesAsync(string credencial) =>
-        new ServicioSolicitudes(GestionPermisos(), await UsuarioDeAsync(credencial), new OtorgamientoPermisos(ControlAcceso(), Reloj), Reloj, opcionesPermisos);
+        new ServicioSolicitudes(GestionPermisos(), await UsuarioDeAsync(credencial), new OtorgamientoPermisos(ControlAcceso(), Reloj), Reloj, opcionesPermisos,
+            Notificador());
+
+    public async Task<IServicioNotificaciones> NotificacionesAsync(string credencial) =>
+        new ServicioNotificaciones(Notificaciones(), await UsuarioDeAsync(credencial), Reloj);
+
+    /// <summary>Lo que el sistema dejó en la cola de correos, leído con un contexto nuevo.</summary>
+    internal List<CorreoEnCola> LeerCola() => Cola().Correos.AsNoTracking().OrderBy(c => c.Id).ToList();
+
+    /// <summary>Desactiva un usuario en Control de acceso, como lo haría un Administrador.</summary>
+    public async Task DesactivarAsync(string correo)
+    {
+        var db = ControlAcceso();
+        var usuario = await db.Usuarios.SingleAsync(u => u.Correo == correo);
+        usuario.Desactivar();
+        await db.SaveChangesAsync();
+    }
 
     public async Task<IServicioExistencias> ExistenciasAsync(string credencial) =>
         new ServicioExistencias(Negocio(), await UsuarioDeAsync(credencial), new PermisosConcedidos(GestionPermisos()), Reloj);
@@ -95,6 +117,8 @@ public sealed class Sistema : IDisposable
         baseControlAcceso.Dispose();
         baseGestionPermisos.Dispose();
         baseNegocio.Dispose();
+        baseNotificaciones.Dispose();
+        baseCola.Dispose();
     }
 
     /// <summary>
@@ -118,6 +142,16 @@ public sealed class Sistema : IDisposable
 
     private InventarioDbContext Negocio() =>
         Nuevo(new InventarioDbContext(Opciones<InventarioDbContext>(baseNegocio)));
+
+    private NotificacionesDbContext Notificaciones() =>
+        Nuevo(new NotificacionesDbContext(Opciones<NotificacionesDbContext>(baseNotificaciones)));
+
+    private ColaCorreosDbContext Cola() =>
+        Nuevo(new ColaCorreosDbContext(Opciones<ColaCorreosDbContext>(baseCola)));
+
+    /// <summary>Como en el host: el notificador real, con el directorio de Control de acceso y la cola real.</summary>
+    private Notificador Notificador() =>
+        new(Notificaciones(), new DirectorioUsuarios(ControlAcceso()), new ColaCorreos(Cola(), Reloj), Reloj);
 
     private T Nuevo<T>(T contexto) where T : DbContext
     {

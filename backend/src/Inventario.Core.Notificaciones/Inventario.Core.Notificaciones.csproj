@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Pieza del Core: Notificaciones (RF-NOT-01 a 07). Responde «¿qué te avisó el sistema y lo leíste?».
+    Requiere Control de acceso (quién es el usuario y quiénes son los Administradores activos) y la Cola de correos
+    (el segundo canal), solo por sus interfaces. Nunca referencia al módulo de negocio (RD-03).
+  -->
+
+  <ItemGroup>
+    <PackageReference Include="EFCore.NamingConventions" />
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Inventario.Core.ColaCorreos\Inventario.Core.ColaCorreos.csproj" />
+    <ProjectReference Include="..\Inventario.Core.ControlAcceso\Inventario.Core.ControlAcceso.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Inventario.Core.Notificaciones.Pruebas" />
+    <InternalsVisibleTo Include="Inventario.Integracion.Pruebas" />
+  </ItemGroup>
+
+</Project>

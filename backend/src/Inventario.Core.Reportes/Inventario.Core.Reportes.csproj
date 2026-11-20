@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Pieza del Core: Reportes (RF-REP). Lo que comparten todos los reportes: el rango de fechas y cómo se valida
+    (RF-REP-05), y la forma de un período. Cada reporte vive junto a sus datos (Gestión de permisos, el negocio),
+    que agregan en la base (RF-REP-03). Requiere solo Control de acceso (Resultado). Nunca referencia al negocio (RD-03).
+  -->
+
+  <ItemGroup>
+    <ProjectReference Include="..\Inventario.Core.ControlAcceso\Inventario.Core.ControlAcceso.csproj" />
+  </ItemGroup>
+
+</Project>

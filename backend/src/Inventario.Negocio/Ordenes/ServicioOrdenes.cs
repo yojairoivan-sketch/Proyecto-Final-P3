@@ -1,4 +1,5 @@
 using Inventario.Core.ControlAcceso;
+using Inventario.Core.Notificaciones;
 using Microsoft.EntityFrameworkCore;
 
 namespace Inventario.Negocio.Ordenes;
@@ -13,7 +14,8 @@ public sealed record OrdenVista(
     DateTimeOffset CreadaEn,
     DateTimeOffset ActualizadaEn,
     IReadOnlyList<LineaVista> Lineas,
-    decimal Total);
+    decimal Total,
+    DateTimeOffset? RecibidaEn);
 
 /// <summary>
 /// Funcionalidad 3: armar una orden de compra (crearla y agregarle líneas), y funcionalidad 4: su ciclo
@@ -36,13 +38,14 @@ public interface IServicioOrdenes
     Task<Resultado<OrdenVista>> CambiarEstadoAsync(int id, string? hacia, CancellationToken ct = default);
 }
 
-internal sealed class ServicioOrdenes(InventarioDbContext db, IUsuarioActual usuarioActual, TimeProvider reloj) : IServicioOrdenes
+internal sealed class ServicioOrdenes(InventarioDbContext db, IUsuarioActual usuarioActual, TimeProvider reloj, INotificador notificador)
+    : IServicioOrdenes
 {
     private static readonly string NombresDeEstados = string.Join(", ", Enum.GetNames<EstadoOrdenCompra>());
 
     public async Task<Resultado<OrdenVista>> CrearAsync(int? proveedorId, CancellationToken ct = default)
     {
-        if (usuarioActual.Usuario is null)
+        if (usuarioActual.Usuario is not { } usuario)
             return Fallos.SinSesion<OrdenVista>();
 
         if (proveedorId is null)
@@ -51,7 +54,7 @@ internal sealed class ServicioOrdenes(InventarioDbContext db, IUsuarioActual usu
         if (proveedor is null)
             return Resultado<OrdenVista>.Falla(TipoFallo.Validacion, $"No existe un proveedor con id {proveedorId}.");
 
-        var orden = OrdenDeCompra.Crear(proveedor, reloj.GetUtcNow());
+        var orden = OrdenDeCompra.Crear(proveedor, reloj.GetUtcNow(), usuario.Id);
         db.OrdenesDeCompra.Add(orden);
         await db.SaveChangesAsync(ct);
         return Resultado<OrdenVista>.Ok(Vista(orden), $"Orden de compra {orden.Id} creada en Borrador. Agrégale productos.");
@@ -124,7 +127,19 @@ internal sealed class ServicioOrdenes(InventarioDbContext db, IUsuarioActual usu
             return Fallos.Como<OrdenVista>(cambio);
 
         // El estado, la existencia de cada producto y sus movimientos se guardan juntos, o nada.
-        return await Fallos.GuardarAsync<OrdenVista>(db, ct) ?? Resultado<OrdenVista>.Ok(Vista(orden), cambio.Mensaje);
+        if (await Fallos.GuardarAsync<OrdenVista>(db, ct) is { } fallo)
+            return fallo;
+
+        // RF-NOT-03 (RF-NEG-07): recibir mercancía cambia la existencia; los Administradores se enteran.
+        if (destino == EstadoOrdenCompra.Recibida)
+            await notificador.NotificarAdministradoresAsync(
+                $"Orden de compra {orden.Id} recibida",
+                $"{usuario.Nombre} recibió la orden de compra {orden.Id} de {orden.Proveedor.Nombre}: " +
+                $"{orden.Lineas.Count} producto(s) por un total de {orden.Total / 1.0000000000000000000000000000m} DOP. " +
+                "La existencia de cada producto ya se actualizó.",
+                ct);
+
+        return Resultado<OrdenVista>.Ok(Vista(orden), cambio.Mensaje);
     }
 
     private Task<OrdenDeCompra?> CargarAsync(int id, CancellationToken ct, bool soloLectura = false)
@@ -148,5 +163,5 @@ internal sealed class ServicioOrdenes(InventarioDbContext db, IUsuarioActual usu
     private static OrdenVista Vista(OrdenDeCompra o) => new(
         o.Id, o.Proveedor.Id, o.Proveedor.Nombre, o.Estado, o.CreadaEn, o.ActualizadaEn,
         o.Lineas.Select(l => new LineaVista(l.Id, l.Producto.Id, l.Producto.Nombre, l.Producto.Sku, l.Cantidad, l.CostoUnitario, l.Subtotal)).ToList(),
-        o.Total);
+        o.Total, o.RecibidaEn);
 }

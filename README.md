@@ -13,9 +13,19 @@ Instituto Tecnológico de las Américas (ITLA) — Cuatrimestre **2026-C-3**
 
 Aplicación web para que un negocio pequeño lleve el control de su inventario: **órdenes de compra** a proveedores, **movimientos de stock** y **alertas de stock bajo**. Como todos los proyectos del curso, tiene dos partes: el **Core** (la misma especificación para los 25 proyectos) y el **módulo de negocio** (inventario).
 
-## Estado: Práctica 4 — El proyecto en un contenedor, con documentos y una API externa
+## Estado: Práctica 5 — Notificaciones, cola de correos y reportes, delegados al agente
 
-Entregado en la etiqueta `practica-4`:
+Entregado en la etiqueta `practica-5`:
+
+- **Contexto del agente y criterios, antes de delegar:** [`AGENTS.md`](AGENTS.md) (propósito, stack, cómo correr y probar, convenciones y restricciones, entre ellas no leer `.env` ni escribir credenciales) y [`docs/criterios-notificaciones-reportes.md`](docs/criterios-notificaciones-reportes.md), con cada criterio en forma dado / cuando / entonces y el RF que cubre. Entraron en un commit propio, anterior al primer commit de notificaciones.
+- **Notificaciones** (pieza 4, RF-NOT-01 a 07): crear una solicitud avisa a los Administradores activos; resolverla avisa al solicitante con el resultado y el motivo; recibir una orden de compra avisa a los Administradores (el evento del negocio). Cada uno ve y marca solo las suyas, cada aviso llega a la bandeja interna y por correo, y cada usuario puede apagar el correo sin perder la bandeja. Ver [Notificaciones](#notificaciones).
+- **La cola de correos completa** (RF-NOT-08 a 13): un correo que falla se reintenta hasta **5 veces** (`COLA_MAX_INTENTOS`) y luego queda Fallido con su último error; el Administrador consulta la cola en `GET /api/cola-correos`. Ver [cómo provocar un fallo](#cómo-provocar-un-fallo-de-envío).
+- **Reportes con agregación** (pieza 5, RF-REP-01 a 05): solicitudes de permiso por mes y estado, y «¿cuánto le compramos a cada proveedor en el período?». Agrupan en PostgreSQL, filtran por rango de fechas y un Estándar solo cuenta lo suyo. Ver [Reportes](#reportes).
+- **Pantallas nuevas:** `/notificaciones` (la bandeja, marcar como leída, el canal de correo y, para un Administrador, la cola de correos) y `/reportes` (los dos reportes con su rango de fechas).
+- **Pruebas nuevas:** suites de Notificaciones (20), Cola de correos (17) y Reportes (12), más 14 en Gestión de permisos, 10 en el negocio y 2 de integración con las piezas reales. Todas con [un solo comando](#pruebas): 371 en total.
+- Los seis frentes de las prácticas anteriores siguen igual (secciones 1 a 10).
+
+Antes, en la etiqueta `practica-4`:
 
 - **El Manejador de documentos** (pieza 3 del Core, RF-DOC-01 a 05): subir un archivo registrando nombre, tipo, tamaño, fecha y quién lo subió; listar solo los propios (un Administrador ve los de todos) y nunca los eliminados; descargar y eliminar solo su dueño o un Administrador, verificado en el servidor (RD-06); eliminar es lógico. Un archivo ausente, vacío o de más de 10 MB se rechaza con un mensaje (RD-07). Tiene pantalla, `/documentos`. Ver [cómo provocar cada criterio](#10-manejador-de-documentos-rf-doc-01-a-05).
 - **Todo el proyecto con un solo comando** desde un clon limpio: `cp .env.example .env` y `docker compose up --build`. Hay un `Dockerfile` y un `.dockerignore` en la raíz, y solo la aplicación publica un puerto (http://localhost:8080). Ver [Contenedor](#contenedor).
@@ -40,10 +50,10 @@ Las seis piezas del Core y el módulo de negocio viven dentro de la API (los con
 flowchart LR
     subgraph Core["Core: misma especificación para los 25 proyectos"]
         ACC["<b>Control de acceso</b><br/>¿quién eres y qué rol tienes?<br/>✅ Práctica 1"]
-        NOTI["<b>Notificaciones</b><br/>avisos y cola de correos<br/>✅ cola mínima · S11–S12"]
+        NOTI["<b>Notificaciones</b><br/>bandeja interna y cola de correos<br/>✅ Práctica 5"]
         PERM["<b>Gestión de permisos</b><br/>solicitud → aprobación<br/>✅ Asignación 2"]
         DOC["<b>Manejador de documentos</b><br/>subir, listar, borrado lógico<br/>✅ Práctica 4"]
-        REP["<b>Reportes</b><br/>agregación filtrada por rol<br/>S12"]
+        REP["<b>Reportes</b><br/>agregación filtrada por rol<br/>✅ Práctica 5"]
         AUD["<b>Auditoría</b><br/>quién hizo qué y cuándo<br/>S14"]
     end
     subgraph Negocio["Módulo de negocio"]
@@ -52,7 +62,9 @@ flowchart LR
 
     ACC -->|"encola los correos de activación y recuperación"| NOTI
     PERM -->|"pregunta quién es y aplica el permiso aprobado"| ACC
-    PERM -->|"avisa al solicitante"| NOTI
+    PERM -->|"avisa a los Administradores y al solicitante"| NOTI
+    NOTI -->|"pregunta quiénes son los Administradores activos"| ACC
+    PERM -->|"reporte de solicitudes con su rango de fechas"| REP
     DOC -->|"pregunta quién es y qué rol tiene"| ACC
     REP -->|"filtra según el rol de quien consulta"| ACC
     MOD -->|"pregunta quién es y qué rol tiene"| ACC
@@ -67,15 +79,17 @@ Casi todas las piezas registran sus acciones en Auditoría; esa flecha punteada 
 
 | Pieza | Proyecto | Interfaz que ofrece a las demás |
 |---|---|---|
-| Control de acceso | `backend/src/Inventario.Core.ControlAcceso` | `IUsuarioActual` («¿quién es y qué rol?»), `IOtorgamientoPermisos` («desde ahora este usuario puede ejecutar esta operación»), `IServicioCuentas`, `IServicioSesiones`, `IServicioContrasenas`, `IServicioUsuarios` |
+| Control de acceso | `backend/src/Inventario.Core.ControlAcceso` | `IUsuarioActual` («¿quién es y qué rol?»), `IOtorgamientoPermisos` («desde ahora este usuario puede ejecutar esta operación»), `IDirectorioUsuarios` («¿quiénes son los Administradores activos?»), `IServicioCuentas`, `IServicioSesiones`, `IServicioContrasenas`, `IServicioUsuarios` |
 | Gestión de permisos | `backend/src/Inventario.Core.GestionPermisos` | `IServicioSolicitudes` (pedir, consultar, aprobar y rechazar), `IPermisosConcedidos` («¿este usuario tiene aprobado este permiso?») y la máquina de estados `TransicionesSolicitud` |
-| Notificaciones (cola de correos) | `backend/src/Inventario.Core.ColaCorreos` | `IColaCorreos.EncolarAsync` y `ProcesadorCola` |
+| Notificaciones | `backend/src/Inventario.Core.Notificaciones` | `INotificador` («avísale a este usuario» o «a los Administradores») e `IServicioNotificaciones` (bandeja, marcar leída, preferencias). Requiere `IDirectorioUsuarios` de Control de acceso e `IColaCorreos` |
+| Cola de correos | `backend/src/Inventario.Core.ColaCorreos` | `IColaCorreos.EncolarAsync`, `IConsultaCola` (estado de cada correo) y `ProcesadorCola` (reintentos hasta `COLA_MAX_INTENTOS`) |
+| Reportes | `backend/src/Inventario.Core.Reportes` | `RangoFechas` (el rango y su validación). Los reportes: `IReporteSolicitudes` en Gestión de permisos e `IReporteCompras` en el negocio |
 | Manejador de documentos | `backend/src/Inventario.Core.Documentos` | `IServicioDocumentos` (subir, listar, consultar, descargar y eliminar) e `IAlmacenArchivos` (dónde vive el contenido de cada archivo) |
 | Módulo de negocio | `backend/src/Inventario.Negocio` | `IServicioProveedores`, `IServicioProductos`, `IServicioOrdenes`, `IServicioExistencias`, `IServicioCotizaciones` y la máquina de estados `TransicionesOrdenCompra`. Requiere `ITasasDeCambio`, que implementa el cliente de la API externa |
 | Host de la API | `backend/src/Inventario.Api` | Endpoints HTTP delgados y la tabla de roles por operación (`Acceso/Operaciones.cs`) |
 | Enviador | `backend/src/Inventario.Enviador` | Proceso aparte que entrega la cola por SMTP |
 
-Cada pieza tiene su propio esquema en PostgreSQL (`control_acceso`, `gestion_permisos`, `cola_correos`, `documentos` e `inventario`). Ninguna lee las tablas de otra: todo pasa por interfaces. Por ejemplo, Gestión de permisos pregunta quién es el usuario con `IUsuarioActual` y otorga el permiso aprobado con `IOtorgamientoPermisos`; nunca toca las tablas de Control de acceso. Del mismo modo, el negocio le pregunta a Gestión de permisos con `IPermisosConcedidos` si un usuario tiene aprobado un permiso, sin conocer los estados de una solicitud. Ningún proyecto `Inventario.Core.*` referencia a `Inventario.Negocio`.
+Cada pieza tiene su propio esquema en PostgreSQL (`control_acceso`, `gestion_permisos`, `cola_correos`, `notificaciones`, `documentos` e `inventario`). Ninguna lee las tablas de otra: todo pasa por interfaces. Por ejemplo, Gestión de permisos pregunta quién es el usuario con `IUsuarioActual` y otorga el permiso aprobado con `IOtorgamientoPermisos`; nunca toca las tablas de Control de acceso. Del mismo modo, el negocio le pregunta a Gestión de permisos con `IPermisosConcedidos` si un usuario tiene aprobado un permiso, sin conocer los estados de una solicitud. Ningún proyecto `Inventario.Core.*` referencia a `Inventario.Negocio`.
 
 ## Requisitos
 
@@ -92,7 +106,7 @@ El proyecto completo corre en contenedores y arranca con **un solo comando**. De
 ```bash
 git clone https://github.com/yojairoivan-sketch/Proyecto-Final-P3.git
 cd Proyecto-Final-P3
-git checkout practica-4
+git checkout practica-5
 cp .env.example .env
 docker compose up --build
 ```
@@ -118,7 +132,7 @@ La portada dice «API: conectada». El primer Administrador se crea al arrancar 
 | `web` | nginx con la aplicación React. Reenvía `/api/` a `api` y `/correo/` a `mailpit`. | `8080` (o `WEB_PUERTO`) |
 | `api` | La API (.NET 10), con las piezas del Core y el negocio. Al arrancar crea las tablas y el primer Administrador. | ninguno |
 | `db` | PostgreSQL 17. | ninguno |
-| `enviador` | Proceso aparte que entrega la cola de correos cada 5 segundos (RF-NOT-09). | ninguno |
+| `enviador` | Proceso aparte que entrega la cola de correos cada 5 segundos y reintenta los que fallan hasta `COLA_MAX_INTENTOS` (RF-NOT-09, 10). | ninguno |
 | `mailpit` | Servidor SMTP de pruebas: recibe los correos y no envía nada afuera. | ninguno |
 
 | Volumen | Qué guarda |
@@ -148,6 +162,7 @@ Todas van en `.env`, que nunca se sube al repositorio (`.gitignore` lo excluye).
 | `SMTP_USUARIO` | Usuario del servidor de correo. Mailpit acepta cualquiera. | `inventario` |
 | `SMTP_CONTRASENA` | Su contraseña (en Gmail, una contraseña de aplicación). | `clave-de-ejemplo` |
 | `SMTP_REMITENTE` | Dirección que aparece como remitente. | `inventario@inventario.local` |
+| `COLA_MAX_INTENTOS` | Cuántas veces se intenta un correo antes de dejarlo Fallido (1 a 100). Opcional: si falta, 5. | `5` |
 | `TASA_CAMBIO_API_CLAVE` | Clave de ExchangeRate-API (ver [API externa](#api-externa)). Con el valor de ejemplo, la cotización se rechaza con un mensaje y lo demás funciona. | `clave-de-ejemplo` |
 
 Si falta una variable obligatoria, `docker compose` se detiene y dice cuál. Solo el enviador recibe las variables `SMTP_*`, así que una operación de la API nunca habla con el servidor de correo; y solo la API recibe `TASA_CAMBIO_API_CLAVE`.
@@ -234,11 +249,122 @@ La cuenta: 13 552 DOP × 0.01644 = 222.79 USD, redondeado a 2 decimales.
 
 Lo que pasa cuando la API no responde se comprueba en las pruebas, sin internet: `SiLaApiNoRespondeSeRechazaSinExcepcion` y `SiLaApiTardaDemasiadoSeRechazaSinExcepcion` ([Pruebas](#pruebas)). Para verlo en la aplicación, apaga la red del equipo y repite la cotización. Las filas para provocar cada caso están en la [funcionalidad 8](#funcionalidad-8-cotizar-una-orden-en-otra-moneda-api-externa).
 
+## Notificaciones
+
+Pieza 4 del Core ([`Inventario.Core.Notificaciones`](backend/src/Inventario.Core.Notificaciones)). Cada aviso queda en la **bandeja interna** del destinatario y, si no desactivó el correo, también se **encola un correo** con el mismo asunto (RF-NOT-06). La pieza nunca habla con el servidor de correo: el correo sale después por la cola (RF-NOT-08). Los criterios con los que se aceptó están en [`docs/criterios-notificaciones-reportes.md`](docs/criterios-notificaciones-reportes.md).
+
+| Evento | Quién recibe | Dónde se dispara |
+|---|---|---|
+| Se crea una solicitud de permiso (RF-NOT-01) | Cada Administrador **activo**, y nadie más | `ServicioSolicitudes.CrearAsync` (Gestión de permisos) |
+| Se aprueba o se rechaza una solicitud (RF-NOT-02) | El solicitante: «aprobada» o «rechazada» y, si se rechazó, el motivo | `ServicioSolicitudes.AprobarAsync` y `RechazarAsync` |
+| **Evento del negocio:** se recibe una orden de compra, Enviada → Recibida (RF-NOT-03, RF-NEG-07) | Cada Administrador activo: número de la orden, proveedor, productos y total. La existencia ya cambió. | `ServicioOrdenes.CambiarEstadoAsync` (módulo de negocio) |
+
+Una operación que se rechaza (por ejemplo, rechazar sin motivo) no avisa a nadie. Quiénes son los Administradores activos se le pregunta a Control de acceso con `IDirectorioUsuarios`; las otras piezas avisan con `INotificador`.
+
+| Operación | Endpoint | Quién |
+|---|---|---|
+| Ver mis notificaciones, con `noLeidas` y cada una con `leida` (RF-NOT-04) | `GET /api/notificaciones` (`?estado=NoLeidas` o `?estado=Leidas` para filtrar) | Cualquiera con sesión; solo ve las suyas |
+| Marcar una como leída (RF-NOT-05) | `POST /api/notificaciones/{id}/leida` | Solo el destinatario. Una ajena responde 404 «La notificación no existe», también para un Administrador |
+| Ver y cambiar el canal de correo (RF-NOT-07) | `GET` y `PUT /api/notificaciones/preferencias` con `{"correo": false}` o `true` | Cada uno el suyo. El canal interno no se puede apagar |
+| Consultar la cola de correos (RF-NOT-11) | `GET /api/cola-correos` (`?estado=Pendiente`, `Enviado` o `Fallido`) | Solo Administrador; un Estándar recibe 403 |
+
+Sin sesión, todas responden 401. Las notificaciones viven en el esquema `notificaciones` de PostgreSQL (`notificaciones` y `preferencias`).
+
+**En la interfaz:** enlace «Notificaciones» de la barra (`/notificaciones`). Muestra cuántas tienes sin leer, la lista (las no leídas en negrita) con el filtro «todas / solo las no leídas / solo las leídas», el botón «Marcar como leída» y la casilla «Recibir también un correo por cada notificación». Un Administrador ve además la «Cola de correos»: cuántos hay en cada estado y cada correo con su estado, intentos, fechas y último error.
+
+### Cola de correos: procesador, reintentos y máximo de intentos
+
+- **El procesador** es el servicio `enviador` de compose (un proceso aparte, RF-NOT-09): cada 5 segundos toma los correos Pendientes y los entrega. Para ejecutarlo a mano, una sola pasada: `docker compose stop enviador` y después `docker compose run --rm enviador --una-vez` (escribe «Enviados: N…» o «No hay correos pendientes.»). Vuelve a dejarlo vigilando con `docker compose start enviador`.
+- **Máximo de intentos: 5** (variable `COLA_MAX_INTENTOS` en `.env`, de 1 a 100). Cada pasada intenta una vez cada correo Pendiente. Si falla, el correo sigue Pendiente con `intentos` + 1, la fecha del intento y `ultimo_error`; en el quinto fallo queda **Fallido** y no se vuelve a intentar, pero no se borra (RF-NOT-10).
+- **Un correo Enviado no se repite** (RF-NOT-12): cada correo se toma con `FOR UPDATE SKIP LOCKED` y pasa a Enviado en la misma transacción, así que correr el procesador dos veces (o dos procesadores a la vez) no lo manda dos veces.
+- **Credenciales** (RF-NOT-13): las `SMTP_*` solo están en `.env` y solo las recibe el enviador.
+
+### Cómo provocar cada evento
+
+**Preparación.** Además del Administrador de `.env` hacen falta dos usuarios Estándar, Elena y Pablo, y un segundo Administrador, Rosa (se registra como Estándar y el Administrador le cambia el rol). La función `cuenta` registra una cuenta, espera su correo de activación en Mailpit y la activa. En Git Bash:
+
+```bash
+API=http://localhost:8080/api; J='Content-Type: application/json'
+token() { curl -s $API/acceso/sesion -H "$J" -d "{\"correo\":\"$1\",\"contrasena\":\"$2\"}" | sed -nE 's/.*"token":"([^"]+)".*/\1/p'; }
+cuenta() {
+  curl -s $API/acceso/registro -H "$J" -d "{\"nombre\":\"$1\",\"correo\":\"$2\",\"contrasena\":\"clave1234\"}"; echo
+  for i in $(seq 20); do ID=$(curl -s "http://localhost:8080/correo/api/v1/search?query=to:$2" | grep -o '"ID":"[^"]*"' | head -1 | cut -d'"' -f4); [ -n "$ID" ] && break; sleep 1; done
+  curl -s $API/acceso/activar -H "$J" -d "{\"token\":\"$(curl -s http://localhost:8080/correo/view/$ID.txt | grep -o 'token=[A-Za-z0-9_-]*' | cut -d= -f2)\"}"; echo
+}
+primer_id() { tee /dev/stderr | grep -o '"id":[0-9]*' | head -1 | cut -d: -f2; }
+bandeja() { curl -s "$API/notificaciones${2:-}" -H "Authorization: Bearer $1"; echo; }
+cuenta Elena elena@ejemplo.com; cuenta Pablo pablo@ejemplo.com; cuenta Rosa rosa@ejemplo.com
+TOKEN_ADMIN=$(token admin@inventario.local Admin12345); AD="Authorization: Bearer $TOKEN_ADMIN"
+ROSA_ID=$(curl -s $API/yo -H "Authorization: Bearer $(token rosa@ejemplo.com clave1234)" | grep -o '"id":[0-9]*' | cut -d: -f2)
+curl -s -X PUT $API/usuarios/$ROSA_ID/rol -H "$AD" -H "$J" -d '{"rol":"Administrador"}'; echo
+TOKEN_ROSA=$(token rosa@ejemplo.com clave1234); TOKEN_ELENA=$(token elena@ejemplo.com clave1234); TOKEN_PABLO=$(token pablo@ejemplo.com clave1234)
+EL="Authorization: Bearer $TOKEN_ELENA"; PA="Authorization: Bearer $TOKEN_PABLO"
+echo "$TOKEN_ADMIN / $TOKEN_ROSA / $TOKEN_ELENA / $TOKEN_PABLO"
+```
+
+Se ven tres «Cuenta activada. Ya puedes iniciar sesión.», el cambio de rol de Rosa y los cuatro tokens. `primer_id` muestra la respuesta y guarda el primer `id`; `bandeja <token> [filtro]` muestra las notificaciones de ese usuario. Sigue las filas en orden: cada una usa lo que dejó la anterior.
+
+| Para comprobar | Haz esto | Resultado esperado |
+|---|---|---|
+| Crear una solicitud avisa a los Administradores (RF-NOT-01) | `SOL=$(curl -s $API/solicitudes -H "$EL" -H "$J" -d '{"permiso":"ListarUsuarios","justificacion":"Revisar cuentas"}' \| primer_id); echo; echo $SOL` | 201 «Solicitud creada…». El número queda en `SOL`. |
+| …los dos la tienen sin leer | `bandeja $TOKEN_ADMIN; bandeja $TOKEN_ROSA` | Cada uno: `"noLeidas":1` y una notificación «Nueva solicitud de permiso: ListarUsuarios», «Elena (elena@ejemplo.com) pidió el permiso ListarUsuarios…», `"leida":false`. |
+| …y nadie más | `bandeja $TOKEN_ELENA; bandeja $TOKEN_PABLO` | Los dos: `{"noLeidas":0,"notificaciones":[]}`. |
+| Rechazar avisa al solicitante con el motivo (RF-NOT-02) | `curl -s -X POST $API/solicitudes/$SOL/rechazar -H "$AD" -H "$J" -d '{"motivo":"No aplica"}'; echo; bandeja $TOKEN_ELENA` | «Solicitud rechazada…», y en la bandeja de Elena: «Tu solicitud de permiso fue rechazada: ListarUsuarios», «… Motivo: No aplica». |
+| Aprobar avisa al solicitante (RF-NOT-02) | `SOL2=$(curl -s $API/solicitudes -H "$PA" -H "$J" -d '{"permiso":"ListarUsuarios"}' \| primer_id); echo; curl -s -X POST $API/solicitudes/$SOL2/aprobar -H "$AD"; echo; bandeja $TOKEN_PABLO` | «Solicitud aprobada…», y en la bandeja de Pablo: «Tu solicitud de permiso fue aprobada: ListarUsuarios». |
+| Llega también por correo (RF-NOT-06) | Abre http://localhost:8080/correo/ | Hay un correo para elena@ejemplo.com «Tu solicitud de permiso fue rechazada: ListarUsuarios» y uno para pablo@ejemplo.com «…fue aprobada…», con el mismo texto que la notificación. Los Administradores tienen el de «Nueva solicitud de permiso». |
+| El evento del negocio (RF-NOT-03): Elena recibe una orden | `PROV=$(curl -s $API/proveedores -H "$AD" -H "$J" -d '{"nombre":"Molinos del Norte","telefono":"809-555-0101","correo":"ventas@molinos.com"}' \| primer_id); echo; PROD=$(curl -s $API/productos -H "$AD" -H "$J" -d '{"nombre":"Arroz","sku":"ARR-N1","unidadMedida":"saco","puntoReorden":5}' \| primer_id); echo; ORD=$(curl -s $API/ordenes -H "$EL" -H "$J" -d "{\"proveedorId\":$PROV}" \| primer_id); echo` | Tres respuestas 201: el proveedor, el producto y la orden en Borrador (su número queda en `ORD`). |
+| …le agrega una línea, se envía y Elena la recibe | `curl -s $API/ordenes/$ORD/lineas -H "$EL" -H "$J" -d "{\"productoId\":$PROD,\"cantidad\":10,\"costoUnitario\":850}"; echo; curl -s $API/ordenes/$ORD/estado -H "$AD" -H "$J" -d '{"hacia":"Enviada"}'; echo; curl -s $API/ordenes/$ORD/estado -H "$EL" -H "$J" -d '{"hacia":"Recibida"}'; echo` | La orden pasa a Enviada y luego a Recibida, con `"recibidaEn"`. |
+| …y los Administradores se enteran | `bandeja $TOKEN_ROSA "?estado=NoLeidas"; bandeja $TOKEN_ELENA "?estado=NoLeidas"` | Rosa: «Orden de compra N recibida», «Elena recibió la orden de compra N de Molinos del Norte: 1 producto(s) por un total de 8500 DOP…». Elena: ninguna nueva por esto (`"noLeidas":1`, la del rechazo). |
+| Solo se ven las propias (RF-NOT-04) | `bandeja $TOKEN_ELENA "?estado=NoLeidas"; bandeja $TOKEN_PABLO "?estado=Leidas"; curl -s -w ' [%{http_code}]\n' $API/notificaciones` | Elena: solo la suya del rechazo. Pablo: `"notificaciones":[]` (todavía no leyó nada). Sin sesión: 401. |
+| Marcar la de otro se rechaza (RF-NOT-05) | `NOTI=$(bandeja $TOKEN_ELENA \| primer_id); curl -s -w ' [%{http_code}]\n' -X POST $API/notificaciones/$NOTI/leida -H "$PA"; curl -s -w ' [%{http_code}]\n' -X POST $API/notificaciones/$NOTI/leida -H "$AD"` | Pablo y el Administrador: 404 «La notificación no existe.» La de Elena sigue `"leida":false`. |
+| Marcar la propia (RF-NOT-05) | `curl -s -X POST $API/notificaciones/$NOTI/leida -H "$EL"; echo; bandeja $TOKEN_ELENA "?estado=NoLeidas"` | `"leida":true` con su `"leidaEn"`, y la bandeja de no leídas queda `{"noLeidas":0,"notificaciones":[]}`. Repetirlo responde 200 y no cambia la fecha. |
+| Desactivar el correo (RF-NOT-07) | `curl -s -X PUT $API/notificaciones/preferencias -H "$EL" -H "$J" -d '{"correo":false}'; echo; curl -s $API/cola-correos -H "$AD" \| grep -o '"destinatario":"elena@ejemplo.com"' \| wc -l` | «Recibirás tus notificaciones solo dentro del sistema…» `"correo":false`. El número es la cantidad de correos que Elena tiene en la cola (por ejemplo 2: la activación y el rechazo). |
+| …le llega otra notificación | `SOL3=$(curl -s $API/solicitudes -H "$EL" -H "$J" -d '{"permiso":"ReactivarUsuario"}' \| primer_id); echo; curl -s -X POST $API/solicitudes/$SOL3/rechazar -H "$AD" -H "$J" -d '{"motivo":"Tampoco"}'; echo; bandeja $TOKEN_ELENA "?estado=NoLeidas"` | En su bandeja: «…fue rechazada: ReactivarUsuario», «… Motivo: Tampoco». |
+| …y no se encoló ningún correo para ella | `curl -s $API/cola-correos -H "$AD" \| grep -o '"destinatario":"elena@ejemplo.com"' \| wc -l` | El mismo número de antes. Los Administradores sí recibieron su correo de «Nueva solicitud de permiso: ReactivarUsuario»: la preferencia es de cada usuario. |
+| Consultar la cola (RF-NOT-11) | `curl -s $API/cola-correos -H "$AD"; echo; curl -s -w ' [%{http_code}]\n' $API/cola-correos -H "$EL"` | Administrador: `{"pendientes":…,"enviados":…,"fallidos":…,"correos":[{"id":…,"destinatario":…,"asunto":…,"estado":"Enviado","intentos":1,"creadoEn":…,"ultimoIntentoEn":…,"enviadoEn":…,"ultimoError":null},…]}`, sin el cuerpo de los correos. Elena: 403. |
+
+### Cómo provocar un fallo de envío
+
+| Para comprobar | Haz esto | Resultado esperado |
+|---|---|---|
+| La operación no depende del servidor de correo (RF-NOT-08) | `docker compose stop mailpit` y después `curl -s -w ' [%{http_code}]\n' $API/solicitudes -H "$PA" -H "$J" -d '{"permiso":"ReactivarUsuario"}'` | 201 enseguida. Los correos para los Administradores («Nueva solicitud de permiso: ReactivarUsuario») quedan en la cola. |
+| Se reintenta (RF-NOT-10) | Unos 20 segundos después: `curl -s "$API/cola-correos?estado=Pendiente" -H "$AD"` | Esos correos siguen Pendientes con `"intentos"` de 1 en adelante y `"ultimoError":"SocketException: Name or service not known"` (el nombre `mailpit` ya no existe en la red). Cada intento fallido tarda unos segundos, así que una pasada con varios correos tarda más que 5 s. |
+| Agotados los 5 intentos queda Fallido (RF-NOT-10) | Con Mailpit apagado, unos dos minutos después: `curl -s "$API/cola-correos?estado=Fallido" -H "$AD"` y `docker compose logs enviador` | Cada uno con `"estado":"Fallido","intentos":5` y su `"ultimoError"`, y `"pendientes":0`. El enviador escribió «Fallidos (agotaron los 5 intentos): N» en la pasada del quinto intento. |
+| Un Fallido no se vuelve a intentar | `docker compose start mailpit`, espera 10 segundos y repite `curl -s "$API/cola-correos?estado=Fallido" -H "$AD"` | Siguen Fallido con 5 intentos y el mismo `ultimoIntentoEn`: no llegan a Mailpit. (Si enciendes Mailpit **antes** del quinto intento, el correo sale en la siguiente pasada y queda Enviado con los intentos que llevaba.) Mailpit guarda los correos en memoria: al detenerlo, su bandeja vuelve vacía, pero la cola de la aplicación conserva el estado de cada correo. |
+| Correr el procesador dos veces no duplica (RF-NOT-12) | Con Mailpit encendido: `docker compose stop enviador`, luego `curl -s $API/solicitudes -H "$PA" -H "$J" -d '{"permiso":"AjustarExistencia"}'; echo`, y después `docker compose run --rm enviador --una-vez` dos veces seguidas | La primera pasada: «Enviados: 2…». La segunda: «No hay correos pendientes.» En Mailpit, cada Administrador tiene ese correo una sola vez. Al terminar: `docker compose start enviador`. |
+
+## Reportes
+
+Pieza 5 del Core ([`Inventario.Core.Reportes`](backend/src/Inventario.Core.Reportes)): el rango de fechas que comparten los reportes y cómo se valida. Cada reporte vive junto a sus datos y agrupa **en PostgreSQL** (`GROUP BY` con `COUNT` y `SUM`), nunca trayendo los registros para sumarlos en la API ni en la interfaz (RF-REP-03).
+
+| Reporte | Endpoint | Qué responde |
+|---|---|---|
+| Del Core (RF-REP-01): solicitudes de permiso por mes y por estado | `GET /api/reportes/solicitudes?desde=AAAA-MM-DD&hasta=AAAA-MM-DD` | Cuántas solicitudes se crearon en el período, por estado (`porEstado`) y por mes y estado (`porMes`). |
+| Del negocio (RF-REP-02, RF-NEG-08): **«¿Cuánto le compramos a cada proveedor en el período?»** | `GET /api/reportes/compras-por-proveedor?desde=AAAA-MM-DD&hasta=AAAA-MM-DD` | Por proveedor: cuántas órdenes se **recibieron** en el período, el monto total (suma de cantidad × costo de sus líneas, en DOP) y el promedio por orden. Las órdenes en Borrador, Enviada o Cancelada no cuentan. Sirve para saber a quién se le compra más y negociar con él. |
+
+- **Rango de fechas (RF-REP-05).** `desde` y `hasta` son obligatorias, en formato `AAAA-MM-DD`, y son días en **UTC** (RD-11): el rango va desde `desde` a las 00:00 UTC hasta el final de `hasta`, con los dos días completos. Hasta 731 días por consulta, con fechas entre 1900 y 2100. Una fecha que no es fecha o que está fuera de esos años, `desde` posterior a `hasta` o un rango más largo responden 400 con un mensaje que dice qué corregir. El reporte de solicitudes usa la fecha de creación; el de compras, la fecha en que la orden se recibió.
+- **Rol (RF-REP-04).** Un Administrador ve los datos de todos. Un Estándar solo cuenta sus propias solicitudes y las órdenes que él creó; la respuesta lo dice con `"soloLasMias":true`.
+- Los dos exigen sesión (401 sin ella).
+- **En la interfaz:** enlace «Reportes» de la barra (`/reportes`): «Desde» y «Hasta» (por defecto, del primer día del mes a hoy) y «Consultar» muestran las dos tablas tal como las devuelve la API.
+
+**Cómo consultarlos.** Con la preparación de [Notificaciones](#cómo-provocar-cada-evento) (que dejó solicitudes de Elena y Pablo y la orden que recibió Elena), y una orden más del Administrador:
+
+| Para comprobar | Haz esto | Resultado esperado |
+|---|---|---|
+| Preparación | `HOY=$(date -u +%F); MES=$(date -u +%Y-%m); ORD2=$(curl -s $API/ordenes -H "$AD" -H "$J" -d "{\"proveedorId\":$PROV}" \| primer_id); echo; curl -s $API/ordenes/$ORD2/lineas -H "$AD" -H "$J" -d "{\"productoId\":$PROD,\"cantidad\":2,\"costoUnitario\":850}"; echo; curl -s $API/ordenes/$ORD2/estado -H "$AD" -H "$J" -d '{"hacia":"Enviada"}'; echo; curl -s $API/ordenes/$ORD2/estado -H "$AD" -H "$J" -d '{"hacia":"Recibida"}'; echo` | Una segunda orden de Molinos del Norte, recibida, de 1700 DOP. |
+| Reporte del Core con agregación (RF-REP-01, 03) | `curl -s "$API/reportes/solicitudes?desde=$MES-01&hasta=$HOY" -H "$AD"; echo` | `"soloLasMias":false,"total":5` (o más, si ya había solicitudes), `porEstado` (por ejemplo `Pendiente` 2, `Aplicada` 1, `Rechazada` 2) y `porMes` con una fila por estado del mes: menos filas que solicitudes. |
+| Un Estándar solo ve lo suyo (RF-REP-04) | `curl -s "$API/reportes/solicitudes?desde=$MES-01&hasta=$HOY" -H "$EL"; echo` | `"soloLasMias":true,"total":2` (las dos de Elena, las dos Rechazadas). |
+| Reporte del negocio (RF-REP-02, 03) | `curl -s "$API/reportes/compras-por-proveedor?desde=$MES-01&hasta=$HOY" -H "$AD"; echo` | `"pregunta":"¿Cuánto le compramos a cada proveedor en el período? (órdenes recibidas, en DOP)"`, y para Molinos del Norte `"ordenes":2,"montoTotal":10200,"promedioPorOrden":5100`: una fila por proveedor, no una por orden. |
+| Un Estándar solo cuenta sus órdenes (RF-REP-04) | `curl -s "$API/reportes/compras-por-proveedor?desde=$MES-01&hasta=$HOY" -H "$EL"; echo; curl -s "$API/reportes/compras-por-proveedor?desde=$MES-01&hasta=$HOY" -H "$PA"; echo` | Elena: `"soloLasMias":true,"ordenesRecibidas":1,"montoTotal":8500`. Pablo, que no creó órdenes: `"ordenesRecibidas":0,"montoTotal":0,"proveedores":[]`. |
+| Otro rango, otro resultado (RF-REP-05) | `curl -s "$API/reportes/solicitudes?desde=2026-01-01&hasta=2026-01-31" -H "$AD"; echo; curl -s "$API/reportes/compras-por-proveedor?desde=2026-01-01&hasta=2026-01-31" -H "$AD"; echo` | Sobre los mismos datos, enero da `"total":0` y `"ordenesRecibidas":0`. |
+| Un rango inválido (RF-REP-05, RD-07) | `curl -s -w ' [%{http_code}]\n' "$API/reportes/compras-por-proveedor?desde=2026-12-01&hasta=2026-11-01" -H "$AD"; curl -s -w ' [%{http_code}]\n' "$API/reportes/solicitudes?desde=ayer&hasta=$HOY" -H "$AD"` | 400 «La fecha desde (2026-12-01) es posterior a hasta (2026-11-01)…» y 400 «La fecha desde «ayer» no es válida…». |
+| Sin sesión | `curl -s -w ' [%{http_code}]\n' "$API/reportes/solicitudes?desde=$HOY&hasta=$HOY"` | 401. |
+
 ## Cómo provocar cada criterio de aceptación
 
 Control de acceso y Gestión de permisos se pueden probar desde la interfaz (http://localhost:8080) o armando la petición a mano con `curl`; el módulo de negocio, con `curl`. Los `curl` de abajo son para **Git Bash**. En los textos que mandes con `curl` (por ejemplo un motivo de rechazo), no uses tildes: en Windows, `curl.exe` manda los argumentos en otra codificación y la API responde «La petición no tiene el formato esperado». Desde la interfaz las tildes funcionan bien.
 
-Control de acceso (Práctica 1) está en las secciones 1 a 5, el módulo de negocio (Práctica 3) en la [sección 8](#8-módulo-de-negocio-inventario-rf-neg-02-a-06-y-09), Gestión de permisos en la [sección 9](#9-gestión-de-permisos-rf-gp-01-a-07) y el Manejador de documentos (Práctica 4) en la [sección 10](#10-manejador-de-documentos-rf-doc-01-a-05). Para los `curl`, usa los datos del Administrador de `.env` (con los de ejemplo, `admin@inventario.local` y `Admin12345`). Las suites y los defectos no necesitan la aplicación levantada: están en [Pruebas](#pruebas) y [Defectos](#defectos).
+Control de acceso (Práctica 1) está en las secciones 1 a 5, el módulo de negocio (Práctica 3) en la [sección 8](#8-módulo-de-negocio-inventario-rf-neg-02-a-06-y-09), Gestión de permisos en la [sección 9](#9-gestión-de-permisos-rf-gp-01-a-07) y el Manejador de documentos (Práctica 4) en la [sección 10](#10-manejador-de-documentos-rf-doc-01-a-05). Notificaciones, la cola y los reportes (Práctica 5) tienen sus propias secciones: [Notificaciones](#notificaciones) y [Reportes](#reportes). Para los `curl`, usa los datos del Administrador de `.env` (con los de ejemplo, `admin@inventario.local` y `Admin12345`). Las suites y los defectos no necesitan la aplicación levantada: están en [Pruebas](#pruebas) y [Defectos](#defectos).
 
 **Preparación.** Para leer la base de datos:
 
@@ -336,14 +462,14 @@ Las dos últimas filas no repiten la regla en dos lugares: `Operaciones.cs` exig
 | Cambio con la actual incorrecta | En `/cuenta`, cambia la contraseña escribiendo mal la actual. | «La contraseña actual no es correcta. La contraseña no cambió.» (400) |
 | Cambio correcto | Cambia la contraseña con la actual correcta. | Todas las sesiones se cierran (también la actual) y hay que entrar con la nueva. La nueva también debe cumplir la política. |
 
-### 6. Correo por cola (RF-NOT-08, 09, 12 y 13)
+### 6. Correo por cola (RF-NOT-08, 09, 10, 12 y 13)
 
 El enviador es un proceso aparte (el servicio `enviador`) que revisa la cola cada 5 segundos. La API nunca habla con el servidor SMTP: solo deja el correo en la cola.
 
 1. Apaga el servidor de correo de pruebas: `docker compose stop mailpit`.
 2. Registra un usuario nuevo en `/registro`. La operación termina bien.
-3. En `psql`: `select id, destinatario, estado, intentos, ultimo_error from cola_correos.correos_en_cola order by id;`. El correo está **Pendiente**; con cada pasada del enviador `intentos` sube y `ultimo_error` dice por qué no salió (por ejemplo, `SocketException: Name or service not known`). `docker compose logs enviador` muestra «Con error (siguen pendientes): 1».
-4. Enciende el servidor: `docker compose start mailpit`. En unos segundos el enviador lo entrega («Enviados: 1» en `docker compose logs enviador`) y en la tabla queda **Enviado**. En http://localhost:8080/correo/ aparece una sola vez: las pasadas siguientes no lo vuelven a mandar.
+3. En `psql`: `select id, destinatario, estado, intentos, ultimo_error from cola_correos.correos_en_cola order by id;`. El correo está **Pendiente**; con cada pasada del enviador `intentos` sube y `ultimo_error` dice por qué no salió (por ejemplo, `SocketException: Name or service not known`). `docker compose logs enviador` muestra «Con error (se reintentan): 1».
+4. Antes de que pase un minuto, enciende el servidor: `docker compose start mailpit`. En unos segundos el enviador lo entrega («Enviados: 1» en `docker compose logs enviador`) y en la tabla queda **Enviado**. En http://localhost:8080/correo/ aparece una sola vez: las pasadas siguientes no lo vuelven a mandar. Si Mailpit sigue apagado, al quinto intento el correo queda **Fallido** y ya no sale (RF-NOT-10, ver [cómo provocar un fallo](#cómo-provocar-un-fallo-de-envío)).
 
 Para ver que la cola guarda el correo aunque no haya enviador: `docker compose stop enviador`, registra a alguien (queda Pendiente con `intentos = 0`) y `docker compose start enviador`. Si usas Gmail en vez de Mailpit, esta es la forma de probarlo.
 
@@ -643,17 +769,20 @@ Un solo comando, desde la raíz del repositorio. Funciona en un clon recién hec
 docker compose -f docker-compose.pruebas.yml run --rm --build pruebas
 ```
 
-Compila dentro de Docker y corre las cinco suites. La primera vez tarda unos minutos. Termina con:
+Compila dentro de Docker y corre las ocho suites. La primera vez tarda unos minutos. Termina con:
 
 ```
-Passed!  - Failed:     0, Passed:   146, Skipped:     0, Total:   146, ... - Inventario.Negocio.Pruebas.dll (net10.0)
+Passed!  - Failed:     0, Passed:    12, Skipped:     0, Total:    12, ... - Inventario.Core.Reportes.Pruebas.dll (net10.0)
+Passed!  - Failed:     0, Passed:    17, Skipped:     0, Total:    17, ... - Inventario.Core.ColaCorreos.Pruebas.dll (net10.0)
+Passed!  - Failed:     0, Passed:    80, Skipped:     0, Total:    80, ... - Inventario.Core.GestionPermisos.Pruebas.dll (net10.0)
+Passed!  - Failed:     0, Passed:    20, Skipped:     0, Total:    20, ... - Inventario.Core.Notificaciones.Pruebas.dll (net10.0)
 Passed!  - Failed:     0, Passed:    35, Skipped:     0, Total:    35, ... - Inventario.Core.Documentos.Pruebas.dll (net10.0)
-Passed!  - Failed:     0, Passed:     5, Skipped:     0, Total:     5, ... - Inventario.Integracion.Pruebas.dll (net10.0)
-Passed!  - Failed:     0, Passed:    66, Skipped:     0, Total:    66, ... - Inventario.Core.GestionPermisos.Pruebas.dll (net10.0)
+Passed!  - Failed:     0, Passed:   156, Skipped:     0, Total:   156, ... - Inventario.Negocio.Pruebas.dll (net10.0)
 Passed!  - Failed:     0, Passed:    44, Skipped:     0, Total:    44, ... - Inventario.Core.ControlAcceso.Pruebas.dll (net10.0)
+Passed!  - Failed:     0, Passed:     7, Skipped:     0, Total:     7, ... - Inventario.Integracion.Pruebas.dll (net10.0)
 ```
 
-Las cinco líneas pueden salir en otro orden. Si tienes el SDK de .NET 10 instalado, también sirve `dotnet test backend/Inventario.slnx`.
+Las ocho líneas pueden salir en otro orden. Si tienes el SDK de .NET 10 instalado, también sirve `dotnet test backend/Inventario.slnx`.
 
 Para correr una sola prueba, agrega un filtro al final del mismo comando:
 
@@ -661,7 +790,22 @@ Para correr una sola prueba, agrega un filtro al final del mismo comando:
 docker compose -f docker-compose.pruebas.yml run --rm --build pruebas --filter "FullyQualifiedName~CancelarUnaOrdenRecibida"
 ```
 
-En las suites del negocio, de integración, de Gestión de permisos y del Manejador de documentos, cada prueba marca sus tres fases con comentarios (`// Preparar`, `// Actuar`, `// Verificar`), su nombre dice qué comportamiento verifica y lleva el requisito con `[Trait("Requisito", "...")]`. En las cinco suites, cada prueba arma su propio entorno, con bases en memoria nuevas, así que no comparten datos: pasan en cualquier orden y por separado.
+En todas las suites salvo la de Control de acceso, cada prueba marca sus tres fases con comentarios (`// Preparar`, `// Actuar`, `// Verificar`), su nombre dice qué comportamiento verifica y lleva el requisito con `[Trait("Requisito", "...")]`. En las ocho suites, cada prueba arma su propio entorno, con bases en memoria nuevas, así que no comparten datos: pasan en cualquier orden y por separado.
+
+### Notificaciones, cola y reportes (Práctica 5)
+
+Cada una cubre los criterios de [`docs/criterios-notificaciones-reportes.md`](docs/criterios-notificaciones-reportes.md) (N-, C- y R-), sin la API ni PostgreSQL.
+
+| Suite o archivo | Qué prueba |
+|---|---|
+| [`Inventario.Core.Notificaciones.Pruebas`](backend/tests/Inventario.Core.Notificaciones.Pruebas/NotificacionesPruebas.cs) (20) | La pieza con dobles de Control de acceso (`DirectorioFalso`) y de la cola (`ColaFalsa`): a quién llega cada aviso, el correo encolado o no según la preferencia de cada usuario, ver y marcar solo las propias (también un Administrador), los filtros y que sin sesión no se hace nada (RF-NOT-01, 02, 04 a 07, RD-06). |
+| [`Inventario.Core.ColaCorreos.Pruebas`](backend/tests/Inventario.Core.ColaCorreos.Pruebas/ColaCorreosPruebas.cs) (17) | Reintentos: antes del máximo sigue Pendiente con su error, al llegar al máximo queda Fallido, y uno que falló y después sale queda Enviado con sus intentos; `COLA_MAX_INTENTOS` válido e inválido; encolar no intenta nada; la consulta de la cola con su resumen y su filtro (RF-NOT-08, 10, 11). El procesador usa `FOR UPDATE SKIP LOCKED`, propio de PostgreSQL: lo comprueba el recorrido de [cómo provocar un fallo](#cómo-provocar-un-fallo-de-envío). |
+| [`Inventario.Core.Reportes.Pruebas`](backend/tests/Inventario.Core.Reportes.Pruebas/RangoFechasPruebas.cs) (12) | El rango de fechas: los dos días completos en UTC, un solo día, los meses recortados y cada rango inválido con su mensaje, incluidas las fechas fuera de 1900–2100 (RF-REP-05, RD-07). |
+| [`AvisosPruebas.cs`](backend/tests/Inventario.Core.GestionPermisos.Pruebas/AvisosPruebas.cs) y [`ReporteSolicitudesPruebas.cs`](backend/tests/Inventario.Core.GestionPermisos.Pruebas/ReporteSolicitudesPruebas.cs) (Gestión de permisos, 14) | Crear avisa solo a los Administradores; aprobar y rechazar avisan al solicitante (con el motivo); una resolución rechazada no avisa. El reporte de solicitudes por mes y estado, lo de cada rol, dos rangos y el último día (RF-NOT-01, 02, RF-REP-01, 04, 05). |
+| [`AvisosNegocioPruebas.cs`](backend/tests/Inventario.Negocio.Pruebas/AvisosNegocioPruebas.cs) y [`ReporteComprasPruebas.cs`](backend/tests/Inventario.Negocio.Pruebas/ReporteComprasPruebas.cs) (negocio, 10) | Recibir una orden avisa a los Administradores y las demás transiciones no; el reporte de compras por proveedor, lo que ve un Estándar, dos rangos, un rango sin compras y uno inválido (RF-NOT-03, RF-REP-02, 04, 05). |
+| [`NotificacionesIntegracionPruebas.cs`](backend/tests/Inventario.Integracion.Pruebas/NotificacionesIntegracionPruebas.cs) (integración, 2) | Con Control de acceso, Gestión de permisos, Notificaciones y la cola **reales**: un Administrador desactivado no recibe nada y los correos se encolan solo para los activos; con el correo apagado, el rechazo llega solo a la bandeja. |
+
+Para correr solo las de un requisito, por ejemplo `--filter "Requisito=RF-NOT-07"` o `--filter "Requisito=RF-REP-04"` al final del comando de Pruebas.
 
 ### Manejador de documentos (35 pruebas)
 
@@ -682,7 +826,7 @@ Para correr solo las de un requisito:
 docker compose -f docker-compose.pruebas.yml run --rm --build pruebas --filter "Requisito=RF-DOC-03"
 ```
 
-### Módulo de negocio (146 pruebas)
+### Módulo de negocio (156 pruebas)
 
 Están en `backend/tests/Inventario.Negocio.Pruebas` y prueban el negocio sin la API, ni PostgreSQL, ni internet. La máquina de estados se prueba en memoria, sin base de datos. Los servicios usan SQLite en memoria y un reloj controlado, y en lugar del Core usan dos dobles de sus interfaces: `UsuarioActualFalso` (Control de acceso) dice quién hace la petición y `PermisosConcedidosFalso` (Gestión de permisos) dice qué permisos están aprobados y anota cada consulta.
 
@@ -701,7 +845,7 @@ Para correr solo la máquina de estados:
 docker compose -f docker-compose.pruebas.yml run --rm --build pruebas --filter "FullyQualifiedName~TransicionesOrdenCompraPruebas"
 ```
 
-### Integración: negocio con Gestión de permisos (5 pruebas)
+### Integración: negocio con Gestión de permisos (5 pruebas, más 2 de notificaciones)
 
 Están en [`backend/tests/Inventario.Integracion.Pruebas`](backend/tests/Inventario.Integracion.Pruebas/AjusteConPermisoPruebas.cs). Usan Control de acceso, Gestión de permisos y el módulo de negocio **reales**, sin dobles de ninguno y sin la aplicación levantada. Cada pieza tiene su propia base SQLite en memoria (en PostgreSQL, su propio esquema). Como hace el host en cada petición, la credencial de sesión se valida en Control de acceso y el usuario que devuelve es el usuario actual de las otras piezas.
 
@@ -713,7 +857,7 @@ Están en [`backend/tests/Inventario.Integracion.Pruebas`](backend/tests/Inventa
 | `ElPermisoAprobadoAOtroEstandarNoLeSirveAAna` | El permiso es del solicitante y de nadie más. |
 | `AlAprobarElPermisoTambienQuedaOtorgadoEnControlDeAcceso` | La misma sesión, validada otra vez, ya trae el permiso (RF-GP-05). |
 
-### Gestión de permisos (66 pruebas)
+### Gestión de permisos (80 pruebas)
 
 Están en `backend/tests/Inventario.Core.GestionPermisos.Pruebas` y prueban la pieza directamente, sin la API ni PostgreSQL. Usan SQLite en memoria y un reloj controlado. En lugar de Control de acceso usan dos dobles de sus interfaces: `UsuarioActualFalso` dice quién hace la petición y `OtorgamientoFalso` anota los permisos otorgados.
 
@@ -801,6 +945,7 @@ Sobre los defectos 2 y 5: la suite los detecta sin importar si la transición ag
 ├── docker-compose.yml                  # todo el proyecto: docker compose up --build
 ├── docker-compose.pruebas.yml          # las pruebas, sin .env
 ├── .env.example                        # todas las variables, con valores de ejemplo
+├── AGENTS.md                           # contexto para el agente de código: cómo correr, probar y qué no tocar
 ├── backend/
 │   ├── Inventario.slnx                 # solución .NET 10
 │   ├── src/
@@ -808,17 +953,22 @@ Sobre los defectos 2 y 5: la suite los detecta sin importar si la transición ag
 │   │   ├── Inventario.Core.ControlAcceso/
 │   │   ├── Inventario.Core.GestionPermisos/   # pieza 2: solicitudes y su máquina de estados
 │   │   ├── Inventario.Core.Documentos/        # pieza 3: registros y almacén de los documentos
-│   │   ├── Inventario.Core.ColaCorreos/
+│   │   ├── Inventario.Core.ColaCorreos/       # cola de correos: reintentos con límite y consulta
+│   │   ├── Inventario.Core.Notificaciones/    # pieza 4: bandeja interna, preferencias y aviso por correo
+│   │   ├── Inventario.Core.Reportes/          # pieza 5: rango de fechas de los reportes
 │   │   ├── Inventario.Enviador/        # consola que entrega la cola
 │   │   └── Inventario.Negocio/         # módulo de inventario: servicios, máquina de la orden y cotización con la API externa
 │   └── tests/                          # pruebas xUnit (RD-12), sin la aplicación levantada
 │       ├── Inventario.Core.ControlAcceso.Pruebas/
 │       ├── Inventario.Core.GestionPermisos.Pruebas/
 │       ├── Inventario.Core.Documentos.Pruebas/
+│       ├── Inventario.Core.Notificaciones.Pruebas/
+│       ├── Inventario.Core.ColaCorreos.Pruebas/
+│       ├── Inventario.Core.Reportes.Pruebas/
 │       ├── Inventario.Negocio.Pruebas/        # máquina de estados de la orden, servicios del negocio y cliente de la API
 │       └── Inventario.Integracion.Pruebas/    # negocio + Gestión de permisos + Control de acceso reales
 ├── frontend/                           # React 19 + TypeScript + Vite; nginx.conf
-└── docs/                               # máquina de estados y bitácoras
+└── docs/                               # máquina de estados, criterios de notificaciones y reportes, y bitácoras
 ```
 
 ## Tecnologías
@@ -846,5 +996,7 @@ En la declaración de la semana 1 el stack decía .NET 9. Se cambió a **.NET 10
 - **Concurrencia:** la orden de compra y el producto llevan un número de versión. Si dos personas reciben la misma orden o mueven la misma existencia a la vez, la segunda recibe un 409 y no se guarda nada a medias.
 - **Documentos (RF-DOC):** el archivo se guarda con un nombre que genera la aplicación (un GUID), así que el nombre que manda el usuario nunca decide una ruta. La descarga sale siempre como adjunto y con `X-Content-Type-Options: nosniff`, para que un archivo subido no se abra dentro de la aplicación. Si el registro no se puede guardar, el archivo se borra: no quedan archivos sin dueño.
 - **API externa:** el negocio define lo que necesita (`ITasasDeCambio`) y el cliente de ExchangeRate-API lo implementa. Así la operación se prueba con un doble, y el cliente con respuestas HTTP simuladas. Cualquier problema de la API es un `TipoFallo.NoDisponible` (503) con su mensaje, nunca una excepción.
+- **Notificaciones (RF-NOT):** las piezas que avisan (Gestión de permisos y el negocio) solo conocen `INotificador`. Notificaciones guarda la notificación y encola el correo; nunca contacta el servidor SMTP, así que avisar no hace fallar la operación aunque el correo esté caído. El aviso se hace después de guardar la operación: si la operación se rechaza, no hay aviso.
+- **Reportes (RF-REP):** cada reporte vive junto a sus datos (el de solicitudes en Gestión de permisos, el de compras en el negocio) y la pieza Reportes solo comparte el rango de fechas, así el Core no depende del negocio (RD-03). La orden de compra guarda quién la creó y cuándo se recibió; la migración llena `recibida_en` de las órdenes que ya estaban recibidas.
 - **Un solo puerto:** nginx es la única entrada. Resuelve `api` y `mailpit` en cada petición con el DNS de Docker, así que si uno se detiene, lo demás sigue respondiendo.
 - **Bitácoras con el agente:** [`docs/bitacora-asignacion-1.md`](docs/bitacora-asignacion-1.md) y [`docs/bitacora-asignacion-2.md`](docs/bitacora-asignacion-2.md).

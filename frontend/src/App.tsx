@@ -4,10 +4,12 @@ import Documentos from './paginas/Documentos'
 import IniciarSesion from './paginas/IniciarSesion'
 import Inicio from './paginas/Inicio'
 import MiCuenta from './paginas/MiCuenta'
+import Notificaciones from './paginas/Notificaciones'
 import Permisos from './paginas/Permisos'
 import Recuperar from './paginas/Recuperar'
 import ReenviarActivacion from './paginas/ReenviarActivacion'
 import Registro from './paginas/Registro'
+import Reportes from './paginas/Reportes'
 import Restablecer from './paginas/Restablecer'
 import Usuarios from './paginas/Usuarios'
 import { useSesion } from './sesion'
@@ -28,6 +30,8 @@ export default function App() {
               <NavLink to="/cuenta">Mi cuenta</NavLink>
               <NavLink to="/permisos">Permisos</NavLink>
               <NavLink to="/documentos">Documentos</NavLink>
+              <NavLink to="/notificaciones">Notificaciones</NavLink>
+              <NavLink to="/reportes">Reportes</NavLink>
               {(usuario.rol === 'Administrador' || usuario.permisos.includes('ListarUsuarios')) && (
                 <NavLink to="/usuarios">Usuarios</NavLink>
               )}
@@ -56,6 +60,8 @@ export default function App() {
           <Route path="/usuarios" element={<Usuarios />} />
           <Route path="/permisos" element={<Permisos />} />
           <Route path="/documentos" element={<Documentos />} />
+          <Route path="/notificaciones" element={<Notificaciones />} />
+          <Route path="/reportes" element={<Reportes />} />
           <Route path="/recuperar" element={<Recuperar />} />
           <Route path="/restablecer" element={<Restablecer />} />
           <Route path="*" element={<p>Esta página no existe.</p>} />

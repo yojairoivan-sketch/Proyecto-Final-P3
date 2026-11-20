@@ -3,6 +3,7 @@ using Inventario.Negocio.Existencias;
 using Inventario.Negocio.Ordenes;
 using Inventario.Negocio.Productos;
 using Inventario.Negocio.Proveedores;
+using Inventario.Negocio.Reportes;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -13,7 +14,7 @@ public static class ServiciosNegocio
 {
     /// <summary>
     /// Registra los servicios del módulo de negocio. Requiere de Control de acceso IUsuarioActual,
-    /// de Gestión de permisos IPermisosConcedidos, y un TimeProvider. <paramref name="configurarTasas"/> da la clave
+    /// de Gestión de permisos IPermisosConcedidos, de Notificaciones INotificador, y un TimeProvider. <paramref name="configurarTasas"/> da la clave
     /// de la API de tasas de cambio; sin clave, solo la cotización en otra moneda se rechaza.
     /// </summary>
     public static IServiceCollection AddNegocio(
@@ -37,6 +38,7 @@ public static class ServiciosNegocio
             opcionesTasas,
             proveedor.GetRequiredService<ILogger<TasasExchangeRateApi>>()));
         services.AddScoped<IServicioCotizaciones, ServicioCotizaciones>();
+        services.AddScoped<IReporteCompras, ReporteCompras>();
         return services;
     }
 

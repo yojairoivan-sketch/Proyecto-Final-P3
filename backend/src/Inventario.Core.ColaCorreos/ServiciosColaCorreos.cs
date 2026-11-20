@@ -12,13 +12,15 @@ public static class ServiciosColaCorreos
             .UseNpgsql(cadenaConexion, npgsql => npgsql.MigrationsHistoryTable("__ef_migraciones", ColaCorreosDbContext.Esquema))
             .UseSnakeCaseNamingConvention());
         services.AddScoped<IColaCorreos, ColaCorreos>();
+        services.AddScoped<IConsultaCola, ConsultaCola>();
         return services;
     }
 
     /// <summary>Registra el procesador que entrega los pendientes por SMTP.</summary>
-    public static IServiceCollection AddProcesadorCola(this IServiceCollection services, ConfiguracionSmtp smtp)
+    public static IServiceCollection AddProcesadorCola(this IServiceCollection services, ConfiguracionSmtp smtp, OpcionesCola opciones)
     {
         services.AddSingleton(smtp);
+        services.AddSingleton(opciones);
         services.AddScoped<ITransporteCorreo, TransporteSmtp>();
         services.AddScoped<ProcesadorCola>();
         return services;

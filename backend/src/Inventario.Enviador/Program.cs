@@ -7,6 +7,8 @@ using Microsoft.Extensions.Logging;
 
 // Enviador de la cola de correos (RF-NOT-09). Uso:
 //   Inventario.Enviador              una pasada: envía los pendientes y termina
+//   Inventario.Enviador --una-vez    lo mismo; sirve para `docker compose run --rm enviador --una-vez`,
+//                                    que reemplaza el --vigilar 5 del servicio
 //   Inventario.Enviador --vigilar N  repite la pasada cada N segundos (30 si no se indica)
 
 var builder = Host.CreateApplicationBuilder(args);
@@ -19,10 +21,13 @@ if (string.IsNullOrWhiteSpace(cadena))
     return Fallar("Falta la cadena de conexión (variable ConnectionStrings__Inventario).");
 
 ConfiguracionSmtp smtp;
+OpcionesCola opciones;
 try
 {
     // RF-NOT-13: las credenciales del servidor de correo salen solo de variables de entorno.
     smtp = ConfiguracionSmtp.DesdeVariables(nombre => builder.Configuration[nombre]);
+    // RF-NOT-10: cuántas veces se intenta un correo antes de dejarlo Fallido.
+    opciones = OpcionesCola.DesdeVariable(builder.Configuration[OpcionesCola.VariableMaximoIntentos]);
 }
 catch (InvalidOperationException ex)
 {
@@ -31,7 +36,7 @@ catch (InvalidOperationException ex)
 
 builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddColaCorreos(cadena);
-builder.Services.AddProcesadorCola(smtp);
+builder.Services.AddProcesadorCola(smtp, opciones);
 
 using var host = builder.Build();
 
@@ -52,7 +57,7 @@ using var alTerminar = PosixSignalRegistration.Create(PosixSignal.SIGTERM, conte
     cancelar.Cancel();
 });
 
-Console.WriteLine($"Servidor SMTP: {smtp}");
+Console.WriteLine($"Servidor SMTP: {smtp}. Máximo de intentos por correo: {opciones.MaximoIntentos}.");
 
 try
 {
@@ -64,10 +69,11 @@ try
             var procesador = alcance.ServiceProvider.GetRequiredService<ProcesadorCola>();
             var resumen = await procesador.ProcesarPendientesAsync(cancelar.Token);
             // Vigilando, solo se escribe cuando hubo algo que enviar: si no, el log se llenaría cada pocos segundos.
-            if (!vigilar || resumen is not { Enviados: 0, ConError: 0 })
-                Console.WriteLine(resumen is { Enviados: 0, ConError: 0 }
+            if (!vigilar || resumen is not { Enviados: 0, ConError: 0, Fallidos: 0 })
+                Console.WriteLine(resumen is { Enviados: 0, ConError: 0, Fallidos: 0 }
                     ? $"[{Hora()}] No hay correos pendientes."
-                    : $"[{Hora()}] Enviados: {resumen.Enviados}. Con error (siguen pendientes): {resumen.ConError}.");
+                    : $"[{Hora()}] Enviados: {resumen.Enviados}. Con error (se reintentan): {resumen.ConError}. " +
+                      $"Fallidos (agotaron los {opciones.MaximoIntentos} intentos): {resumen.Fallidos}.");
         }
         catch (Exception ex) when (vigilar && ex is not OperationCanceledException)
         {

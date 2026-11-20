@@ -1,5 +1,6 @@
 using Inventario.Core.ControlAcceso;
 using Inventario.Core.GestionPermisos.Solicitudes;
+using Inventario.Core.Notificaciones;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
@@ -31,6 +32,7 @@ public sealed class Entorno : IDisposable
 
     public FakeTimeProvider Reloj { get; } = new(new DateTimeOffset(2026, 10, 19, 12, 0, 0, TimeSpan.Zero));
     public OtorgamientoFalso Otorgamiento { get; } = new();
+    public NotificadorFalso Notificador { get; } = new();
 
     public OpcionesGestionPermisos Opciones { get; } = new()
     {
@@ -43,11 +45,16 @@ public sealed class Entorno : IDisposable
 
     /// <summary>El servicio con un contexto nuevo, como cada petición en la API, con <paramref name="usuario"/> como usuario actual.</summary>
     public IServicioSolicitudes Como(UsuarioAutenticado usuario) =>
-        new ServicioSolicitudes(NuevoContexto(), new UsuarioActualFalso(usuario), Otorgamiento, Reloj, Opciones);
+        new ServicioSolicitudes(NuevoContexto(), new UsuarioActualFalso(usuario), Otorgamiento, Reloj, Opciones, Notificador);
 
     /// <summary>El servicio sin usuario, como al arrancar la aplicación.</summary>
     public IServicioSolicitudes ComoSistema() =>
-        new ServicioSolicitudes(NuevoContexto(), new UsuarioActualFalso(null), Otorgamiento, Reloj, Opciones);
+        new ServicioSolicitudes(NuevoContexto(), new UsuarioActualFalso(null), Otorgamiento, Reloj, Opciones, Notificador);
+
+    /// <summary>El reporte de solicitudes con un contexto nuevo y <paramref name="usuario"/> como usuario actual.</summary>
+    public IReporteSolicitudes Reporte(UsuarioAutenticado usuario) => new ReporteSolicitudes(NuevoContexto(), new UsuarioActualFalso(usuario));
+
+    public IReporteSolicitudes ReporteSinSesion() => new ReporteSolicitudes(NuevoContexto(), new UsuarioActualFalso(null));
 
     /// <summary>La consulta que usa el módulo de negocio, con un contexto nuevo.</summary>
     public IPermisosConcedidos Concedidos() => new PermisosConcedidos(NuevoContexto());
@@ -120,6 +127,25 @@ public sealed class OtorgamientoFalso : IOtorgamientoPermisos
         }
 
         Otorgados.Add((usuarioId, permiso));
+        return Task.CompletedTask;
+    }
+}
+
+/// <summary>Doble de INotificador: anota a quién avisaría Gestión de permisos y con qué texto.</summary>
+public sealed class NotificadorFalso : INotificador
+{
+    /// <summary>UsuarioId null = a los Administradores activos.</summary>
+    public List<(int? UsuarioId, string Titulo, string Mensaje)> Avisos { get; } = [];
+
+    public Task NotificarAsync(int usuarioId, string titulo, string mensaje, CancellationToken ct = default)
+    {
+        Avisos.Add((usuarioId, titulo, mensaje));
+        return Task.CompletedTask;
+    }
+
+    public Task NotificarAdministradoresAsync(string titulo, string mensaje, CancellationToken ct = default)
+    {
+        Avisos.Add((null, titulo, mensaje));
         return Task.CompletedTask;
     }
 }

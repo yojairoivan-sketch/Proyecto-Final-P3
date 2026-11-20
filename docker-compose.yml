@@ -78,6 +78,8 @@ services:
       SMTP_USUARIO: ${SMTP_USUARIO:-}
       SMTP_CONTRASENA: ${SMTP_CONTRASENA:-}
       SMTP_REMITENTE: ${SMTP_REMITENTE:?Falta SMTP_REMITENTE en .env}
+      # RF-NOT-10: intentos por correo antes de dejarlo Fallido. Si falta, 5.
+      COLA_MAX_INTENTOS: ${COLA_MAX_INTENTOS:-5}
     depends_on:
       db:
         condition: service_healthy
