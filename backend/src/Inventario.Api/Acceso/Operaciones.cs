@@ -50,6 +50,12 @@ public static class Operaciones
     public static readonly Operacion ConsultarMisSolicitudes = new(nameof(ConsultarMisSolicitudes), ConSesion);
     public static readonly Operacion ConsultarSolicitud = new(nameof(ConsultarSolicitud), ConSesion);
 
+    // Notificaciones: cada uno ve y marca solo las suyas; eso lo decide la pieza en el servidor (RD-06).
+    public static readonly Operacion ConsultarMisNotificaciones = new(nameof(ConsultarMisNotificaciones), ConSesion);
+    public static readonly Operacion MarcarNotificacionLeida = new(nameof(MarcarNotificacionLeida), ConSesion);
+    public static readonly Operacion ConsultarPreferenciasNotificacion = new(nameof(ConsultarPreferenciasNotificacion), ConSesion);
+    public static readonly Operacion CambiarPreferenciasNotificacion = new(nameof(CambiarPreferenciasNotificacion), ConSesion);
+
     // Solo Administrador. Las que dicen qué permiten se pueden pedir con una solicitud de permiso.
     // CambiarRol y las de solicitudes no: un Estándar nunca cambia roles (RF-CA-08) ni ve solicitudes ajenas (RF-GP-02).
     // DesactivarUsuario tampoco, porque podría dejar el sistema sin Administradores activos.

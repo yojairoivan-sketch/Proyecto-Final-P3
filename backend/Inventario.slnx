@@ -5,6 +5,7 @@
     <Project Path="src/Inventario.Core.ControlAcceso/Inventario.Core.ControlAcceso.csproj" />
     <Project Path="src/Inventario.Core.Documentos/Inventario.Core.Documentos.csproj" />
     <Project Path="src/Inventario.Core.GestionPermisos/Inventario.Core.GestionPermisos.csproj" />
+    <Project Path="src/Inventario.Core.Notificaciones/Inventario.Core.Notificaciones.csproj" />
     <Project Path="src/Inventario.Enviador/Inventario.Enviador.csproj" />
     <Project Path="src/Inventario.Negocio/Inventario.Negocio.csproj" />
   </Folder>

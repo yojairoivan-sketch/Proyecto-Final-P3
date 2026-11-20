@@ -8,4 +8,10 @@
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />
   </ItemGroup>
 
+  <ItemGroup>
+    <InternalsVisibleTo Include="Inventario.Core.ColaCorreos.Pruebas" />
+    <InternalsVisibleTo Include="Inventario.Core.Notificaciones.Pruebas" />
+    <InternalsVisibleTo Include="Inventario.Integracion.Pruebas" />
+  </ItemGroup>
+
 </Project>
