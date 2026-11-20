@@ -26,6 +26,8 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\Inventario.Core.ControlAcceso\Inventario.Core.ControlAcceso.csproj" />
     <ProjectReference Include="..\..\src\Inventario.Core.GestionPermisos\Inventario.Core.GestionPermisos.csproj" />
+    <ProjectReference Include="..\..\src\Inventario.Core.Notificaciones\Inventario.Core.Notificaciones.csproj" />
+    <ProjectReference Include="..\..\src\Inventario.Core.ColaCorreos\Inventario.Core.ColaCorreos.csproj" />
     <ProjectReference Include="..\..\src\Inventario.Negocio\Inventario.Negocio.csproj" />
   </ItemGroup>
 

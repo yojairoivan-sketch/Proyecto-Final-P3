@@ -1,4 +1,5 @@
 using Inventario.Core.ControlAcceso;
+using Inventario.Core.Notificaciones;
 using Microsoft.EntityFrameworkCore;
 
 namespace Inventario.Core.GestionPermisos.Solicitudes;
@@ -58,7 +59,8 @@ internal sealed class ServicioSolicitudes(
     IUsuarioActual usuarioActual,
     IOtorgamientoPermisos otorgamiento,
     TimeProvider reloj,
-    OpcionesGestionPermisos opciones) : IServicioSolicitudes
+    OpcionesGestionPermisos opciones,
+    INotificador notificador) : IServicioSolicitudes
 {
     public const int LargoMaximoJustificacion = 500;
 
@@ -97,6 +99,14 @@ internal sealed class ServicioSolicitudes(
         db.Solicitudes.Add(solicitud);
         await db.SaveChangesAsync(ct);
 
+        // RF-NOT-01: se avisa a los Administradores activos, y a nadie más.
+        await notificador.NotificarAdministradoresAsync(
+            $"Nueva solicitud de permiso: {solicitud.Permiso}",
+            $"{solicitud.SolicitanteNombre} ({solicitud.SolicitanteCorreo}) pidió el permiso {solicitud.Permiso} " +
+            $"(solicitud {solicitud.Id}).{(justificacion is null ? "" : $" Justificación: {justificacion}")} " +
+            "Apruébala o recházala en las solicitudes pendientes.",
+            ct);
+
         return Resultado<SolicitudVista>.Ok(Vista(solicitud),
             "Solicitud creada. Queda Pendiente hasta que un Administrador la apruebe o la rechace.");
     }
@@ -133,6 +143,12 @@ internal sealed class ServicioSolicitudes(
         // RF-GP-05: el sistema aplica el permiso en la misma operación, sin que nadie haga nada más.
         var solicitud = aprobada.Valor!;
         await AplicarAsync(solicitud, ct);
+
+        // RF-NOT-02: el solicitante sabe que se aprobó.
+        await notificador.NotificarAsync(solicitud.SolicitanteId,
+            $"Tu solicitud de permiso fue aprobada: {solicitud.Permiso}",
+            $"{solicitud.ResueltaPorNombre} aprobó tu solicitud {solicitud.Id} del permiso {solicitud.Permiso}. Ya puedes usarlo.",
+            ct);
         return Resultado<SolicitudVista>.Ok(Vista(solicitud),
             $"Solicitud aprobada. {solicitud.SolicitanteNombre} ya puede usar {solicitud.Permiso}.");
     }
@@ -140,9 +156,17 @@ internal sealed class ServicioSolicitudes(
     public async Task<Resultado<SolicitudVista>> RechazarAsync(int id, string? motivo, CancellationToken ct = default)
     {
         var rechazada = await ResolverAsync(id, EstadoSolicitud.Rechazada, motivo, ct);
-        return rechazada.Exito
-            ? Resultado<SolicitudVista>.Ok(Vista(rechazada.Valor!), "Solicitud rechazada. El solicitante verá el motivo.")
-            : Fallo<SolicitudVista>(rechazada);
+        if (!rechazada.Exito)
+            return Fallo<SolicitudVista>(rechazada);
+
+        // RF-NOT-02: el solicitante sabe que se rechazó y por qué.
+        var solicitud = rechazada.Valor!;
+        await notificador.NotificarAsync(solicitud.SolicitanteId,
+            $"Tu solicitud de permiso fue rechazada: {solicitud.Permiso}",
+            $"{solicitud.ResueltaPorNombre} rechazó tu solicitud {solicitud.Id} del permiso {solicitud.Permiso}. " +
+            $"Motivo: {solicitud.MotivoRechazo}",
+            ct);
+        return Resultado<SolicitudVista>.Ok(Vista(solicitud), "Solicitud rechazada. El solicitante verá el motivo.");
     }
 
     public async Task<int> AplicarAprobadasAsync(CancellationToken ct = default)

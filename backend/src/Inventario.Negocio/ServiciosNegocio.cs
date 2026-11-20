@@ -13,7 +13,7 @@ public static class ServiciosNegocio
 {
     /// <summary>
     /// Registra los servicios del módulo de negocio. Requiere de Control de acceso IUsuarioActual,
-    /// de Gestión de permisos IPermisosConcedidos, y un TimeProvider. <paramref name="configurarTasas"/> da la clave
+    /// de Gestión de permisos IPermisosConcedidos, de Notificaciones INotificador, y un TimeProvider. <paramref name="configurarTasas"/> da la clave
     /// de la API de tasas de cambio; sin clave, solo la cotización en otra moneda se rechaza.
     /// </summary>
     public static IServiceCollection AddNegocio(

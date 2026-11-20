@@ -1,4 +1,5 @@
 using Inventario.Core.ControlAcceso;
+using Inventario.Core.Notificaciones;
 using Microsoft.EntityFrameworkCore;
 
 namespace Inventario.Negocio.Ordenes;
@@ -36,7 +37,8 @@ public interface IServicioOrdenes
     Task<Resultado<OrdenVista>> CambiarEstadoAsync(int id, string? hacia, CancellationToken ct = default);
 }
 
-internal sealed class ServicioOrdenes(InventarioDbContext db, IUsuarioActual usuarioActual, TimeProvider reloj) : IServicioOrdenes
+internal sealed class ServicioOrdenes(InventarioDbContext db, IUsuarioActual usuarioActual, TimeProvider reloj, INotificador notificador)
+    : IServicioOrdenes
 {
     private static readonly string NombresDeEstados = string.Join(", ", Enum.GetNames<EstadoOrdenCompra>());
 
@@ -124,7 +126,19 @@ internal sealed class ServicioOrdenes(InventarioDbContext db, IUsuarioActual usu
             return Fallos.Como<OrdenVista>(cambio);
 
         // El estado, la existencia de cada producto y sus movimientos se guardan juntos, o nada.
-        return await Fallos.GuardarAsync<OrdenVista>(db, ct) ?? Resultado<OrdenVista>.Ok(Vista(orden), cambio.Mensaje);
+        if (await Fallos.GuardarAsync<OrdenVista>(db, ct) is { } fallo)
+            return fallo;
+
+        // RF-NOT-03 (RF-NEG-07): recibir mercancía cambia la existencia; los Administradores se enteran.
+        if (destino == EstadoOrdenCompra.Recibida)
+            await notificador.NotificarAdministradoresAsync(
+                $"Orden de compra {orden.Id} recibida",
+                $"{usuario.Nombre} recibió la orden de compra {orden.Id} de {orden.Proveedor.Nombre}: " +
+                $"{orden.Lineas.Count} producto(s) por un total de {orden.Total / 1.0000000000000000000000000000m} DOP. " +
+                "La existencia de cada producto ya se actualizó.",
+                ct);
+
+        return Resultado<OrdenVista>.Ok(Vista(orden), cambio.Mensaje);
     }
 
     private Task<OrdenDeCompra?> CargarAsync(int id, CancellationToken ct, bool soloLectura = false)

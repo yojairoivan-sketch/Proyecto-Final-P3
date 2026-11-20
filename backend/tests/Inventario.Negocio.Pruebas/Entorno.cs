@@ -1,5 +1,6 @@
 using Inventario.Core.ControlAcceso;
 using Inventario.Core.GestionPermisos;
+using Inventario.Core.Notificaciones;
 using Inventario.Negocio.Cotizaciones;
 using Inventario.Negocio.Existencias;
 using Inventario.Negocio.Ordenes;
@@ -39,6 +40,7 @@ public sealed class Entorno : IDisposable
 
     public FakeTimeProvider Reloj { get; } = new(new DateTimeOffset(2026, 10, 31, 12, 0, 0, TimeSpan.Zero));
     public PermisosConcedidosFalso Permisos { get; } = new();
+    public NotificadorFalso Notificador { get; } = new();
 
     // Cada servicio con un contexto nuevo, como cada petición en la API, y con <usuario> como usuario de la sesión.
     public IServicioProveedores Proveedores(UsuarioAutenticado? usuario) =>
@@ -48,7 +50,7 @@ public sealed class Entorno : IDisposable
         new ServicioProductos(NuevoContexto(), new UsuarioActualFalso(usuario), Reloj);
 
     public IServicioOrdenes Ordenes(UsuarioAutenticado? usuario) =>
-        new ServicioOrdenes(NuevoContexto(), new UsuarioActualFalso(usuario), Reloj);
+        new ServicioOrdenes(NuevoContexto(), new UsuarioActualFalso(usuario), Reloj, Notificador);
 
     public IServicioExistencias Existencias(UsuarioAutenticado? usuario) =>
         new ServicioExistencias(NuevoContexto(), new UsuarioActualFalso(usuario), Permisos, Reloj);
@@ -192,4 +194,23 @@ public sealed class TasasFalsas : ITasasDeCambio
         Respuesta = Resultado<TasaDeCambio>.Ok(new TasaDeCambio("DOP", "USD", valor, Publicada));
 
     public void Fallar(TipoFallo fallo, string mensaje) => Respuesta = Resultado<TasaDeCambio>.Falla(fallo, mensaje);
+}
+
+/// <summary>Doble de INotificador: anota a quién avisaría el negocio y con qué texto.</summary>
+public sealed class NotificadorFalso : INotificador
+{
+    /// <summary>UsuarioId null = a los Administradores activos.</summary>
+    public List<(int? UsuarioId, string Titulo, string Mensaje)> Avisos { get; } = [];
+
+    public Task NotificarAsync(int usuarioId, string titulo, string mensaje, CancellationToken ct = default)
+    {
+        Avisos.Add((usuarioId, titulo, mensaje));
+        return Task.CompletedTask;
+    }
+
+    public Task NotificarAdministradoresAsync(string titulo, string mensaje, CancellationToken ct = default)
+    {
+        Avisos.Add((null, titulo, mensaje));
+        return Task.CompletedTask;
+    }
 }
