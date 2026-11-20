@@ -8,6 +8,7 @@ using Inventario.Api.Errores;
 using Inventario.Api.Negocio;
 using Inventario.Api.Notificaciones;
 using Inventario.Api.Permisos;
+using Inventario.Api.Reportes;
 using Inventario.Core.ColaCorreos;
 using Inventario.Core.ControlAcceso;
 using Inventario.Core.ControlAcceso.Usuarios;
@@ -84,6 +85,7 @@ app.MapearNotificaciones();
 app.MapearColaCorreos();
 app.MapearDocumentos();
 app.MapearNegocio();
+app.MapearReportes();
 
 app.VerificarQueTodoEndpointDeclareSuOperacion();
 

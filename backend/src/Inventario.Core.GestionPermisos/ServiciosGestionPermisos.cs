@@ -25,6 +25,7 @@ public static class ServiciosGestionPermisos
 
         services.AddScoped<IServicioSolicitudes, ServicioSolicitudes>();
         services.AddScoped<IPermisosConcedidos, PermisosConcedidos>();
+        services.AddScoped<IReporteSolicitudes, ReporteSolicitudes>();
         return services;
     }
 

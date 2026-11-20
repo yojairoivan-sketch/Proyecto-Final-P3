@@ -14,7 +14,8 @@ public sealed record OrdenVista(
     DateTimeOffset CreadaEn,
     DateTimeOffset ActualizadaEn,
     IReadOnlyList<LineaVista> Lineas,
-    decimal Total);
+    decimal Total,
+    DateTimeOffset? RecibidaEn);
 
 /// <summary>
 /// Funcionalidad 3: armar una orden de compra (crearla y agregarle líneas), y funcionalidad 4: su ciclo
@@ -44,7 +45,7 @@ internal sealed class ServicioOrdenes(InventarioDbContext db, IUsuarioActual usu
 
     public async Task<Resultado<OrdenVista>> CrearAsync(int? proveedorId, CancellationToken ct = default)
     {
-        if (usuarioActual.Usuario is null)
+        if (usuarioActual.Usuario is not { } usuario)
             return Fallos.SinSesion<OrdenVista>();
 
         if (proveedorId is null)
@@ -53,7 +54,7 @@ internal sealed class ServicioOrdenes(InventarioDbContext db, IUsuarioActual usu
         if (proveedor is null)
             return Resultado<OrdenVista>.Falla(TipoFallo.Validacion, $"No existe un proveedor con id {proveedorId}.");
 
-        var orden = OrdenDeCompra.Crear(proveedor, reloj.GetUtcNow());
+        var orden = OrdenDeCompra.Crear(proveedor, reloj.GetUtcNow(), usuario.Id);
         db.OrdenesDeCompra.Add(orden);
         await db.SaveChangesAsync(ct);
         return Resultado<OrdenVista>.Ok(Vista(orden), $"Orden de compra {orden.Id} creada en Borrador. Agrégale productos.");
@@ -162,5 +163,5 @@ internal sealed class ServicioOrdenes(InventarioDbContext db, IUsuarioActual usu
     private static OrdenVista Vista(OrdenDeCompra o) => new(
         o.Id, o.Proveedor.Id, o.Proveedor.Nombre, o.Estado, o.CreadaEn, o.ActualizadaEn,
         o.Lineas.Select(l => new LineaVista(l.Id, l.Producto.Id, l.Producto.Nombre, l.Producto.Sku, l.Cantidad, l.CostoUnitario, l.Subtotal)).ToList(),
-        o.Total);
+        o.Total, o.RecibidaEn);
 }

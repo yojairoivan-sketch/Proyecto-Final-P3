@@ -96,6 +96,10 @@ public static class Operaciones
     public static readonly Operacion CambiarEstadoOrden = new(nameof(CambiarEstadoOrden), ConSesion);
     public static readonly Operacion AjustarExistencia = new(nameof(AjustarExistencia), ConSesion);
 
+    // Reportes: cualquier usuario con sesión. Un Estándar solo cuenta lo suyo; eso lo decide cada reporte (RF-REP-04).
+    public static readonly Operacion ConsultarReporteSolicitudes = new(nameof(ConsultarReporteSolicitudes), ConSesion);
+    public static readonly Operacion ConsultarReporteCompras = new(nameof(ConsultarReporteCompras), ConSesion);
+
     // Solo Administrador: el catálogo del negocio.
     public static readonly Operacion RegistrarProveedor = new(nameof(RegistrarProveedor), SoloAdministrador);
     public static readonly Operacion RegistrarProducto = new(nameof(RegistrarProducto), SoloAdministrador);

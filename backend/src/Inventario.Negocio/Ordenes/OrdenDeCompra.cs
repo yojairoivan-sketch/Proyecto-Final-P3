@@ -19,6 +19,12 @@ public sealed class OrdenDeCompra
     public DateTimeOffset CreadaEn { get; private set; }
     public DateTimeOffset ActualizadaEn { get; private set; }
 
+    /// <summary>Quién la creó (id de Control de acceso). Un Estándar solo ve sus órdenes en los reportes (RF-REP-04).</summary>
+    public int? CreadaPorId { get; private set; }
+
+    /// <summary>Cuándo pasó a Recibida. Es la fecha que usa el reporte de compras.</summary>
+    public DateTimeOffset? RecibidaEn { get; private set; }
+
     /// <summary>Sube con cada cambio. Si dos usuarios cambian la misma orden a la vez, el segundo en guardar falla.</summary>
     public int Version { get; private set; }
 
@@ -28,9 +34,10 @@ public sealed class OrdenDeCompra
     {
     }
 
-    public static OrdenDeCompra Crear(Proveedor proveedor, DateTimeOffset ahora) => new()
+    public static OrdenDeCompra Crear(Proveedor proveedor, DateTimeOffset ahora, int? creadaPorId = null) => new()
     {
         Proveedor = proveedor,
+        CreadaPorId = creadaPorId,
         Estado = EstadoOrdenCompra.Borrador,
         CreadaEn = ahora,
         ActualizadaEn = ahora,
@@ -64,6 +71,8 @@ public sealed class OrdenDeCompra
     internal void PasarA(EstadoOrdenCompra hacia, DateTimeOffset ahora)
     {
         Estado = hacia;
+        if (hacia == EstadoOrdenCompra.Recibida)
+            RecibidaEn = ahora;
         Cambio(ahora);
     }
 

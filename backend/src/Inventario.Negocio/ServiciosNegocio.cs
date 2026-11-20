@@ -3,6 +3,7 @@ using Inventario.Negocio.Existencias;
 using Inventario.Negocio.Ordenes;
 using Inventario.Negocio.Productos;
 using Inventario.Negocio.Proveedores;
+using Inventario.Negocio.Reportes;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -37,6 +38,7 @@ public static class ServiciosNegocio
             opcionesTasas,
             proveedor.GetRequiredService<ILogger<TasasExchangeRateApi>>()));
         services.AddScoped<IServicioCotizaciones, ServicioCotizaciones>();
+        services.AddScoped<IReporteCompras, ReporteCompras>();
         return services;
     }
 

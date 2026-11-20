@@ -144,6 +144,10 @@ namespace Inventario.Negocio.Migraciones
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("creada_en");
 
+                    b.Property<int?>("CreadaPorId")
+                        .HasColumnType("integer")
+                        .HasColumnName("creada_por_id");
+
                     b.Property<string>("Estado")
                         .IsRequired()
                         .HasMaxLength(20)
@@ -153,6 +157,10 @@ namespace Inventario.Negocio.Migraciones
                     b.Property<int>("ProveedorId")
                         .HasColumnType("integer")
                         .HasColumnName("proveedor_id");
+
+                    b.Property<DateTimeOffset?>("RecibidaEn")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("recibida_en");
 
                     b.Property<int>("Version")
                         .IsConcurrencyToken()
@@ -167,6 +175,9 @@ namespace Inventario.Negocio.Migraciones
 
                     b.HasIndex("ProveedorId")
                         .HasDatabaseName("ix_ordenes_de_compra_proveedor_id");
+
+                    b.HasIndex("Estado", "RecibidaEn")
+                        .HasDatabaseName("ix_ordenes_de_compra_estado_recibida_en");
 
                     b.ToTable("ordenes_de_compra", "inventario");
                 });
