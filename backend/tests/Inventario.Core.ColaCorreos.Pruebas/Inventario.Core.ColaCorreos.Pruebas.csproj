@@ -1,0 +1,30 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    RD-12: pruebas de la Cola de correos que corren sin interfaz y sin levantar la aplicación.
+    Usan SQLite en memoria y un reloj controlado; no hay servidor SMTP: el procesador real necesita PostgreSQL y se comprueba con el README
+    (sección Notificaciones). Aquí se prueban las reglas del correo, la configuración y la consulta.
+  -->
+
+  <PropertyGroup>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" />
+    <PackageReference Include="Microsoft.Extensions.TimeProvider.Testing" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="xunit" />
+    <PackageReference Include="xunit.runner.visualstudio" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Xunit" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Inventario.Core.ColaCorreos\Inventario.Core.ColaCorreos.csproj" />
+  </ItemGroup>
+
+</Project>
