@@ -13,6 +13,24 @@ public sealed class ColaCorreosPruebas
 
     // ---- Reintentos con límite (RF-NOT-10) ----
 
+    // Hallazgo 1 (docs/bitacora-asignacion-3.md): «prueba.@ejemplo.com» pasa la validación del registro, pero el transporte
+    // no la puede interpretar (MimeKit: «Invalid local-part»). Antes quedaba Pendiente y gastaba los 5 intentos con el mismo error.
+    [Fact]
+    [Trait("Requisito", "RF-NOT-10")]
+    public async Task Hallazgo1_UnCorreoConDestinatarioInvalidoQuedaFallidoSinGastarIntentos()
+    {
+        // Preparar
+        using var cola = new ColaEnMemoria();
+
+        // Actuar
+        await cola.Encolar().EncolarAsync("prueba.@ejemplo.com", "Activa tu cuenta", "Tu código es 123456.");
+
+        // Verificar
+        var correo = Assert.Single(cola.Leer());
+        Assert.Equal((EstadoCorreo.Fallido, 0), (correo.Estado, correo.Intentos));
+        Assert.Contains("prueba.@ejemplo.com", correo.UltimoError);
+    }
+
     [Fact]
     [Trait("Requisito", "RF-NOT-10")]
     public void AntesDelMaximoDeIntentosUnCorreoQueFallaSiguePendienteConSuError()
