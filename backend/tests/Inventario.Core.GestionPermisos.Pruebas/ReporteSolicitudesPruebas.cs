@@ -86,9 +86,10 @@ public sealed class ReporteSolicitudesPruebas
     {
         // Preparar
         using var entorno = new Entorno();
-        entorno.Reloj.SetUtcNow(new DateTimeOffset(2026, 11, 30, 23, 59, 0, TimeSpan.Zero));
+        // 23:59 y 00:00 en Santo Domingo (UTC−4), que en UTC ya son del 1 de diciembre (hallazgo 3).
+        entorno.Reloj.SetUtcNow(new DateTimeOffset(2026, 12, 1, 3, 59, 0, TimeSpan.Zero));
         await entorno.CrearSolicitudAsync(Ana, "ListarUsuarios");
-        entorno.Reloj.SetUtcNow(new DateTimeOffset(2026, 12, 1, 0, 0, 0, TimeSpan.Zero));
+        entorno.Reloj.SetUtcNow(new DateTimeOffset(2026, 12, 1, 4, 0, 0, TimeSpan.Zero));
         await entorno.CrearSolicitudAsync(Beto, "ListarUsuarios");
 
         // Actuar

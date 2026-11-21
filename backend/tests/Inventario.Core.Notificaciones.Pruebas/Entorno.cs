@@ -2,6 +2,7 @@ using Inventario.Core.ColaCorreos;
 using Inventario.Core.ControlAcceso;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Microsoft.Extensions.Time.Testing;
@@ -41,6 +42,13 @@ public sealed class Entorno : IDisposable
     public IServicioNotificaciones Bandeja(UsuarioAutenticado? usuario) =>
         new ServicioNotificaciones(NuevoContexto(), new UsuarioActualFalso(usuario), Reloj);
 
+    /// <summary>
+    /// Hallazgo 4: la bandeja de <paramref name="usuario"/>, pero justo antes de que guarde corre <paramref name="otraPeticion"/>,
+    /// como una segunda petición simultánea del mismo usuario.
+    /// </summary>
+    public IServicioNotificaciones BandejaConOtraPeticionEnMedio(UsuarioAutenticado usuario, Func<Task> otraPeticion) =>
+        new ServicioNotificaciones(NuevoContexto(new OtraPeticionAntesDeGuardar(otraPeticion)), new UsuarioActualFalso(usuario), Reloj);
+
     /// <summary>Le deja a <paramref name="usuario"/> una notificación nueva y devuelve su id.</summary>
     public async Task<long> NotificarAsync(UsuarioAutenticado usuario, string titulo = "Aviso")
     {
@@ -54,11 +62,12 @@ public sealed class Entorno : IDisposable
 
     internal Notificacion Leer(long id) => NuevoContexto().Notificaciones.AsNoTracking().Single(n => n.Id == id);
 
-    private NotificacionesDbContext NuevoContexto()
+    private NotificacionesDbContext NuevoContexto(params IInterceptor[] interceptores)
     {
         var contexto = new NotificacionesDbContext(new DbContextOptionsBuilder<NotificacionesDbContext>()
             .UseSqlite(conexion)
             .ReplaceService<IModelCustomizer, FechasComoNumero>()
+            .AddInterceptors(interceptores)
             .Options);
         contextos.Add(contexto);
         return contexto;
@@ -83,6 +92,23 @@ public sealed class Entorno : IDisposable
             foreach (var propiedad in fechas)
                 propiedad.SetValueConverter(new DateTimeOffsetToBinaryConverter());
         }
+    }
+}
+
+/// <summary>Corre una acción una sola vez, justo antes del primer guardado del contexto (hallazgo 4).</summary>
+internal sealed class OtraPeticionAntesDeGuardar(Func<Task> accion) : SaveChangesInterceptor
+{
+    private bool hecha;
+
+    public override async ValueTask<InterceptionResult<int>> SavingChangesAsync(
+        DbContextEventData datos, InterceptionResult<int> resultado, CancellationToken ct = default)
+    {
+        if (!hecha)
+        {
+            hecha = true;
+            await accion();
+        }
+        return resultado;
     }
 }
 

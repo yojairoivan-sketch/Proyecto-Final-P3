@@ -16,7 +16,15 @@ internal sealed class ColaCorreos(ColaCorreosDbContext db, TimeProvider reloj) :
 {
     public async Task EncolarAsync(string destinatario, string asunto, string cuerpo, CancellationToken ct = default)
     {
-        db.Correos.Add(CorreoEnCola.Nuevo(destinatario, asunto, cuerpo, reloj.GetUtcNow()));
+        var ahora = reloj.GetUtcNow();
+        var correo = CorreoEnCola.Nuevo(destinatario, asunto, cuerpo, ahora);
+
+        // Hallazgo 1 (Asignación 3): una dirección que el transporte no puede interpretar nunca se va a entregar.
+        // No se reintenta: queda Fallido desde el principio, con el motivo, para que el Administrador lo vea (RF-NOT-10, 11).
+        if (!CorreoEnCola.DestinatarioEntregable(destinatario))
+            correo.RegistrarDestinatarioInvalido(ahora);
+
+        db.Correos.Add(correo);
         await db.SaveChangesAsync(ct);
     }
 }

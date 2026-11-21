@@ -1,0 +1,8 @@
+== Después de down / up
+OK    Beto inicia sesión
+OK    Ana inicia sesión (clave nueva)
+OK    el documento sigue en el listado
+OK    y se descarga
+OK    admin inicia sesión
+
+Resumen: 5 OK, 0 FALLA

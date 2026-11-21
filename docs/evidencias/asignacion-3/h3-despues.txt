@@ -1,0 +1,13 @@
+"estado":"Recibida"
+
+$ UPDATE recibida_en = '2026-10-31 22:30:00-04' (orden 1)
+UPDATE 1
+
+$ GET /api/ordenes/1 (recibidaEn)
+"recibidaEn":"2026-11-01T02:30:00+00:00"
+
+$ GET /api/reportes/compras-por-proveedor?desde=2026-10-01&hasta=2026-10-31 (fila de Molinos 1795275639)
+{"proveedorId":1,"proveedor":"Molinos 1795275639","ordenes":1,"montoTotal":8500,"promedioPorOrden":8500}
+
+$ GET /api/reportes/compras-por-proveedor?desde=2026-11-01&hasta=2026-11-30 (fila de Molinos 1795275639)
+(Molinos 1795275639 no aparece)

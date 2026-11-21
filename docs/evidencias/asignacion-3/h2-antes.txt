@@ -1,0 +1,17 @@
+
+$ cuenta Estándar sim1795275132@ejemplo.com
+{"mensaje":"Cuenta creada. Te enviamos un correo con el enlace para activarla."}
+{"mensaje":"Cuenta activada. Ya puedes iniciar sesión."}
+
+$ curl -Z: dos POST /api/solicitudes {"permiso":"ListarUsuarios"} a la vez
+201
+{"mensaje":"Solicitud creada. Queda Pendiente hasta que un Administrador la apruebe o la rechace.","solicitud":{"id":25,"solicitanteId":17,"solicitanteNombre":"Simultanea 1795275132","solicitanteCorreo":"sim1795275132@ejemplo.com","permiso":"ListarUsuarios","justificacion":null,"estado":"Pendiente","creadaEn":"2026-11-21T15:32:16.622133+00:00","resueltaPorId":null,"resueltaPorNombre":null,"resueltaEn":null,"motivoRechazo":null,"aplicadaEn":null}}201
+
+$ GET /api/solicitudes/mias (id y estado de cada una)
+"id":24 "estado":"Pendiente" "id":25 "estado":"Pendiente"
+
+$ avisos «Nueva solicitud» del Administrador por sim1795275132@ejemplo.com
+2
+
+$ correos nuevos en la cola para el Administrador por estas dos peticiones
+2

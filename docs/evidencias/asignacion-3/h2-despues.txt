@@ -1,0 +1,17 @@
+
+$ cuenta Estándar sim1795275633@ejemplo.com
+{"mensaje":"Cuenta creada. Te enviamos un correo con el enlace para activarla."}
+{"mensaje":"Cuenta activada. Ya puedes iniciar sesión."}
+
+$ curl -Z: dos POST /api/solicitudes {"permiso":"ListarUsuarios"} a la vez
+{"title":"Conflicto","status":409,"detail":"Ya tienes una solicitud del permiso ListarUsuarios sin resolver."}409
+201
+
+$ GET /api/solicitudes/mias (id y estado de cada una)
+"id":2 "estado":"Pendiente"
+
+$ avisos «Nueva solicitud» del Administrador por sim1795275633@ejemplo.com
+1
+
+$ correos nuevos en la cola para el Administrador por estas dos peticiones
+1

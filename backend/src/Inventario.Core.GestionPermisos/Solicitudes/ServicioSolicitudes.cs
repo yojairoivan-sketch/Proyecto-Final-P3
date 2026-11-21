@@ -85,19 +85,24 @@ internal sealed class ServicioSolicitudes(
             return Resultado<SolicitudVista>.Falla(TipoFallo.Validacion,
                 $"La justificación no puede pasar de {LargoMaximoJustificacion} caracteres.");
 
-        var anteriores = await db.Solicitudes
-            .Where(s => s.SolicitanteId == solicitante.Id && s.Permiso == solicitable.Nombre)
-            .Select(s => s.Estado)
-            .ToListAsync(ct);
-        if (anteriores.Contains(EstadoSolicitud.Aplicada))
-            return Resultado<SolicitudVista>.Falla(TipoFallo.Conflicto, $"Ya tienes el permiso {solicitable.Nombre}.");
-        if (anteriores.Any(estado => !TransicionesSolicitud.Terminales.Contains(estado)))
-            return Resultado<SolicitudVista>.Falla(TipoFallo.Conflicto,
-                $"Ya tienes una solicitud del permiso {solicitable.Nombre} sin resolver.");
+        if (await DuplicadaAsync(solicitante.Id, solicitable.Nombre, ct) is { } repetida)
+            return repetida;
 
         var solicitud = SolicitudPermiso.Crear(solicitante, solicitable.Nombre, justificacion, reloj.GetUtcNow());
         db.Solicitudes.Add(solicitud);
-        await db.SaveChangesAsync(ct);
+        try
+        {
+            await db.SaveChangesAsync(ct);
+        }
+        catch (DbUpdateException)
+        {
+            // Hallazgo 2 (Asignación 3): otra petición igual se guardó entre la comprobación y este guardado, y el índice
+            // único la frenó. Se responde lo mismo que si hubiera llegado después, y no se avisa a nadie (RF-NOT-01).
+            db.ChangeTracker.Clear();
+            if (await DuplicadaAsync(solicitante.Id, solicitable.Nombre, ct) is { } carrera)
+                return carrera;
+            throw;
+        }
 
         // RF-NOT-01: se avisa a los Administradores activos, y a nadie más.
         await notificador.NotificarAdministradoresAsync(
@@ -109,6 +114,20 @@ internal sealed class ServicioSolicitudes(
 
         return Resultado<SolicitudVista>.Ok(Vista(solicitud),
             "Solicitud creada. Queda Pendiente hasta que un Administrador la apruebe o la rechace.");
+    }
+
+    /// <summary>El rechazo si el usuario ya tiene el permiso o una solicitud de él sin resolver; null si puede pedirlo.</summary>
+    private async Task<Resultado<SolicitudVista>?> DuplicadaAsync(int solicitanteId, string permiso, CancellationToken ct)
+    {
+        var anteriores = await db.Solicitudes
+            .Where(s => s.SolicitanteId == solicitanteId && s.Permiso == permiso)
+            .Select(s => s.Estado)
+            .ToListAsync(ct);
+        if (anteriores.Contains(EstadoSolicitud.Aplicada))
+            return Resultado<SolicitudVista>.Falla(TipoFallo.Conflicto, $"Ya tienes el permiso {permiso}.");
+        if (anteriores.Any(estado => !TransicionesSolicitud.Terminales.Contains(estado)))
+            return Resultado<SolicitudVista>.Falla(TipoFallo.Conflicto, $"Ya tienes una solicitud del permiso {permiso} sin resolver.");
+        return null;
     }
 
     public async Task<Resultado<IReadOnlyList<SolicitudVista>>> ListarMiasAsync(CancellationToken ct = default)

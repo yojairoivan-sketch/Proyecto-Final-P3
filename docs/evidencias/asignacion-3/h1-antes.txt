@@ -1,0 +1,12 @@
+
+$ registro con prueba1795275144.@ejemplo.com
+{"mensaje":"Cuenta creada. Te enviamos un correo con el enlace para activarla."} [201]
+
+$ a los 15s: GET /api/cola-correos (solo el correo de prueba1795275144.@ejemplo.com)
+{"id":44,"destinatario":"prueba1795275144.@ejemplo.com","asunto":"Activa tu cuenta de Inventario","estado":"Pendiente","intentos":3,"creadoEn":"2026-11-21T15:32:24.606874+00:00","ultimoIntentoEn":"2026-11-21T15:32:35.901109+00:00","enviadoEn":null,"ultimoError":"ParseException: Invalid local-part at offset 0"}
+
+$ a los 45s: GET /api/cola-correos (solo el correo de prueba1795275144.@ejemplo.com)
+{"id":44,"destinatario":"prueba1795275144.@ejemplo.com","asunto":"Activa tu cuenta de Inventario","estado":"Fallido","intentos":5,"creadoEn":"2026-11-21T15:32:24.606874+00:00","ultimoIntentoEn":"2026-11-21T15:32:45.924818+00:00","enviadoEn":null,"ultimoError":"ParseException: Invalid local-part at offset 0"}
+
+$ a los 90s: GET /api/cola-correos (solo el correo de prueba1795275144.@ejemplo.com)
+{"id":44,"destinatario":"prueba1795275144.@ejemplo.com","asunto":"Activa tu cuenta de Inventario","estado":"Fallido","intentos":5,"creadoEn":"2026-11-21T15:32:24.606874+00:00","ultimoIntentoEn":"2026-11-21T15:32:45.924818+00:00","enviadoEn":null,"ultimoError":"ParseException: Invalid local-part at offset 0"}

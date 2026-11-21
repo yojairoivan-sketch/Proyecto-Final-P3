@@ -24,6 +24,8 @@ Usuarios de referencia: **A1** y **A2** son Administradores activos; **E1** y **
 | N-11 | RF-NOT-07 | E1 hace `PUT /api/notificaciones/preferencias` con `{"correo": false}` | se le genera una notificación | la notificación interna aparece en su bandeja y **no** se encola ningún correo para E1 (la cantidad de filas de la cola para su correo no cambia). `GET /api/notificaciones/preferencias` responde `{"correo": false}`. |
 | N-12 | RF-NOT-07 | E1 tiene el correo desactivado | A1 recibe una notificación por la misma solicitud | A1 sí recibe su correo: la preferencia es por usuario. |
 | N-13 | RD-06 | — | cualquiera de las operaciones de notificaciones sin sesión | 401. |
+| N-14 | RF-NOT-01, RF-GP-01 | E1 sin solicitudes | E1 manda **dos** `POST /api/solicitudes` iguales **a la vez** (`curl -Z`) | una responde 201 y la otra 409; E1 tiene **una** solicitud; A1 y A2 reciben **un** aviso y **un** correo cada uno. *(Agregado en la Asignación 3, hallazgo 2.)* |
+| N-15 | RF-NOT-07, RD-07 | E1 nunca cambió sus preferencias | E1 manda dos `PUT /api/notificaciones/preferencias` a la vez | las dos responden 200 (nunca 500) y queda una sola preferencia. *(Agregado en la Asignación 3, hallazgo 4.)* |
 
 ## Cola de correos
 
@@ -37,6 +39,7 @@ Usuarios de referencia: **A1** y **A2** son Administradores activos; **E1** y **
 | C-06 | RF-NOT-11 | — | E1 consulta `GET /api/cola-correos` | responde 403 y no devuelve datos. |
 | C-07 | RF-NOT-12 | correos `Pendiente` | el enviador corre dos veces seguidas | cada correo llega una sola vez a Mailpit y la segunda pasada informa 0 enviados. |
 | C-08 | RF-NOT-13 | el repositorio en el tag | se busca la contraseña SMTP o la clave de la API en `git log --all -p` | no aparecen; `.env` no está en ningún commit. |
+| C-09 | RF-NOT-10, 11 | — | se encola un correo para una dirección que el transporte no puede leer (por ejemplo, alguien se registra con `prueba.@ejemplo.com`) | el correo queda `Fallido` enseguida, con `intentos = 0` y un `ultimo_error` que dice que el destinatario no es válido; el enviador nunca lo intenta. Los reintentos son solo para errores que pueden pasar (el servidor no responde). *(Agregado en la Asignación 3, hallazgo 1.)* |
 
 ## Reportes (pieza 5)
 
@@ -47,11 +50,15 @@ Usuarios de referencia: **A1** y **A2** son Administradores activos; **E1** y **
 | R-03 | RF-REP-03 | — | se revisa el código de los dos reportes | la agrupación y las sumas se hacen en PostgreSQL (`GROUP BY` generado por la consulta), no trayendo todos los registros a memoria ni en la interfaz. |
 | R-04 | RF-REP-04 | E1 tiene 2 solicitudes y E2 tiene 3 | E1 consulta el reporte de solicitudes | los totales solo cuentan las 2 de E1. |
 | R-05 | RF-REP-04 | E1 creó 1 orden recibida y A1 creó 2 | E1 consulta el reporte de compras | solo cuenta la orden de E1. A1 ve las 3. |
-| R-06 | RF-REP-05 | los datos de R-01 | se consulta con dos rangos distintos (un mes y el otro) | los resultados son distintos y cada uno solo cuenta lo de su rango. `desde` y `hasta` son fechas `AAAA-MM-DD` en UTC y los dos días se incluyen completos. |
+| R-06 | RF-REP-05 | los datos de R-01 | se consulta con dos rangos distintos (un mes y el otro) | los resultados son distintos y cada uno solo cuenta lo de su rango. `desde` y `hasta` son fechas `AAAA-MM-DD` del **calendario del negocio (hora de Santo Domingo, UTC−4)** y los dos días se incluyen completos. Las fechas se guardan en UTC; el reporte convierte los límites. *(Corregido en la Asignación 3, hallazgo 3: antes decía «en UTC», y eso cortaba los días a las 20:00 de Santo Domingo.)* |
 | R-07 | RF-REP-05, RD-07 | — | se consulta con `desde` posterior a `hasta`, o con una fecha que no es fecha | responde 400 con un mensaje que dice qué corregir; nunca 500. |
 | R-08 | RD-06 | — | cualquiera de los dos reportes sin sesión | 401. |
+| R-09 | RF-REP-05, RD-11 | una orden recibida el 31 de octubre a las **22:30 en Santo Domingo** (02:30 UTC del 1 de noviembre) | se consultan octubre y noviembre | cuenta en octubre y no en noviembre. La pantalla `/reportes`, abierta el 30 de noviembre a las 21:00, propone el rango 2026-11-01 a 2026-11-30. *(Agregado en la Asignación 3, hallazgo 3.)* |
 
 ## Para todo lo anterior
+- **Casos de borde que se prueban siempre** (agregado en la Asignación 3): dos peticiones iguales a la vez en cada operación
+  que crea o cambia algo (`curl -Z`); entradas vacías, mal formadas y fuera de rango; un correo a una dirección rara; un rango
+  sin datos; el último día del mes después de las 20:00 en Santo Domingo; y el sistema sin ningún Administrador activo.
 - Cada criterio tiene al menos una prueba automática con `[Trait("Requisito", ...)]`, en el comando de Pruebas del README.
 - Los seis frentes de la revisión acumulada siguen funcionando y todas las suites anteriores siguen pasando.
 - El README tiene las secciones **Notificaciones** (cómo provocar cada evento, cómo ejecutar el procesador, cómo provocar

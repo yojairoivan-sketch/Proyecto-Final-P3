@@ -56,6 +56,18 @@ public sealed class ProcesadorCola(ColaCorreosDbContext db, ITransporteCorreo tr
             if (correo is null)
                 break;
 
+            if (!CorreoEnCola.DestinatarioEntregable(correo.Destinatario))
+            {
+                // Hallazgo 1: un Pendiente que ya estaba en la cola con una dirección inválida no gasta intentos.
+                correo.RegistrarDestinatarioInvalido(reloj.GetUtcNow());
+                conError.Add(correo.Id);
+                fallidos++;
+                await db.SaveChangesAsync(ct);
+                await transaccion.CommitAsync(ct);
+                db.ChangeTracker.Clear();
+                continue;
+            }
+
             try
             {
                 await transporte.EnviarAsync(correo, ct);

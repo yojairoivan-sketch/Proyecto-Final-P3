@@ -3,16 +3,24 @@ using Inventario.Core.ControlAcceso;
 
 namespace Inventario.Core.Reportes;
 
-/// <summary>Un mes dentro del rango: su nombre (AAAA-MM) y sus límites en UTC, recortados al rango.</summary>
+/// <summary>Un mes del negocio dentro del rango: su nombre (AAAA-MM) y sus límites expresados en UTC, recortados al rango.</summary>
 public sealed record Periodo(string Mes, DateTimeOffset Inicio, DateTimeOffset FinExclusivo);
 
 /// <summary>
-/// RF-REP-05: el rango de fechas de un reporte. <see cref="Desde"/> y <see cref="Hasta"/> son días en UTC y los dos se
-/// incluyen completos: el rango va de Desde a las 00:00 UTC hasta el día siguiente a Hasta a las 00:00 UTC, sin incluirlo (RD-11).
+/// RF-REP-05: el rango de fechas de un reporte. <see cref="Desde"/> y <see cref="Hasta"/> son días del calendario del negocio
+/// (hora de República Dominicana, <see cref="DesfaseNegocio"/>) y los dos se incluyen completos: el rango va de Desde a las 00:00
+/// hasta el día siguiente a Hasta a las 00:00, sin incluirlo. Los límites se devuelven en UTC, como se guardan las fechas (RD-11).
+/// Hallazgo 3 (Asignación 3): antes los días se cortaban a las 00:00 UTC, que en Santo Domingo son las 20:00 del día anterior.
 /// </summary>
 public sealed record RangoFechas(DateOnly Desde, DateOnly Hasta)
 {
     public const string Formato = "yyyy-MM-dd";
+
+    /// <summary>
+    /// El día del negocio: República Dominicana, UTC−4 todo el año (no tiene horario de verano). Un reporte de «noviembre»
+    /// cuenta lo que pasó en noviembre en Santo Domingo, no en Greenwich.
+    /// </summary>
+    public static readonly TimeSpan DesfaseNegocio = TimeSpan.FromHours(-4);
 
     /// <summary>Hasta dos años por consulta, para que un reporte nunca recorra la base entera sin querer.</summary>
     public const int MaximoDias = 731;
@@ -63,7 +71,9 @@ public sealed record RangoFechas(DateOnly Desde, DateOnly Hasta)
     private static bool Fecha(string texto, out DateOnly fecha) =>
         DateOnly.TryParseExact(texto.Trim(), Formato, CultureInfo.InvariantCulture, DateTimeStyles.None, out fecha);
 
-    private static DateTimeOffset Medianoche(DateOnly dia) => new(dia.ToDateTime(TimeOnly.MinValue), TimeSpan.Zero);
+    /// <summary>Medianoche de ese día en la hora del negocio, expresada en UTC (Npgsql solo acepta desfase 0 en timestamptz).</summary>
+    private static DateTimeOffset Medianoche(DateOnly dia) =>
+        new DateTimeOffset(dia.ToDateTime(TimeOnly.MinValue), DesfaseNegocio).ToUniversalTime();
 
     private static Resultado<RangoFechas> Error(string mensaje) => Resultado<RangoFechas>.Falla(TipoFallo.Validacion, mensaje);
 }

@@ -1,0 +1,27 @@
+== Hallazgo 1: corrección f179fc1, padre fc677a6, proyecto backend/tests/Inventario.Core.ColaCorreos.Pruebas
+[xUnit.net 00:00:06.25]     Inventario.Core.ColaCorreos.Pruebas.ColaCorreosPruebas.Hallazgo1_UnCorreoConDestinatarioInvalidoQuedaFallidoSinGastarIntentos [FAIL]
+   Assert.Equal() Failure: Values differ
+Failed!  - Failed:     1, Passed:     0, Skipped:     0, Total:     1, Duration: 4 s - Inventario.Core.ColaCorreos.Pruebas.dll (net10.0)
+   ^ antes de la corrección (debe decir Failed)
+Passed!  - Failed:     0, Passed:     1, Skipped:     0, Total:     1, Duration: 3 s - Inventario.Core.ColaCorreos.Pruebas.dll (net10.0)
+   ^ con la corrección (debe decir Passed)
+== Hallazgo 2: corrección 2faf5fb, padre f179fc1, proyecto backend/tests/Inventario.Core.GestionPermisos.Pruebas
+[xUnit.net 00:00:07.22]     Inventario.Core.GestionPermisos.Pruebas.AvisosPruebas.Hallazgo2_DosSolicitudesSimultaneasDelMismoPermisoCreanUnaSolaYAvisanUnaVez [FAIL]
+   Assert.False() Failure
+Failed!  - Failed:     1, Passed:     0, Skipped:     0, Total:     1, Duration: 4 s - Inventario.Core.GestionPermisos.Pruebas.dll (net10.0)
+   ^ antes de la corrección (debe decir Failed)
+Passed!  - Failed:     0, Passed:     1, Skipped:     0, Total:     1, Duration: 2 s - Inventario.Core.GestionPermisos.Pruebas.dll (net10.0)
+   ^ con la corrección (debe decir Passed)
+== Hallazgo 3: corrección 43cda63, padre 2faf5fb, proyecto backend/tests/Inventario.Negocio.Pruebas
+[xUnit.net 00:00:05.22]     Inventario.Negocio.Pruebas.ReporteComprasPruebas.Hallazgo3_UnaOrdenRecibidaLaNocheDelUltimoDiaCuentaEnEseDiaDelNegocio [FAIL]
+   Assert.Equal() Failure: Values differ
+Failed!  - Failed:     1, Passed:     0, Skipped:     0, Total:     1, Duration: 3 s - Inventario.Negocio.Pruebas.dll (net10.0)
+   ^ antes de la corrección (debe decir Failed)
+Passed!  - Failed:     0, Passed:     1, Skipped:     0, Total:     1, Duration: 2 s - Inventario.Negocio.Pruebas.dll (net10.0)
+   ^ con la corrección (debe decir Passed)
+== Hallazgo 4: corrección 0928331, padre 43cda63, proyecto backend/tests/Inventario.Core.Notificaciones.Pruebas
+[xUnit.net 00:00:04.55]     Inventario.Core.Notificaciones.Pruebas.NotificacionesPruebas.Hallazgo4_DosCambiosSimultaneosDePreferenciasNoFallanYQuedaElUltimo [FAIL]
+Failed!  - Failed:     1, Passed:     0, Skipped:     0, Total:     1, Duration: 2 s - Inventario.Core.Notificaciones.Pruebas.dll (net10.0)
+   ^ antes de la corrección (debe decir Failed)
+Passed!  - Failed:     0, Passed:     1, Skipped:     0, Total:     1, Duration: 2 s - Inventario.Core.Notificaciones.Pruebas.dll (net10.0)
+   ^ con la corrección (debe decir Passed)

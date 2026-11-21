@@ -59,4 +59,19 @@ public sealed class CorreoEnCola
         if (Intentos >= maximoIntentos)
             Estado = EstadoCorreo.Fallido;
     }
+
+    /// <summary>
+    /// true si el transporte (MimeKit) puede interpretar la dirección. Una que no, falla igual en cada intento:
+    /// reintentarla no sirve de nada (hallazgo 1 de la Asignación 3).
+    /// </summary>
+    public static bool DestinatarioEntregable(string destinatario) =>
+        MimeKit.MailboxAddress.TryParse(destinatario, out var direccion) && !string.IsNullOrEmpty(direccion.Address);
+
+    /// <summary>El destinatario no es una dirección válida: queda Fallido sin intentos y con el motivo (RF-NOT-10, 11).</summary>
+    internal void RegistrarDestinatarioInvalido(DateTimeOffset ahora)
+    {
+        Estado = EstadoCorreo.Fallido;
+        UltimoIntentoEn = ahora;
+        UltimoError = $"El destinatario «{Destinatario}» no es una dirección de correo válida. No se intentará enviar.";
+    }
 }

@@ -27,6 +27,13 @@ public sealed class GestionPermisosDbContext(DbContextOptions<GestionPermisosDbC
             solicitud.Property(s => s.Version).IsConcurrencyToken();
             solicitud.HasIndex(s => s.Estado);
             solicitud.HasIndex(s => s.SolicitanteId);
+
+            // Hallazgo 2 (Asignación 3): una sola solicitud viva (Pendiente, Aprobada o Aplicada) por usuario y permiso.
+            // La comprobación del servicio no basta con dos peticiones simultáneas: la base es la que lo garantiza.
+            solicitud.HasIndex(s => new { s.SolicitanteId, s.Permiso })
+                .IsUnique()
+                .HasFilter("estado <> 'Rechazada'")
+                .HasDatabaseName("ux_solicitudes_permiso_una_viva");
         });
     }
 }

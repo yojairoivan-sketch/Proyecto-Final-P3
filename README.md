@@ -13,7 +13,16 @@ Instituto Tecnológico de las Américas (ITLA) — Cuatrimestre **2026-C-3**
 
 Aplicación web para que un negocio pequeño lleve el control de su inventario: **órdenes de compra** a proveedores, **movimientos de stock** y **alertas de stock bajo**. Como todos los proyectos del curso, tiene dos partes: el **Core** (la misma especificación para los 25 proyectos) y el **módulo de negocio** (inventario).
 
-## Estado: Práctica 5 — Notificaciones, cola de correos y reportes, delegados al agente
+## Estado: Asignación 3 — Auditoría de lo que el agente entregó en la Práctica 5
+
+Entregado en la etiqueta `asignacion-3`: la auditoría de notificaciones, cola de correos y reportes, con **cuatro hallazgos** reproducidos ejecutando el proyecto, cada uno corregido en su propio commit y con su prueba de regresión (falla sin la corrección y pasa con ella). La bitácora, con la evidencia de cada uno, está en [`docs/bitacora-asignacion-3.md`](docs/bitacora-asignacion-3.md); lo que cambió para la próxima delegación está en [`AGENTS.md`](AGENTS.md) y en los [criterios](docs/criterios-notificaciones-reportes.md) (N-14, N-15, C-09, R-06 y R-09).
+
+1. Un correo para un destinatario inválido gastaba los 5 intentos con el mismo error: ahora queda Fallido enseguida.
+2. Dos solicitudes iguales a la vez creaban dos y avisaban dos veces: ahora la base lo impide y la segunda da 409.
+3. Los reportes cortaban los días a las 00:00 UTC (20:00 en Santo Domingo): ahora usan el calendario del negocio.
+4. Dos cambios de preferencias a la vez daban 500: ahora responden 200.
+
+## Práctica 5 — Notificaciones, cola de correos y reportes, delegados al agente
 
 Entregado en la etiqueta `practica-5`:
 
@@ -275,7 +284,7 @@ Sin sesión, todas responden 401. Las notificaciones viven en el esquema `notifi
 ### Cola de correos: procesador, reintentos y máximo de intentos
 
 - **El procesador** es el servicio `enviador` de compose (un proceso aparte, RF-NOT-09): cada 5 segundos toma los correos Pendientes y los entrega. Para ejecutarlo a mano, una sola pasada: `docker compose stop enviador` y después `docker compose run --rm enviador --una-vez` (escribe «Enviados: N…» o «No hay correos pendientes.»). Vuelve a dejarlo vigilando con `docker compose start enviador`.
-- **Máximo de intentos: 5** (variable `COLA_MAX_INTENTOS` en `.env`, de 1 a 100). Cada pasada intenta una vez cada correo Pendiente. Si falla, el correo sigue Pendiente con `intentos` + 1, la fecha del intento y `ultimo_error`; en el quinto fallo queda **Fallido** y no se vuelve a intentar, pero no se borra (RF-NOT-10).
+- **Máximo de intentos: 5** (variable `COLA_MAX_INTENTOS` en `.env`, de 1 a 100). Cada pasada intenta una vez cada correo Pendiente. Si falla, el correo sigue Pendiente con `intentos` + 1, la fecha del intento y `ultimo_error`; en el quinto fallo queda **Fallido** y no se vuelve a intentar, pero no se borra (RF-NOT-10). Un correo cuyo destinatario no es una dirección que se pueda entregar (por ejemplo `prueba.@ejemplo.com`) no gasta intentos: queda Fallido al encolarse, con `intentos` 0 y el motivo en `ultimo_error` (hallazgo 1 de la [Asignación 3](docs/bitacora-asignacion-3.md)).
 - **Un correo Enviado no se repite** (RF-NOT-12): cada correo se toma con `FOR UPDATE SKIP LOCKED` y pasa a Enviado en la misma transacción, así que correr el procesador dos veces (o dos procesadores a la vez) no lo manda dos veces.
 - **Credenciales** (RF-NOT-13): las `SMTP_*` solo están en `.env` y solo las recibe el enviador.
 
@@ -342,7 +351,7 @@ Pieza 5 del Core ([`Inventario.Core.Reportes`](backend/src/Inventario.Core.Repor
 | Del Core (RF-REP-01): solicitudes de permiso por mes y por estado | `GET /api/reportes/solicitudes?desde=AAAA-MM-DD&hasta=AAAA-MM-DD` | Cuántas solicitudes se crearon en el período, por estado (`porEstado`) y por mes y estado (`porMes`). |
 | Del negocio (RF-REP-02, RF-NEG-08): **«¿Cuánto le compramos a cada proveedor en el período?»** | `GET /api/reportes/compras-por-proveedor?desde=AAAA-MM-DD&hasta=AAAA-MM-DD` | Por proveedor: cuántas órdenes se **recibieron** en el período, el monto total (suma de cantidad × costo de sus líneas, en DOP) y el promedio por orden. Las órdenes en Borrador, Enviada o Cancelada no cuentan. Sirve para saber a quién se le compra más y negociar con él. |
 
-- **Rango de fechas (RF-REP-05).** `desde` y `hasta` son obligatorias, en formato `AAAA-MM-DD`, y son días en **UTC** (RD-11): el rango va desde `desde` a las 00:00 UTC hasta el final de `hasta`, con los dos días completos. Hasta 731 días por consulta, con fechas entre 1900 y 2100. Una fecha que no es fecha o que está fuera de esos años, `desde` posterior a `hasta` o un rango más largo responden 400 con un mensaje que dice qué corregir. El reporte de solicitudes usa la fecha de creación; el de compras, la fecha en que la orden se recibió.
+- **Rango de fechas (RF-REP-05).** `desde` y `hasta` son obligatorias, en formato `AAAA-MM-DD`, y son días del calendario del negocio, en **hora de Santo Domingo** (UTC−4 todo el año): el rango va desde `desde` a las 00:00 hasta el final de `hasta`, con los dos días completos. Las fechas se siguen guardando en UTC (RD-11); el reporte convierte los límites, así una orden recibida el 31 de octubre a las 22:30 cuenta en octubre (hallazgo 3 de la [Asignación 3](docs/bitacora-asignacion-3.md)). Hasta 731 días por consulta, con fechas entre 1900 y 2100. Una fecha que no es fecha o que está fuera de esos años, `desde` posterior a `hasta` o un rango más largo responden 400 con un mensaje que dice qué corregir. El reporte de solicitudes usa la fecha de creación; el de compras, la fecha en que la orden se recibió.
 - **Rol (RF-REP-04).** Un Administrador ve los datos de todos. Un Estándar solo cuenta sus propias solicitudes y las órdenes que él creó; la respuesta lo dice con `"soloLasMias":true`.
 - Los dos exigen sesión (401 sin ella).
 - **En la interfaz:** enlace «Reportes» de la barra (`/reportes`): «Desde» y «Hasta» (por defecto, del primer día del mes a hoy) y «Consultar» muestran las dos tablas tal como las devuelve la API.
@@ -773,11 +782,11 @@ Compila dentro de Docker y corre las ocho suites. La primera vez tarda unos minu
 
 ```
 Passed!  - Failed:     0, Passed:    12, Skipped:     0, Total:    12, ... - Inventario.Core.Reportes.Pruebas.dll (net10.0)
-Passed!  - Failed:     0, Passed:    17, Skipped:     0, Total:    17, ... - Inventario.Core.ColaCorreos.Pruebas.dll (net10.0)
-Passed!  - Failed:     0, Passed:    80, Skipped:     0, Total:    80, ... - Inventario.Core.GestionPermisos.Pruebas.dll (net10.0)
-Passed!  - Failed:     0, Passed:    20, Skipped:     0, Total:    20, ... - Inventario.Core.Notificaciones.Pruebas.dll (net10.0)
+Passed!  - Failed:     0, Passed:    18, Skipped:     0, Total:    18, ... - Inventario.Core.ColaCorreos.Pruebas.dll (net10.0)
+Passed!  - Failed:     0, Passed:    81, Skipped:     0, Total:    81, ... - Inventario.Core.GestionPermisos.Pruebas.dll (net10.0)
+Passed!  - Failed:     0, Passed:    21, Skipped:     0, Total:    21, ... - Inventario.Core.Notificaciones.Pruebas.dll (net10.0)
 Passed!  - Failed:     0, Passed:    35, Skipped:     0, Total:    35, ... - Inventario.Core.Documentos.Pruebas.dll (net10.0)
-Passed!  - Failed:     0, Passed:   156, Skipped:     0, Total:   156, ... - Inventario.Negocio.Pruebas.dll (net10.0)
+Passed!  - Failed:     0, Passed:   157, Skipped:     0, Total:   157, ... - Inventario.Negocio.Pruebas.dll (net10.0)
 Passed!  - Failed:     0, Passed:    44, Skipped:     0, Total:    44, ... - Inventario.Core.ControlAcceso.Pruebas.dll (net10.0)
 Passed!  - Failed:     0, Passed:     7, Skipped:     0, Total:     7, ... - Inventario.Integracion.Pruebas.dll (net10.0)
 ```
@@ -798,14 +807,30 @@ Cada una cubre los criterios de [`docs/criterios-notificaciones-reportes.md`](do
 
 | Suite o archivo | Qué prueba |
 |---|---|
-| [`Inventario.Core.Notificaciones.Pruebas`](backend/tests/Inventario.Core.Notificaciones.Pruebas/NotificacionesPruebas.cs) (20) | La pieza con dobles de Control de acceso (`DirectorioFalso`) y de la cola (`ColaFalsa`): a quién llega cada aviso, el correo encolado o no según la preferencia de cada usuario, ver y marcar solo las propias (también un Administrador), los filtros y que sin sesión no se hace nada (RF-NOT-01, 02, 04 a 07, RD-06). |
-| [`Inventario.Core.ColaCorreos.Pruebas`](backend/tests/Inventario.Core.ColaCorreos.Pruebas/ColaCorreosPruebas.cs) (17) | Reintentos: antes del máximo sigue Pendiente con su error, al llegar al máximo queda Fallido, y uno que falló y después sale queda Enviado con sus intentos; `COLA_MAX_INTENTOS` válido e inválido; encolar no intenta nada; la consulta de la cola con su resumen y su filtro (RF-NOT-08, 10, 11). El procesador usa `FOR UPDATE SKIP LOCKED`, propio de PostgreSQL: lo comprueba el recorrido de [cómo provocar un fallo](#cómo-provocar-un-fallo-de-envío). |
-| [`Inventario.Core.Reportes.Pruebas`](backend/tests/Inventario.Core.Reportes.Pruebas/RangoFechasPruebas.cs) (12) | El rango de fechas: los dos días completos en UTC, un solo día, los meses recortados y cada rango inválido con su mensaje, incluidas las fechas fuera de 1900–2100 (RF-REP-05, RD-07). |
-| [`AvisosPruebas.cs`](backend/tests/Inventario.Core.GestionPermisos.Pruebas/AvisosPruebas.cs) y [`ReporteSolicitudesPruebas.cs`](backend/tests/Inventario.Core.GestionPermisos.Pruebas/ReporteSolicitudesPruebas.cs) (Gestión de permisos, 14) | Crear avisa solo a los Administradores; aprobar y rechazar avisan al solicitante (con el motivo); una resolución rechazada no avisa. El reporte de solicitudes por mes y estado, lo de cada rol, dos rangos y el último día (RF-NOT-01, 02, RF-REP-01, 04, 05). |
-| [`AvisosNegocioPruebas.cs`](backend/tests/Inventario.Negocio.Pruebas/AvisosNegocioPruebas.cs) y [`ReporteComprasPruebas.cs`](backend/tests/Inventario.Negocio.Pruebas/ReporteComprasPruebas.cs) (negocio, 10) | Recibir una orden avisa a los Administradores y las demás transiciones no; el reporte de compras por proveedor, lo que ve un Estándar, dos rangos, un rango sin compras y uno inválido (RF-NOT-03, RF-REP-02, 04, 05). |
+| [`Inventario.Core.Notificaciones.Pruebas`](backend/tests/Inventario.Core.Notificaciones.Pruebas/NotificacionesPruebas.cs) (21) | La pieza con dobles de Control de acceso (`DirectorioFalso`) y de la cola (`ColaFalsa`): a quién llega cada aviso, el correo encolado o no según la preferencia de cada usuario, ver y marcar solo las propias (también un Administrador), los filtros y que sin sesión no se hace nada (RF-NOT-01, 02, 04 a 07, RD-06). |
+| [`Inventario.Core.ColaCorreos.Pruebas`](backend/tests/Inventario.Core.ColaCorreos.Pruebas/ColaCorreosPruebas.cs) (18) | Reintentos: antes del máximo sigue Pendiente con su error, al llegar al máximo queda Fallido, y uno que falló y después sale queda Enviado con sus intentos; `COLA_MAX_INTENTOS` válido e inválido; encolar no intenta nada; la consulta de la cola con su resumen y su filtro (RF-NOT-08, 10, 11). El procesador usa `FOR UPDATE SKIP LOCKED`, propio de PostgreSQL: lo comprueba el recorrido de [cómo provocar un fallo](#cómo-provocar-un-fallo-de-envío). |
+| [`Inventario.Core.Reportes.Pruebas`](backend/tests/Inventario.Core.Reportes.Pruebas/RangoFechasPruebas.cs) (12) | El rango de fechas: los dos días completos en hora de Santo Domingo, un solo día, los meses recortados y cada rango inválido con su mensaje, incluidas las fechas fuera de 1900–2100 (RF-REP-05, RD-07). |
+| [`AvisosPruebas.cs`](backend/tests/Inventario.Core.GestionPermisos.Pruebas/AvisosPruebas.cs) y [`ReporteSolicitudesPruebas.cs`](backend/tests/Inventario.Core.GestionPermisos.Pruebas/ReporteSolicitudesPruebas.cs) (Gestión de permisos, 15) | Crear avisa solo a los Administradores; aprobar y rechazar avisan al solicitante (con el motivo); una resolución rechazada no avisa. El reporte de solicitudes por mes y estado, lo de cada rol, dos rangos y el último día (RF-NOT-01, 02, RF-REP-01, 04, 05). |
+| [`AvisosNegocioPruebas.cs`](backend/tests/Inventario.Negocio.Pruebas/AvisosNegocioPruebas.cs) y [`ReporteComprasPruebas.cs`](backend/tests/Inventario.Negocio.Pruebas/ReporteComprasPruebas.cs) (negocio, 11) | Recibir una orden avisa a los Administradores y las demás transiciones no; el reporte de compras por proveedor, lo que ve un Estándar, dos rangos, un rango sin compras y uno inválido (RF-NOT-03, RF-REP-02, 04, 05). |
 | [`NotificacionesIntegracionPruebas.cs`](backend/tests/Inventario.Integracion.Pruebas/NotificacionesIntegracionPruebas.cs) (integración, 2) | Con Control de acceso, Gestión de permisos, Notificaciones y la cola **reales**: un Administrador desactivado no recibe nada y los correos se encolan solo para los activos; con el correo apagado, el rechazo llega solo a la bandeja. |
 
 Para correr solo las de un requisito, por ejemplo `--filter "Requisito=RF-NOT-07"` o `--filter "Requisito=RF-REP-04"` al final del comando de Pruebas.
+
+### Pruebas de regresión de la Asignación 3
+
+Una por hallazgo de la auditoría ([`docs/bitacora-asignacion-3.md`](docs/bitacora-asignacion-3.md)). El nombre empieza con el
+número del hallazgo y un comentario lo cita. Corren con el comando de arriba, junto con todas las demás; para correr solo
+estas cuatro, agrega `--filter "FullyQualifiedName~Hallazgo"` al final del mismo comando.
+
+| Hallazgo | Prueba | Qué comprueba |
+|---|---|---|
+| 1 | `ColaCorreosPruebas.Hallazgo1_UnCorreoConDestinatarioInvalidoQuedaFallidoSinGastarIntentos` | Un correo para `prueba.@ejemplo.com` queda Fallido al encolarse, con 0 intentos y el motivo. |
+| 2 | `AvisosPruebas.Hallazgo2_DosSolicitudesSimultaneasDelMismoPermisoCreanUnaSolaYAvisanUnaVez` | Si otra solicitud igual se guarda entre la comprobación y el guardado, la segunda da 409, queda una sola y hay un solo aviso. |
+| 3 | `ReporteComprasPruebas.Hallazgo3_UnaOrdenRecibidaLaNocheDelUltimoDiaCuentaEnEseDiaDelNegocio` | Una orden recibida el 31 de octubre a las 22:30 en Santo Domingo cuenta en octubre y no en noviembre. |
+| 4 | `NotificacionesPruebas.Hallazgo4_DosCambiosSimultaneosDePreferenciasNoFallanYQuedaElUltimo` | Dos cambios de preferencias a la vez no fallan y queda el último. |
+
+Que cada una falla sin su corrección y pasa con ella lo comprueba
+[`docs/evidencias/asignacion-3/antes-y-despues.sh`](docs/evidencias/asignacion-3/antes-y-despues.sh) (necesita el SDK de .NET 10).
 
 ### Manejador de documentos (35 pruebas)
 
