@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# Asignación 3 — reproduce los tres hallazgos contra el proyecto levantado (http://localhost:8080) con
+# Asignación 3 — reproduce los cuatro hallazgos (1 a 4) y los casos revisados sin hallazgo (5) contra el proyecto levantado (http://localhost:8080) con
 # `cp .env.example .env && docker compose up --build -d`. Se corre en Git Bash desde la raíz del clon:
-#   bash docs/evidencias/asignacion-3/reproducir.sh 1   (o 2, o 3)
+#   bash docs/evidencias/asignacion-3/reproducir.sh 1   (o 2, 3, 4, 5)
 # Cada corrida usa datos nuevos (sufijo con la hora), así se puede repetir sobre la misma base.
 set -uo pipefail
 API=http://localhost:8080/api; J='Content-Type: application/json'; S=$(date +%s)
