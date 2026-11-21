@@ -124,6 +124,26 @@ public sealed class NotificacionesPruebas
         Assert.Equal((true, false), (deAna.Valor!.Correo, deBeto.Valor!.Correo));
     }
 
+    // Hallazgo 4 (docs/bitacora-asignacion-3.md): dos PUT /api/notificaciones/preferencias a la vez de un usuario que aún
+    // no tenía fila intentaban crearla los dos; el segundo chocaba con la clave y respondía 500.
+    [Fact]
+    [Trait("Requisito", "RF-NOT-07")]
+    public async Task Hallazgo4_DosCambiosSimultaneosDePreferenciasNoFallanYQuedaElUltimo()
+    {
+        // Preparar: otra petición de Ana guarda {"correo": true} justo antes de que esta guarde.
+        using var entorno = new Entorno();
+        var bandeja = entorno.BandejaConOtraPeticionEnMedio(Ana,
+            async () => await entorno.Bandeja(Ana).CambiarPreferenciasAsync(correo: true));
+
+        // Actuar
+        var resultado = await bandeja.CambiarPreferenciasAsync(correo: false);
+
+        // Verificar
+        Assert.True(resultado.Exito, resultado.Mensaje);
+        var guardada = await entorno.Bandeja(Ana).ConsultarPreferenciasAsync();
+        Assert.False(guardada.Valor!.Correo);
+    }
+
     [Fact]
     [Trait("Requisito", "RF-NOT-07")]
     public async Task CambiarLasPreferenciasSinDecirSiElCorreoVaSeRechaza()

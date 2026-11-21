@@ -85,16 +85,32 @@ internal sealed class ServicioNotificaciones(NotificacionesDbContext db, IUsuari
                 "Indica si quieres recibir las notificaciones por correo: {\"correo\": true} o {\"correo\": false}.");
 
         var ahora = reloj.GetUtcNow();
-        var preferencia = await db.Preferencias.SingleOrDefaultAsync(p => p.UsuarioId == usuario.Id, ct);
-        if (preferencia is null)
-            db.Preferencias.Add(PreferenciaNotificacion.De(usuario.Id, correo.Value, ahora));
-        else
-            preferencia.Cambiar(correo.Value, ahora);
-        await db.SaveChangesAsync(ct);
+        try
+        {
+            await GuardarPreferenciaAsync(usuario.Id, correo.Value, ahora, ct);
+        }
+        catch (DbUpdateException)
+        {
+            // Hallazgo 4 (Asignación 3): otra petición del mismo usuario creó su fila entre la consulta y este guardado
+            // (la clave es el usuario). Ya existe: se vuelve a leer y se cambia, en vez de responder 500 (RD-07, RD-08).
+            db.ChangeTracker.Clear();
+            await GuardarPreferenciaAsync(usuario.Id, correo.Value, ahora, ct);
+        }
 
         return Resultado<PreferenciasVista>.Ok(new PreferenciasVista(correo.Value), correo.Value
             ? "Recibirás tus notificaciones dentro del sistema y por correo."
             : "Recibirás tus notificaciones solo dentro del sistema. No se te enviarán correos de notificación.");
+    }
+
+    /// <summary>Crea la fila de preferencias del usuario o cambia la que ya tiene.</summary>
+    private async Task GuardarPreferenciaAsync(int usuarioId, bool correo, DateTimeOffset ahora, CancellationToken ct)
+    {
+        var preferencia = await db.Preferencias.SingleOrDefaultAsync(p => p.UsuarioId == usuarioId, ct);
+        if (preferencia is null)
+            db.Preferencias.Add(PreferenciaNotificacion.De(usuarioId, correo, ahora));
+        else
+            preferencia.Cambiar(correo, ahora);
+        await db.SaveChangesAsync(ct);
     }
 
     private static NotificacionVista Vista(Notificacion n) => new(n.Id, n.Titulo, n.Mensaje, n.Leida, n.CreadaEn, n.LeidaEn);
