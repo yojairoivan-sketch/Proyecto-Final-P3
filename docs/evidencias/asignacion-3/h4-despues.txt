@@ -1,0 +1,11 @@
+
+$ cuenta Estándar pref1795276542@ejemplo.com (sin fila de preferencias todavía)
+{"mensaje":"Cuenta creada. Te enviamos un correo con el enlace para activarla."}
+{"mensaje":"Cuenta activada. Ya puedes iniciar sesión."}
+
+$ curl -Z: dos PUT /api/notificaciones/preferencias {"correo":false} a la vez
+{"mensaje":"Recibirás tus notificaciones solo dentro del sistema. No se te enviarán correos de notificación.","correo":false} [200]
+{"mensaje":"Recibirás tus notificaciones solo dentro del sistema. No se te enviarán correos de notificación.","correo":false} [200]
+
+$ GET /api/notificaciones/preferencias
+{"correo":false} [200]

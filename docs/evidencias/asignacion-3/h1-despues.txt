@@ -1,0 +1,12 @@
+
+$ registro con prueba1795275641.@ejemplo.com
+{"mensaje":"Cuenta creada. Te enviamos un correo con el enlace para activarla."} [201]
+
+$ a los 15s: GET /api/cola-correos (solo el correo de prueba1795275641.@ejemplo.com)
+{"id":4,"destinatario":"prueba1795275641.@ejemplo.com","asunto":"Activa tu cuenta de Inventario","estado":"Fallido","intentos":0,"creadoEn":"2026-11-21T15:40:42.146332+00:00","ultimoIntentoEn":"2026-11-21T15:40:42.146332+00:00","enviadoEn":null,"ultimoError":"El destinatario «prueba1795275641.@ejemplo.com» no es una dirección de correo válida. No se intentará enviar."}
+
+$ a los 45s: GET /api/cola-correos (solo el correo de prueba1795275641.@ejemplo.com)
+{"id":4,"destinatario":"prueba1795275641.@ejemplo.com","asunto":"Activa tu cuenta de Inventario","estado":"Fallido","intentos":0,"creadoEn":"2026-11-21T15:40:42.146332+00:00","ultimoIntentoEn":"2026-11-21T15:40:42.146332+00:00","enviadoEn":null,"ultimoError":"El destinatario «prueba1795275641.@ejemplo.com» no es una dirección de correo válida. No se intentará enviar."}
+
+$ a los 90s: GET /api/cola-correos (solo el correo de prueba1795275641.@ejemplo.com)
+{"id":4,"destinatario":"prueba1795275641.@ejemplo.com","asunto":"Activa tu cuenta de Inventario","estado":"Fallido","intentos":0,"creadoEn":"2026-11-21T15:40:42.146332+00:00","ultimoIntentoEn":"2026-11-21T15:40:42.146332+00:00","enviadoEn":null,"ultimoError":"El destinatario «prueba1795275641.@ejemplo.com» no es una dirección de correo válida. No se intentará enviar."}

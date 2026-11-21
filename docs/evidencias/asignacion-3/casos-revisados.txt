@@ -1,0 +1,53 @@
+
+$ GET /api/reportes/solicitudes?desde=&hasta=
+{"title":"Petición inválida","status":400,"detail":"Indica el rango de fechas con desde y hasta, en formato AAAA-MM-DD (por ejemplo ?desde=2026-11-01\u0026hasta=2026-11-30)."} [400]
+
+$ GET /api/reportes/compras-por-proveedor?desde=&hasta=
+{"title":"Petición inválida","status":400,"detail":"Indica el rango de fechas con desde y hasta, en formato AAAA-MM-DD (por ejemplo ?desde=2026-11-01\u0026hasta=2026-11-30)."} [400]
+
+$ GET /api/reportes/solicitudes?desde=2026-11-01
+{"title":"Petición inválida","status":400,"detail":"Indica el rango de fechas con desde y hasta, en formato AAAA-MM-DD (por ejemplo ?desde=2026-11-01\u0026hasta=2026-11-30)."} [400]
+
+$ GET /api/reportes/compras-por-proveedor?desde=2026-11-01
+{"title":"Petición inválida","status":400,"detail":"Indica el rango de fechas con desde y hasta, en formato AAAA-MM-DD (por ejemplo ?desde=2026-11-01\u0026hasta=2026-11-30)."} [400]
+
+$ GET /api/reportes/solicitudes?desde=2026-11-01&hasta=2026-02-30
+{"title":"Petición inválida","status":400,"detail":"La fecha hasta «2026-02-30» no es válida. Usa el formato AAAA-MM-DD, por ejemplo 2026-11-30."} [400]
+
+$ GET /api/reportes/compras-por-proveedor?desde=2026-11-01&hasta=2026-02-30
+{"title":"Petición inválida","status":400,"detail":"La fecha hasta «2026-02-30» no es válida. Usa el formato AAAA-MM-DD, por ejemplo 2026-11-30."} [400]
+
+$ GET /api/reportes/solicitudes?desde=2026-11-01&hasta=9999-12-31
+{"title":"Petición inválida","status":400,"detail":"Las fechas deben estar entre 1900 y 2100."} [400]
+
+$ GET /api/reportes/compras-por-proveedor?desde=2026-11-01&hasta=9999-12-31
+{"title":"Petición inválida","status":400,"detail":"Las fechas deben estar entre 1900 y 2100."} [400]
+
+$ GET /api/reportes/solicitudes?desde=2026-12-01&hasta=2026-11-01
+{"title":"Petición inválida","status":400,"detail":"La fecha desde (2026-12-01) es posterior a hasta (2026-11-01). Invierte las fechas."} [400]
+
+$ GET /api/reportes/compras-por-proveedor?desde=2026-12-01&hasta=2026-11-01
+{"title":"Petición inválida","status":400,"detail":"La fecha desde (2026-12-01) es posterior a hasta (2026-11-01). Invierte las fechas."} [400]
+
+$ GET /api/reportes/solicitudes?desde=2024-01-01&hasta=2026-12-31
+{"title":"Petición inválida","status":400,"detail":"El rango no puede pasar de 731 días. Pide un rango más corto."} [400]
+
+$ GET /api/reportes/compras-por-proveedor?desde=2024-01-01&hasta=2026-12-31
+{"title":"Petición inválida","status":400,"detail":"El rango no puede pasar de 731 días. Pide un rango más corto."} [400]
+
+$ GET /api/reportes/solicitudes?desde=1990-01-01&hasta=1990-12-31
+{"desde":"1990-01-01","hasta":"1990-12-31","soloLasMias":false,"total":0,"porEstado":[],"porMes":[]} [200]
+
+$ GET /api/reportes/compras-por-proveedor?desde=1990-01-01&hasta=1990-12-31
+{"pregunta":"¿Cuánto le compramos a cada proveedor en el período? (órdenes recibidas, en DOP)","desde":"1990-01-01","hasta":"1990-12-31","soloLasMias":false,"ordenesRecibidas":0,"montoTotal":0,"proveedores":[]} [200]
+
+$ GET /api/notificaciones?estado=Todas  y  POST /api/notificaciones/99999999999/leida
+{"title":"Petición inválida","status":400,"detail":"El estado «Todas» no existe. Usa NoLeidas o Leidas, o no pongas estado para verlas todas."} [400]
+{"title":"No encontrado","status":404,"detail":"La notificación no existe."} [404]
+
+$ PUT /api/notificaciones/preferencias sin cuerpo y con {"correo":"no"}
+{"title":"Petición inválida","status":400,"detail":"Indica si quieres recibir las notificaciones por correo: {\u0022correo\u0022: true} o {\u0022correo\u0022: false}."} [400]
+{"title":"Petición inválida","status":400,"detail":"La petición no tiene el formato esperado. Revisa que el cuerpo sea JSON válido."} [400]
+
+$ GET /api/cola-correos?estado=Perdido
+{"title":"Petición inválida","status":400,"detail":"El estado «Perdido» no existe. Usa Pendiente, Enviado, Fallido, o no pongas estado para verlos todos."} [400]

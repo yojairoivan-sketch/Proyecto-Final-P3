@@ -1,0 +1,12 @@
+
+$ cuenta Estándar pref1795276584@ejemplo.com (sin fila de preferencias todavía)
+{"mensaje":"Cuenta creada. Te enviamos un correo con el enlace para activarla."}
+{"mensaje":"Cuenta activada. Ya puedes iniciar sesión."}
+
+$ curl -Z: dos PUT /api/notificaciones/preferencias {"correo":false} a la vez
+{"mensaje":"Recibirás tus notificaciones solo dentro del sistema. No se te enviarán correos de notificación.","correo":false} [200]
+{"title":"Error del servidor","status":500,"detail":"Ocurrió un error inesperado. Intenta de nuevo más tarde."} [500]
+
+$ GET /api/notificaciones/preferencias
+{"correo":false} [200]
+---> Npgsql.PostgresException (0x80004005): 23505: duplicate key value violates unique constraint "pk_preferencias"

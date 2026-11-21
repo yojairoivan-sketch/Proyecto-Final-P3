@@ -1,0 +1,78 @@
+== Contenedor
+OK    solo web publica puerto
+OK    un solo servicio publica
+OK    portada
+OK    bandeja /correo/
+OK    /correo redirige
+== Registro con activación (frente 1)
+OK    registro y activación de Ana
+OK    registro y activación de Beto
+== Sesión (frente 2)
+OK    tokens
+OK    yo con sesión
+OK    cerrar sesión
+OK    credencial cerrada 401
+== Rechazo por rol (frente 3)
+OK    Estándar a ListarUsuarios
+== Documentos
+OK    subir 201
+OK    subir datos
+OK    consultar registro
+OK    Ana lista el suyo
+OK    Beto no ve ajenos
+OK    Admin ve el de Ana
+OK    Ana descarga
+OK    Admin descarga
+OK    cabeceras descarga
+OK    nosniff
+OK    Beto no descarga 403
+OK    Beto no consulta 403
+OK    Beto no elimina 403
+OK    sigue listado para Ana
+OK    sin sesión listar 401
+OK    sin sesión subir 401
+OK    vacío 400
+OK    sin archivo 400
+OK    JSON en vez de form 400
+OK    form sin archivo 400
+OK    11 MB 413
+OK    52 MB 413 JSON nginx
+OK    id no numérico 404
+OK    Estándar pide eliminados 403
+OK    Ana elimina
+OK    ya no se lista
+OK    ya no se descarga 404
+OK    Admin con eliminados
+OK    Admin sin eliminados no lo ve
+OK    fila en psql
+OK    archivo sigue en el volumen
+OK    Beto sube el suyo
+== API externa
+OK    cotizar con clave de ejemplo 503
+OK    título 503
+OK    el resto sigue
+OK    moneda inválida 400
+OK    DOP 400
+OK    orden inexistente 404
+OK    cotizar sin sesión 401
+OK    la clave no sale en el log
+== Negocio (frente 6)
+OK    Estándar no envía (transición de Administrador)
+OK    recibir sin enviar 409 (prohibida)
+OK    enviar (válida)
+== Gestión de permisos (frente 5)
+OK    solicitud creada
+OK    aprobar
+OK    aprobar dos veces 409
+OK    permiso aplicado
+OK    rechazar con motivo
+OK    rechazada a aprobada 409
+== Recuperación de contraseña (frente 4)
+OK    pedir código
+OK    llegó el código
+OK    restablecer
+OK    la vieja ya no entra
+OK    la nueva entra
+OK    token viejo de Ana 401
+
+Resumen: 67 OK, 0 FALLA

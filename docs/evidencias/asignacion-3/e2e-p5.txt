@@ -1,0 +1,89 @@
+== Preparación: A1 (admin de .env), A2 y AX Administradores, AX desactivado, E1 y E2 Estándar
+OK    cuenta A2
+OK    cuenta AX
+OK    cuenta E1
+OK    cuenta E2
+OK    AX desactivado
+== N-01 (RF-NOT-01): E1 crea una solicitud
+OK    E1 crea solicitud 201
+OK    A1 tiene una nueva
+OK    A2 tiene una nueva
+OK    AX (inactivo) no tiene ninguna
+OK    E1 no tiene ninguna
+OK    E2 no tiene ninguna
+OK    dice quién y qué permiso
+== N-04 y N-03 (RF-NOT-02): rechazo sin motivo y con motivo
+OK    rechazar sin motivo 400
+OK    E1 sigue sin notificaciones
+OK    rechazar con motivo
+OK    E1 recibe rechazada + motivo
+OK    A2 no recibe por la resolución
+== N-02 (RF-NOT-02): aprobación
+OK    E2 recibe aprobada
+== N-06, N-07 (RF-NOT-04): consultar solo las propias
+OK    E1 ve 1, con leida
+OK    E1 no ve la de E2 (sin 'aprobada')
+OK    estado inválido 400
+OK    sin sesión 401
+== N-08, N-09 (RF-NOT-05): marcar como leída
+OK    E2 marca la de E1: 404
+OK    A1 marca la de E1: 404
+OK    la de E1 sigue sin leer
+OK    E1 la marca: leida true
+OK    repetir no cambia la fecha
+OK    ya no sale en NoLeidas
+OK    sale en Leidas
+OK    marcar sin sesión 401
+== N-10 (RF-NOT-06): la de E1 también llegó por correo
+OK    correo encolado para E1
+OK    y llegó a Mailpit
+== N-11, N-12 (RF-NOT-07): E1 desactiva el correo
+OK    PUT preferencias false
+OK    GET preferencias false
+OK    PUT sin valor 400
+OK    E1 la ve dentro del sistema
+OK    no se encoló correo para E1
+OK    A1 sí recibe su correo (N-12)
+== N-05 (RF-NOT-03): recibir una orden avisa a los Administradores
+OK    A1 recibe aviso de la orden
+OK    A2 una nueva
+OK    E1 y E2 ninguna nueva
+OK    orden guarda recibidaEn
+== C-05, C-06 (RF-NOT-11): consultar la cola
+OK    A1 consulta la cola
+OK    sin el cuerpo del correo
+OK    E1 recibe 403
+OK    sin sesión 401
+OK    estado inválido 400
+== C-01, C-04 (RF-NOT-08, 10): Mailpit apagado, luego vuelve antes del máximo
+OK    la operación termina bien sin Mailpit
+OK    en menos de 2 s (245 ms)
+OK    el de A2 sigue Pendiente con intentos y error
+OK    al volver Mailpit queda Enviado con varios intentos
+== C-03 (RF-NOT-10): Mailpit apagado hasta agotar los intentos
+OK    queda Fallido tras 5 intentos con su último error
+OK    no se vuelve a intentar
+OK    la cola lo muestra con ?estado=Fallido
+OK    enviador informa Fallidos
+OK    sigue Fallido con Mailpit arriba
+== C-07 (RF-NOT-12): el procesador dos veces seguidas
+OK    primera pasada envía
+OK    segunda pasada no envía nada
+OK    E2 recibe el de aprobada una sola vez
+== R-01..R-08 (RF-REP): reportes
+OK    A1: solicitudes agrupadas por mes y estado
+OK    menos filas (3) que solicitudes (7)
+OK    el total coincide con la base
+OK    E1 solo cuenta las suyas (2)
+OK    otro rango (mes pasado) da otro resultado
+OK    A1: compras por proveedor
+OK    una fila por proveedor (1) y menos que las órdenes (2)
+OK    E1 solo cuenta su orden
+OK    E2 (sin órdenes) no ve nada
+OK    otro rango da otro resultado
+OK    desde > hasta 400
+OK    fecha inválida 400
+OK    sin fechas 400
+OK    reporte sin sesión 401
+
+Resultado: 73 OK, 0 FALLA

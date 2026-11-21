@@ -41,7 +41,15 @@ Antes de dar algo por terminado: compila sin avisos y pasan **todas** las suites
 - Toda operación con datos de un usuario exige sesión y comprueba en el servidor que el dato es suyo (RD-06).
   Un recurso ajeno responde como si no existiera (404).
 - Entradas inválidas dan 400 con mensaje, nunca 500 (RD-07).
-- Una sola fuente de hora: `TimeProvider`. Todas las fechas en UTC (`DateTimeOffset`, `timestamptz`) (RD-11).
+- Una sola fuente de hora: `TimeProvider`. Todas las fechas se **guardan** en UTC (`DateTimeOffset`, `timestamptz`) (RD-11).
+  Pero un **día** que el usuario escribe o lee (rango de un reporte, «hoy» en una pantalla) es del calendario del negocio:
+  hora de Santo Domingo, UTC−4 todo el año. Se convierte a UTC en un solo lugar (`RangoFechas`); en el frontend, «hoy» se
+  calcula con `timeZone: 'America/Santo_Domingo'`, nunca con `toISOString().slice(0, 10)`.
+- **Concurrencia.** Una regla «no puede haber dos» (una solicitud viva por permiso, una fila de preferencias por usuario) la
+  garantiza la base con un índice único o una clave, no una consulta seguida de un `INSERT`. Si el guardado choca, el servicio
+  responde lo mismo que si la otra petición hubiera llegado antes (409, o vuelve a leer y actualiza); nunca 500.
+- **Cola de correos.** Se reintenta solo lo que puede salir bien después (el servidor no responde). Un error que se repetirá
+  igual (el destinatario no es una dirección válida) deja el correo `Fallido` enseguida, con el motivo.
 - Tablas y columnas en snake_case (`UseSnakeCaseNamingConvention`). Cambios de modelo → migración de EF nueva en la pieza.
 - Pruebas: nombre que dice el comportamiento, fases marcadas `// Preparar`, `// Actuar`, `// Verificar`,
   `[Trait("Requisito", "RF-XXX-NN")]`, cada prueba con su propio entorno (independientes y en cualquier orden).
@@ -56,6 +64,15 @@ Antes de dar algo por terminado: compila sin avisos y pasan **todas** las suites
 - No cambies el comando de arranque ni el de pruebas, ni los puertos publicados (solo `web`, 8080).
 - No borres ni debilites pruebas existentes para que algo pase.
 - No hagas `git push`, no crees etiquetas ni PRs: eso lo hace el dueño del repositorio.
+
+## Antes de dar algo por terminado (agregado en la Asignación 3)
+Además de las suites, ejecuta el proyecto y provoca estos casos en cada operación nueva; los cuatro hallazgos de la
+Asignación 3 (`docs/bitacora-asignacion-3.md`) salieron de aquí y ninguno lo detectaba una prueba existente:
+- Dos peticiones iguales **a la vez** (`curl -Z --parallel-immediate ... URL URL`), no una detrás de otra.
+- Entradas vacías, mal formadas y fuera de rango; un rango de fechas sin datos.
+- Un correo para una dirección que pasa el registro pero es rara (`prueba.@ejemplo.com`).
+- El último día del mes después de las 20:00 en Santo Domingo (02:00 UTC del día siguiente).
+- Para cada caso, una prueba que falle sin la corrección: escríbela primero y compruébalo.
 
 ## Tarea delegada en la Práctica 5
 Notificaciones (RF-NOT-01 a 07), completar la cola de correos (RF-NOT-10 y 11) y dos reportes con agregación

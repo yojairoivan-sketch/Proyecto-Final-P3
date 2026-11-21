@@ -1,0 +1,9 @@
+Passed!  - Failed:     0, Passed:    12, Skipped:     0, Total:    12, ... - Inventario.Core.Reportes.Pruebas.dll (net10.0)
+Passed!  - Failed:     0, Passed:    18, Skipped:     0, Total:    18, ... - Inventario.Core.ColaCorreos.Pruebas.dll (net10.0)
+Passed!  - Failed:     0, Passed:    81, Skipped:     0, Total:    81, ... - Inventario.Core.GestionPermisos.Pruebas.dll (net10.0)
+Passed!  - Failed:     0, Passed:    21, Skipped:     0, Total:    21, ... - Inventario.Core.Notificaciones.Pruebas.dll (net10.0)
+Passed!  - Failed:     0, Passed:    35, Skipped:     0, Total:    35, ... - Inventario.Core.Documentos.Pruebas.dll (net10.0)
+Passed!  - Failed:     0, Passed:   157, Skipped:     0, Total:   157, ... - Inventario.Negocio.Pruebas.dll (net10.0)
+Passed!  - Failed:     0, Passed:    44, Skipped:     0, Total:    44, ... - Inventario.Core.ControlAcceso.Pruebas.dll (net10.0)
+Passed!  - Failed:     0, Passed:     7, Skipped:     0, Total:     7, ... - Inventario.Integracion.Pruebas.dll (net10.0)
+salida: 0

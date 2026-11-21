@@ -1,0 +1,16 @@
+"estado":"Recibida"
+
+$ UPDATE recibida_en = '2026-10-31 22:30:00-04' (orden 2)
+UPDATE 1
+
+$ GET /api/ordenes/2 (recibidaEn)
+"recibidaEn":"2026-11-01T02:30:00+00:00"
+
+$ GET /api/reportes/compras-por-proveedor?desde=2026-10-01&hasta=2026-10-31 (fila de Molinos 1795275142)
+(Molinos 1795275142 no aparece)
+
+$ GET /api/reportes/compras-por-proveedor?desde=2026-11-01&hasta=2026-11-30 (fila de Molinos 1795275142)
+{"proveedorId":2,"proveedor":"Molinos 1795275142","ordenes":1,"montoTotal":8500,"promedioPorOrden":8500}
+
+$ node: expresión de frontend/src/paginas/Reportes.tsx (practica-5) evaluada el 30/11/2026 a las 21:00 en Santo Domingo
+desde por defecto: 2026-12-01 | hasta por defecto: 2026-12-01
