@@ -51,6 +51,28 @@ public sealed class ReporteComprasPruebas
         Assert.Contains("proveedor", reporte.Pregunta);
     }
 
+    // Hallazgo 3 (docs/bitacora-asignacion-3.md): el rango cortaba los días a las 00:00 UTC. Una orden recibida el 31 de
+    // octubre a las 22:30 en Santo Domingo (02:30 UTC del 1 de noviembre) no salía en el reporte de octubre y sí en el de noviembre.
+    [Fact]
+    [Trait("Requisito", "RF-REP-05")]
+    public async Task Hallazgo3_UnaOrdenRecibidaLaNocheDelUltimoDiaCuentaEnEseDiaDelNegocio()
+    {
+        // Preparar
+        using var entorno = new Entorno();
+        var molinos = await entorno.CrearProveedorAsync("Molinos del Norte");
+        var arroz = await entorno.CrearProductoAsync("ARR-1", nombre: "Arroz");
+        entorno.Reloj.SetUtcNow(new DateTimeOffset(2026, 11, 1, 2, 30, 0, TimeSpan.Zero));
+        await RecibirAsync(entorno, Entorno.Carla, molinos, arroz, 10, 850);
+
+        // Actuar
+        var octubre = (await entorno.ReporteCompras(Entorno.Carla).GenerarAsync("2026-10-01", "2026-10-31")).Valor!;
+        var noviembre = (await entorno.ReporteCompras(Entorno.Carla).GenerarAsync("2026-11-01", "2026-11-30")).Valor!;
+
+        // Verificar
+        Assert.Equal((1, 8500m), (octubre.OrdenesRecibidas, octubre.MontoTotal));
+        Assert.Equal(0, noviembre.OrdenesRecibidas);
+    }
+
     [Fact]
     [Trait("Requisito", "RF-REP-04")]
     public async Task UnEstandarSoloCuentaLasOrdenesQueElCreo()

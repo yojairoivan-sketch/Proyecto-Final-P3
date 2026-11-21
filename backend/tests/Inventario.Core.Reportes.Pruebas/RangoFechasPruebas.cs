@@ -7,7 +7,7 @@ public sealed class RangoFechasPruebas
 {
     [Fact]
     [Trait("Requisito", "RF-REP-05")]
-    public void ElRangoIncluyeCompletosElPrimerYElUltimoDiaEnUtc()
+    public void ElRangoIncluyeCompletosElPrimerYElUltimoDiaEnHoraDelNegocio()
     {
         // Preparar
         var (desde, hasta) = ("2026-11-01", "2026-11-30");
@@ -15,9 +15,10 @@ public sealed class RangoFechasPruebas
         // Actuar
         var rango = RangoFechas.Leer(desde, hasta).Valor!;
 
-        // Verificar
-        Assert.Equal(new DateTimeOffset(2026, 11, 1, 0, 0, 0, TimeSpan.Zero), rango.Inicio);
-        Assert.Equal(new DateTimeOffset(2026, 12, 1, 0, 0, 0, TimeSpan.Zero), rango.FinExclusivo);
+        // Verificar: las 00:00 en Santo Domingo son las 04:00 UTC (hallazgo 3).
+        Assert.Equal(new DateTimeOffset(2026, 11, 1, 4, 0, 0, TimeSpan.Zero), rango.Inicio);
+        Assert.Equal(new DateTimeOffset(2026, 12, 1, 4, 0, 0, TimeSpan.Zero), rango.FinExclusivo);
+        Assert.Equal(TimeSpan.Zero, rango.Inicio.Offset);
     }
 
     [Fact]
@@ -48,7 +49,7 @@ public sealed class RangoFechasPruebas
         // Verificar
         Assert.Equal(["2026-10", "2026-11", "2026-12"], meses.Select(m => m.Mes));
         Assert.Equal(rango.Inicio, meses[0].Inicio);
-        Assert.Equal(new DateTimeOffset(2026, 11, 1, 0, 0, 0, TimeSpan.Zero), meses[0].FinExclusivo);
+        Assert.Equal(new DateTimeOffset(2026, 11, 1, 4, 0, 0, TimeSpan.Zero), meses[0].FinExclusivo);
         Assert.Equal(rango.FinExclusivo, meses[2].FinExclusivo);
     }
 

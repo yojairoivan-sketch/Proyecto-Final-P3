@@ -21,8 +21,9 @@ interface ReporteCompras {
   proveedores: { proveedorId: number; proveedor: string; ordenes: number; montoTotal: number; promedioPorOrden: number }[]
 }
 
-// Fechas AAAA-MM-DD en UTC, como las pide la API (RF-REP-05).
-const hoy = () => new Date().toISOString().slice(0, 10)
+// Fechas AAAA-MM-DD del calendario del negocio (hora de Santo Domingo), como las interpreta la API (RF-REP-05).
+// Hallazgo 3: antes «hoy» salía de toISOString (UTC), y desde las 20:00 de Santo Domingo ya era mañana.
+const hoy = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Santo_Domingo' }).format(new Date())
 const primeroDelMes = () => `${hoy().slice(0, 8)}01`
 const dinero = (n: number) => n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 
@@ -67,11 +68,11 @@ export default function Reportes() {
       <Aviso aviso={aviso} />
       <form onSubmit={enviar}>
         <label>
-          Desde (UTC)
+          Desde (hora de Santo Domingo)
           <input type="date" value={desde} onChange={(e) => setDesde(e.target.value)} />
         </label>
         <label>
-          Hasta (UTC, incluido)
+          Hasta (incluido)
           <input type="date" value={hasta} onChange={(e) => setHasta(e.target.value)} />
         </label>
         <button type="submit">Consultar</button>
