@@ -1,3 +1,4 @@
+using Inventario.Core.ControlAcceso;
 using static Inventario.Core.GestionPermisos.Pruebas.Entorno;
 
 namespace Inventario.Core.GestionPermisos.Pruebas;
@@ -36,6 +37,26 @@ public sealed class AvisosPruebas
 
         // Verificar
         Assert.Empty(entorno.Notificador.Avisos);
+    }
+
+    // Hallazgo 2 (docs/bitacora-asignacion-3.md): dos peticiones simultáneas de la misma solicitud pasaban las dos la
+    // comprobación de duplicado; quedaban dos solicitudes Pendientes y cada Administrador recibía el aviso dos veces.
+    [Fact]
+    [Trait("Requisito", "RF-NOT-01")]
+    public async Task Hallazgo2_DosSolicitudesSimultaneasDelMismoPermisoCreanUnaSolaYAvisanUnaVez()
+    {
+        // Preparar: la segunda petición de Ana se guarda justo después de que la primera comprobó que no había otra.
+        using var entorno = new Entorno();
+        var primera = entorno.ComoConOtraPeticionEnMedio(Ana, () => entorno.CrearSolicitudAsync(Ana));
+
+        // Actuar
+        var resultado = await primera.CrearAsync("ListarUsuarios", justificacion: null);
+
+        // Verificar
+        Assert.False(resultado.Exito);
+        Assert.Equal(TipoFallo.Conflicto, resultado.Fallo);
+        Assert.Equal(1, entorno.ContarSolicitudes());
+        Assert.Single(entorno.Notificador.Avisos);
     }
 
     [Fact]

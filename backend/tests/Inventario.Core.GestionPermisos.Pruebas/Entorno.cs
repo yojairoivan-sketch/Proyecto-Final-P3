@@ -3,6 +3,7 @@ using Inventario.Core.GestionPermisos.Solicitudes;
 using Inventario.Core.Notificaciones;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Microsoft.Extensions.Time.Testing;
@@ -47,6 +48,14 @@ public sealed class Entorno : IDisposable
     public IServicioSolicitudes Como(UsuarioAutenticado usuario) =>
         new ServicioSolicitudes(NuevoContexto(), new UsuarioActualFalso(usuario), Otorgamiento, Reloj, Opciones, Notificador);
 
+    /// <summary>
+    /// Hallazgo 2: el servicio de <paramref name="usuario"/>, pero justo antes de que guarde su solicitud corre
+    /// <paramref name="otraPeticion"/>, como una segunda petición simultánea que pasó la misma comprobación.
+    /// </summary>
+    public IServicioSolicitudes ComoConOtraPeticionEnMedio(UsuarioAutenticado usuario, Func<Task> otraPeticion) =>
+        new ServicioSolicitudes(NuevoContexto(new OtraPeticionAntesDeGuardar(otraPeticion)), new UsuarioActualFalso(usuario),
+            Otorgamiento, Reloj, Opciones, Notificador);
+
     /// <summary>El servicio sin usuario, como al arrancar la aplicación.</summary>
     public IServicioSolicitudes ComoSistema() =>
         new ServicioSolicitudes(NuevoContexto(), new UsuarioActualFalso(null), Otorgamiento, Reloj, Opciones, Notificador);
@@ -72,11 +81,12 @@ public sealed class Entorno : IDisposable
 
     internal int ContarSolicitudes() => NuevoContexto().Solicitudes.Count();
 
-    private GestionPermisosDbContext NuevoContexto()
+    private GestionPermisosDbContext NuevoContexto(params IInterceptor[] interceptores)
     {
         var contexto = new GestionPermisosDbContext(new DbContextOptionsBuilder<GestionPermisosDbContext>()
             .UseSqlite(conexion)
             .ReplaceService<IModelCustomizer, FechasComoNumero>()
+            .AddInterceptors(interceptores)
             .Options);
         contextos.Add(contexto);
         return contexto;
@@ -101,6 +111,23 @@ public sealed class Entorno : IDisposable
             foreach (var propiedad in fechas)
                 propiedad.SetValueConverter(new DateTimeOffsetToBinaryConverter());
         }
+    }
+}
+
+/// <summary>Corre una acción una sola vez, justo antes del primer guardado del contexto (hallazgo 2).</summary>
+internal sealed class OtraPeticionAntesDeGuardar(Func<Task> accion) : SaveChangesInterceptor
+{
+    private bool hecha;
+
+    public override async ValueTask<InterceptionResult<int>> SavingChangesAsync(
+        DbContextEventData datos, InterceptionResult<int> resultado, CancellationToken ct = default)
+    {
+        if (!hecha)
+        {
+            hecha = true;
+            await accion();
+        }
+        return resultado;
     }
 }
 

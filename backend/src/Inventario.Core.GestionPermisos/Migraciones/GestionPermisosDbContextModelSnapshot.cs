@@ -105,6 +105,11 @@ namespace Inventario.Core.GestionPermisos.Migraciones
                     b.HasIndex("SolicitanteId")
                         .HasDatabaseName("ix_solicitudes_permiso_solicitante_id");
 
+                    b.HasIndex("SolicitanteId", "Permiso")
+                        .IsUnique()
+                        .HasDatabaseName("ux_solicitudes_permiso_una_viva")
+                        .HasFilter("estado <> 'Rechazada'");
+
                     b.ToTable("solicitudes_permiso", "gestion_permisos");
                 });
 #pragma warning restore 612, 618
