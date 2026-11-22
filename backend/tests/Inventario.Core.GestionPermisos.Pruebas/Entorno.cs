@@ -1,3 +1,4 @@
+using Inventario.Core.Auditoria;
 using Inventario.Core.ControlAcceso;
 using Inventario.Core.GestionPermisos.Solicitudes;
 using Inventario.Core.Notificaciones;
@@ -5,6 +6,7 @@ using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Microsoft.Extensions.Time.Testing;
 
@@ -29,6 +31,10 @@ public sealed class Entorno : IDisposable
     {
         conexion.Open();
         NuevoContexto().Database.EnsureCreated();
+        // La tabla del historial la crea la pieza de Auditoría (este contexto solo la mapea), como al arrancar la API.
+        using var auditoria = new AuditoriaDbContext(new DbContextOptionsBuilder<AuditoriaDbContext>()
+            .UseSqlite(conexion).ReplaceService<IModelCustomizer, FechasComoNumero>().Options);
+        auditoria.GetService<IRelationalDatabaseCreator>().CreateTables();
     }
 
     public FakeTimeProvider Reloj { get; } = new(new DateTimeOffset(2026, 10, 19, 12, 0, 0, TimeSpan.Zero));
@@ -80,6 +86,10 @@ public sealed class Entorno : IDisposable
     internal SolicitudPermiso Leer(int id) => NuevoContexto().Solicitudes.AsNoTracking().Single(s => s.Id == id);
 
     internal int ContarSolicitudes() => NuevoContexto().Solicitudes.Count();
+
+    /// <summary>Los registros del historial de auditoría, del más reciente al más antiguo, leídos de la misma base.</summary>
+    internal List<RegistroAuditoria> Historial() =>
+        NuevoContexto().Set<RegistroAuditoria>().AsNoTracking().OrderByDescending(r => r.Id).ToList();
 
     private GestionPermisosDbContext NuevoContexto(params IInterceptor[] interceptores)
     {
