@@ -3,6 +3,7 @@ using System.Text.Json.Serialization;
 using System.Text.Unicode;
 using Inventario.Api;
 using Inventario.Api.Acceso;
+using Inventario.Api.Auditoria;
 using Inventario.Api.Documentos;
 using Inventario.Api.Errores;
 using Inventario.Api.Negocio;
@@ -38,10 +39,13 @@ builder.Services.ConfigureHttpJsonOptions(opciones =>
 });
 
 // Piezas del Core. La API solo encola: nunca habla con el servidor SMTP (RF-NOT-08).
-// Auditoría: el host le dice dónde empieza el día del negocio (el mismo criterio que los reportes, RD-11).
-// Así la pieza no depende de ninguna otra ni del negocio (RD-03).
+// Auditoría (RF-AUD-07): el host le dice qué entidades existen y dónde empieza el día del negocio (el mismo criterio que los
+// reportes, RD-11). Así la pieza no depende de ninguna otra ni del negocio (RD-03).
 builder.Services.AddAuditoria(cadenaConexion, opciones =>
-    opciones.DesfaseNegocio = Inventario.Core.Reportes.RangoFechas.DesfaseNegocio);
+{
+    opciones.Entidades = [AuditoriaUsuarios.Entidad, AuditoriaSolicitudes.Entidad, AuditoriaDocumentos.Entidad];
+    opciones.DesfaseNegocio = Inventario.Core.Reportes.RangoFechas.DesfaseNegocio;
+});
 builder.Services.AddColaCorreos(cadenaConexion);
 builder.Services.AddControlAcceso(cadenaConexion, opciones =>
     opciones.UrlPublica = builder.Configuration["URL_PUBLICA"] ?? opciones.UrlPublica);
@@ -91,6 +95,7 @@ app.MapearColaCorreos();
 app.MapearDocumentos();
 app.MapearNegocio();
 app.MapearReportes();
+app.MapearAuditoria();
 
 app.VerificarQueTodoEndpointDeclareSuOperacion();
 
