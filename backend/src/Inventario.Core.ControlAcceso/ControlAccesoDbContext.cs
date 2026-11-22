@@ -1,3 +1,4 @@
+using Inventario.Core.Auditoria;
 using Inventario.Core.ControlAcceso.Contrasenas;
 using Inventario.Core.ControlAcceso.Cuentas;
 using Inventario.Core.ControlAcceso.Permisos;
@@ -6,9 +7,14 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Inventario.Core.ControlAcceso;
 
-/// <summary>Datos propios de Control de acceso, en su propio esquema. Ninguna otra pieza lee estas tablas.</summary>
+/// <summary>
+/// Datos propios de Control de acceso, en su propio esquema. Ninguna otra pieza lee estas tablas.
+/// También mapea la tabla del historial de auditoría (sin migrarla): así cada cambio auditado y su registro se guardan juntos.
+/// </summary>
 public sealed class ControlAccesoDbContext(DbContextOptions<ControlAccesoDbContext> opciones) : DbContext(opciones)
 {
+    protected override void OnConfiguring(DbContextOptionsBuilder opciones) => opciones.ProtegerHistorialAuditoria();
+
     public const string Esquema = "control_acceso";
 
     internal DbSet<Rol> Roles => Set<Rol>();
@@ -21,6 +27,7 @@ public sealed class ControlAccesoDbContext(DbContextOptions<ControlAccesoDbConte
     protected override void OnModelCreating(ModelBuilder modelo)
     {
         modelo.HasDefaultSchema(Esquema);
+        modelo.MapearHistorialAuditoria();
 
         modelo.Entity<Rol>(rol =>
         {
@@ -64,6 +71,7 @@ public sealed class ControlAccesoDbContext(DbContextOptions<ControlAccesoDbConte
             codigo.ToTable("codigos_recuperacion");
             codigo.Property(c => c.HashCodigo).HasMaxLength(64);
             codigo.HasIndex(c => c.HashCodigo).IsUnique();
+            codigo.Property(c => c.Origen).HasConversion<string>().HasMaxLength(20);
             codigo.HasOne(c => c.Usuario).WithMany().HasForeignKey(c => c.UsuarioId).OnDelete(DeleteBehavior.Cascade);
         });
 

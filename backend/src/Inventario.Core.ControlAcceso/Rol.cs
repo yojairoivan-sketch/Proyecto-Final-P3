@@ -24,6 +24,8 @@ public sealed class Rol
         Nombre = nombre;
     }
 
+    internal static string NombreDe(int id) => id == IdAdministrador ? Administrador : Estandar;
+
     /// <summary>Acepta el nombre sin importar mayúsculas ni la tilde («Estandar» sirve igual que «Estándar»).</summary>
     internal static int? IdDe(string? nombre) => nombre?.Trim().ToLowerInvariant() switch
     {

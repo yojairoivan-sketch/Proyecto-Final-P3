@@ -1,4 +1,5 @@
 using System.Text.RegularExpressions;
+using Inventario.Core.Auditoria;
 using Inventario.Core.ColaCorreos;
 using Inventario.Core.ControlAcceso.Contrasenas;
 using Inventario.Core.ControlAcceso.Cuentas;
@@ -8,6 +9,7 @@ using Inventario.Core.ControlAcceso.Usuarios;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Microsoft.Extensions.Time.Testing;
 
@@ -26,11 +28,34 @@ public sealed class Entorno : IDisposable
     {
         conexion.Open();
         NuevoContexto().Database.EnsureCreated();
+        CrearTablaHistorial(conexion);
+    }
+
+    /// <summary>
+    /// EnsureCreated no crea la tabla del historial: este contexto solo la mapea y la deja fuera de sus migraciones, porque la
+    /// crea la pieza de Auditoría. Aquí la crea el contexto de Auditoría sobre la misma base, como hace la API al arrancar.
+    /// </summary>
+    internal static void CrearTablaHistorial(SqliteConnection conexion)
+    {
+        using var auditoria = new AuditoriaDbContext(new DbContextOptionsBuilder<AuditoriaDbContext>()
+            .UseSqlite(conexion)
+            .ReplaceService<IModelCustomizer, FechasComoNumero>()
+            .Options);
+        auditoria.GetService<IRelationalDatabaseCreator>().CreateTables();
     }
 
     public FakeTimeProvider Reloj { get; } = new(new DateTimeOffset(2026, 10, 4, 12, 0, 0, TimeSpan.Zero));
     public ColaFalsa Cola { get; } = new();
     public OpcionesControlAcceso Opciones { get; } = new() { UrlPublica = "http://localhost:8080" };
+
+    /// <summary>
+    /// Quién hace la petición en las operaciones de administración. Por defecto, un Administrador cualquiera; las pruebas de
+    /// auditoría ponen aquí al Administrador que crearon, para comprobar que el registro dice quién actuó.
+    /// </summary>
+    public UsuarioActualFalso Actual { get; } = new()
+    {
+        Usuario = new UsuarioAutenticado(999, "Administrador de prueba", "admin@prueba.local", Rol.Administrador, 1),
+    };
 
     internal ControlAccesoDbContext NuevoContexto()
     {
@@ -45,8 +70,12 @@ public sealed class Entorno : IDisposable
     // Cada llamada usa un contexto nuevo, como cada petición en la API.
     public IServicioCuentas Cuentas() => new ServicioCuentas(NuevoContexto(), Cola, Reloj, Opciones);
     public IServicioSesiones Sesiones() => new ServicioSesiones(NuevoContexto(), Reloj, Opciones);
-    public IServicioContrasenas Contrasenas() => new ServicioContrasenas(NuevoContexto(), Cola, Reloj, Opciones);
-    public IServicioUsuarios Usuarios() => new ServicioUsuarios(NuevoContexto(), Reloj);
+    public IServicioContrasenas Contrasenas() => new ServicioContrasenas(NuevoContexto(), Cola, Reloj, Opciones, Actual);
+    public IServicioUsuarios Usuarios() => new ServicioUsuarios(NuevoContexto(), Reloj, Actual);
+
+    /// <summary>Los registros del historial de auditoría, del más reciente al más antiguo, leídos de la misma base.</summary>
+    public List<RegistroAuditoria> Historial() =>
+        NuevoContexto().Set<RegistroAuditoria>().AsNoTracking().OrderByDescending(r => r.Id).ToList();
 
     internal Usuario BuscarUsuario(string correo) =>
         NuevoContexto().Usuarios.Include(u => u.Rol).Single(u => u.Correo == correo);
@@ -98,6 +127,12 @@ public sealed class Entorno : IDisposable
                 propiedad.SetValueConverter(new DateTimeOffsetToBinaryConverter());
         }
     }
+}
+
+/// <summary>Doble de IUsuarioActual: la sesión de la petición, sin HTTP.</summary>
+public sealed class UsuarioActualFalso : IUsuarioActual
+{
+    public UsuarioAutenticado? Usuario { get; set; }
 }
 
 /// <summary>
