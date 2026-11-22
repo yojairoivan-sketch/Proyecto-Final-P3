@@ -1,5 +1,6 @@
 import { NavLink, Route, Routes } from 'react-router'
 import Activar from './paginas/Activar'
+import Auditoria from './paginas/Auditoria'
 import Documentos from './paginas/Documentos'
 import IniciarSesion from './paginas/IniciarSesion'
 import Inicio from './paginas/Inicio'
@@ -35,6 +36,7 @@ export default function App() {
               {(usuario.rol === 'Administrador' || usuario.permisos.includes('ListarUsuarios')) && (
                 <NavLink to="/usuarios">Usuarios</NavLink>
               )}
+              {usuario.rol === 'Administrador' && <NavLink to="/auditoria">Auditoría</NavLink>}
             </>
           ) : (
             <>
@@ -62,6 +64,7 @@ export default function App() {
           <Route path="/documentos" element={<Documentos />} />
           <Route path="/notificaciones" element={<Notificaciones />} />
           <Route path="/reportes" element={<Reportes />} />
+          <Route path="/auditoria" element={<Auditoria />} />
           <Route path="/recuperar" element={<Recuperar />} />
           <Route path="/restablecer" element={<Restablecer />} />
           <Route path="*" element={<p>Esta página no existe.</p>} />
