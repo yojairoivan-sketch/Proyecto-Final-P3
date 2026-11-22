@@ -1,17 +1,24 @@
+using Inventario.Core.Auditoria;
 using Microsoft.EntityFrameworkCore;
 
 namespace Inventario.Core.Documentos;
 
-/// <summary>Registros de los documentos, en su propio esquema. No lee las tablas de Control de acceso.</summary>
+/// <summary>
+/// Registros de los documentos, en su propio esquema. No lee las tablas de Control de acceso.
+/// También mapea la tabla del historial de auditoría (sin migrarla): cada subida o eliminación y su registro se guardan juntos.
+/// </summary>
 public sealed class DocumentosDbContext(DbContextOptions<DocumentosDbContext> opciones) : DbContext(opciones)
 {
     public const string Esquema = "documentos";
 
     internal DbSet<Documento> Documentos => Set<Documento>();
 
+    protected override void OnConfiguring(DbContextOptionsBuilder opciones) => opciones.ProtegerHistorialAuditoria();
+
     protected override void OnModelCreating(ModelBuilder modelo)
     {
         modelo.HasDefaultSchema(Esquema);
+        modelo.MapearHistorialAuditoria();
 
         modelo.Entity<Documento>(documento =>
         {

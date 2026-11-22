@@ -1,8 +1,10 @@
 using System.Text;
+using Inventario.Core.Auditoria;
 using Inventario.Core.ControlAcceso;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Time.Testing;
@@ -27,6 +29,10 @@ public sealed class Entorno : IDisposable
     {
         conexion.Open();
         NuevoContexto().Database.EnsureCreated();
+        // La tabla del historial la crea la pieza de Auditoría (este contexto solo la mapea), como al arrancar la API.
+        using (var auditoria = new AuditoriaDbContext(new DbContextOptionsBuilder<AuditoriaDbContext>()
+                   .UseSqlite(conexion).ReplaceService<IModelCustomizer, FechasComoNumero>().Options))
+            auditoria.GetService<IRelationalDatabaseCreator>().CreateTables();
         Opciones = new OpcionesDocumentos
         {
             Carpeta = Path.Combine(Path.GetTempPath(), "inventario-documentos-pruebas", Guid.NewGuid().ToString("N")),
@@ -62,6 +68,10 @@ public sealed class Entorno : IDisposable
     internal Documento Leer(int id) => NuevoContexto().Documentos.AsNoTracking().Single(d => d.Id == id);
 
     internal int ContarRegistros() => NuevoContexto().Documentos.Count();
+
+    /// <summary>Los registros del historial de auditoría, del más reciente al más antiguo, leídos de la misma base.</summary>
+    internal List<RegistroAuditoria> Historial() =>
+        NuevoContexto().Set<RegistroAuditoria>().AsNoTracking().OrderByDescending(r => r.Id).ToList();
 
     /// <summary>Cuántos archivos hay en la carpeta del almacén.</summary>
     public int ContarArchivos() => Directory.GetFiles(Opciones.Carpeta).Length;

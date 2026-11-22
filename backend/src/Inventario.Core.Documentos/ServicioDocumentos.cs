@@ -1,4 +1,5 @@
 using System.Text.RegularExpressions;
+using Inventario.Core.Auditoria;
 using Inventario.Core.ControlAcceso;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -89,11 +90,21 @@ internal sealed partial class ServicioDocumentos(
                 : $"El archivo pasa del máximo de {opciones.TamanoMaximoBytes / (1024 * 1024)} MB. No se guardó.");
         }
 
-        var documento = Documento.Registrar(Nombre(nombre), Tipo(tipo), tamano, archivo, usuario, reloj.GetUtcNow());
-        db.Documentos.Add(documento);
+        var ahora = reloj.GetUtcNow();
+        var documento = Documento.Registrar(Nombre(nombre), Tipo(tipo), tamano, archivo, usuario, ahora);
         try
         {
+            // RF-DOC-06: el documento y su registro de auditoría se guardan en la misma transacción. Son dos SaveChanges porque
+            // el registro necesita el id del documento, que lo da la base al guardarlo.
+            await using var transaccion = await db.Database.BeginTransactionAsync(ct);
+            db.Documentos.Add(documento);
             await db.SaveChangesAsync(ct);
+            db.Auditar(usuario.ComoQuienActua(), AuditoriaDocumentos.SubirDocumento, AuditoriaDocumentos.Entidad, documento.Id,
+                HistorialAuditoria.NoExistia,
+                new { estado = AuditoriaDocumentos.Vigente, nombre = documento.Nombre, tipo = documento.Tipo, tamanoBytes = documento.TamanoBytes },
+                ahora);
+            await db.SaveChangesAsync(ct);
+            await transaccion.CommitAsync(ct);
         }
         catch
         {
@@ -152,7 +163,14 @@ internal sealed partial class ServicioDocumentos(
         if (rechazo is not null)
             return rechazo;
 
-        documento!.Eliminar(usuarioActual.Usuario!, reloj.GetUtcNow());
+        // RF-DOC-06: la eliminación y su registro de auditoría se guardan con el mismo SaveChanges.
+        var quien = usuarioActual.Usuario!;
+        var ahora = reloj.GetUtcNow();
+        documento!.Eliminar(quien, ahora);
+        db.Auditar(quien.ComoQuienActua(), AuditoriaDocumentos.EliminarDocumento, AuditoriaDocumentos.Entidad, documento.Id,
+            new { estado = AuditoriaDocumentos.Vigente, nombre = documento.Nombre },
+            new { estado = AuditoriaDocumentos.Eliminado, nombre = documento.Nombre },
+            ahora);
         await db.SaveChangesAsync(ct);
         return Resultado<DocumentoVista>.Ok(Vista(documento),
             $"Documento «{documento.Nombre}» eliminado. Ya no aparece en el listado; su registro se conserva.");

@@ -2,8 +2,8 @@
 
   <!--
     Pieza del Core: Manejador de documentos. Responde «¿qué archivos subiste y quién puede verlos?».
-    Requiere Control de acceso (quién es el usuario y qué rol tiene), solo por su interfaz IUsuarioActual.
-    Nunca referencia al módulo de negocio (RD-03).
+    Requiere Control de acceso (quién es el usuario y qué rol tiene), solo por su interfaz IUsuarioActual, y deja cada
+    subida y eliminación en el historial de auditoría (RF-DOC-06). Nunca referencia al módulo de negocio (RD-03).
   -->
 
   <ItemGroup>
@@ -12,6 +12,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\Inventario.Core.Auditoria\Inventario.Core.Auditoria.csproj" />
     <ProjectReference Include="..\Inventario.Core.ControlAcceso\Inventario.Core.ControlAcceso.csproj" />
   </ItemGroup>
 
