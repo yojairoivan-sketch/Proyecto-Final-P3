@@ -9,6 +9,7 @@ using Inventario.Api.Negocio;
 using Inventario.Api.Notificaciones;
 using Inventario.Api.Permisos;
 using Inventario.Api.Reportes;
+using Inventario.Core.Auditoria;
 using Inventario.Core.ColaCorreos;
 using Inventario.Core.ControlAcceso;
 using Inventario.Core.ControlAcceso.Usuarios;
@@ -37,6 +38,10 @@ builder.Services.ConfigureHttpJsonOptions(opciones =>
 });
 
 // Piezas del Core. La API solo encola: nunca habla con el servidor SMTP (RF-NOT-08).
+// Auditoría: el host le dice dónde empieza el día del negocio (el mismo criterio que los reportes, RD-11).
+// Así la pieza no depende de ninguna otra ni del negocio (RD-03).
+builder.Services.AddAuditoria(cadenaConexion, opciones =>
+    opciones.DesfaseNegocio = Inventario.Core.Reportes.RangoFechas.DesfaseNegocio);
 builder.Services.AddColaCorreos(cadenaConexion);
 builder.Services.AddControlAcceso(cadenaConexion, opciones =>
     opciones.UrlPublica = builder.Configuration["URL_PUBLICA"] ?? opciones.UrlPublica);
@@ -89,6 +94,8 @@ app.MapearReportes();
 
 app.VerificarQueTodoEndpointDeclareSuOperacion();
 
+// Primero el historial: las piezas auditadas escriben en su tabla.
+await app.Services.MigrarAuditoriaAsync();
 await app.Services.MigrarColaCorreosAsync();
 await app.Services.MigrarControlAccesoAsync();
 await app.Services.MigrarNotificacionesAsync();

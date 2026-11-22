@@ -7,6 +7,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\Inventario.Core.Auditoria\Inventario.Core.Auditoria.csproj" />
     <ProjectReference Include="..\Inventario.Core.ColaCorreos\Inventario.Core.ColaCorreos.csproj" />
     <ProjectReference Include="..\Inventario.Core.ControlAcceso\Inventario.Core.ControlAcceso.csproj" />
     <ProjectReference Include="..\Inventario.Core.Documentos\Inventario.Core.Documentos.csproj" />
