@@ -13,9 +13,18 @@ Instituto Tecnológico de las Américas (ITLA) — Cuatrimestre **2026-C-3**
 
 Aplicación web para que un negocio pequeño lleve el control de su inventario: **órdenes de compra** a proveedores, **movimientos de stock** y **alertas de stock bajo**. Como todos los proyectos del curso, tiene dos partes: el **Core** (la misma especificación para los 25 proyectos) y el **módulo de negocio** (inventario).
 
-## Estado: Asignación 3 — Auditoría de lo que el agente entregó en la Práctica 5
+## Estado: Asignación 4 — Historial de auditoría
 
-Entregado en la etiqueta `asignacion-3`: la auditoría de notificaciones, cola de correos y reportes, con **cuatro hallazgos** reproducidos ejecutando el proyecto, cada uno corregido en su propio commit y con su prueba de regresión (falla sin la corrección y pasa con ella). La bitácora, con la evidencia de cada uno, está en [`docs/bitacora-asignacion-3.md`](docs/bitacora-asignacion-3.md); lo que cambió para la próxima delegación está en [`AGENTS.md`](AGENTS.md) y en los [criterios](docs/criterios-notificaciones-reportes.md) (N-14, N-15, C-09, R-06 y R-09).
+Entregado en la etiqueta `asignacion-4`: la **pieza 6 del Core**, el historial de auditoría. Hace con los datos de la aplicación lo que `git log` hace con el repositorio: guarda quién cambió qué, cuándo y qué había antes. Con ella están las seis piezas del Core.
+
+- **Qué se audita (RF-AUD-01 a 05):** aprobar y rechazar solicitudes de permiso, subir y eliminar documentos, cambiar el rol, desactivar y reactivar usuarios, y restablecer contraseñas (cuando la pide el propio usuario y cuando la fuerza un Administrador). Cada registro trae usuario, acción, entidad, identificador, fecha y hora, valor anterior y valor nuevo, y ninguno guarda una contraseña ni un código.
+- **El registro se guarda junto con el cambio,** en el mismo guardado o la misma transacción: no puede quedar un cambio sin su registro.
+- **Nadie lo modifica ni lo borra (RF-AUD-06):** no hay operaciones para eso, el contexto se niega a guardarlo y un trigger de PostgreSQL rechaza `UPDATE`, `DELETE` y `TRUNCATE`.
+- **Solo el Administrador lo consulta (RF-AUD-07),** en `GET /api/auditoria` o en la pantalla `/auditoria`, filtrando por usuario, entidad y rango de fechas.
+- **Pruebas nuevas:** la suite de la pieza (41) y una prueba por cada evento auditado en la suite de su pieza (17). Todas corren con [un solo comando](#pruebas).
+- Cómo provocar cada evento y consultar el historial con cada filtro: sección [Auditoría](#auditoría). La sesión con el agente y la comparación de un registro con un commit están en [`docs/bitacora-asignacion-4.md`](docs/bitacora-asignacion-4.md).
+
+Antes, en la etiqueta `asignacion-3`: la auditoría de notificaciones, cola de correos y reportes, con **cuatro hallazgos** reproducidos ejecutando el proyecto, cada uno corregido en su propio commit y con su prueba de regresión (falla sin la corrección y pasa con ella). La bitácora, con la evidencia de cada uno, está en [`docs/bitacora-asignacion-3.md`](docs/bitacora-asignacion-3.md); lo que cambió para la próxima delegación está en [`AGENTS.md`](AGENTS.md) y en los [criterios](docs/criterios-notificaciones-reportes.md) (N-14, N-15, C-09, R-06 y R-09).
 
 1. Un correo para un destinatario inválido gastaba los 5 intentos con el mismo error: ahora queda Fallido enseguida.
 2. Dos solicitudes iguales a la vez creaban dos y avisaban dos veces: ahora la base lo impide y la segunda da 409.
@@ -63,12 +72,15 @@ flowchart LR
         PERM["<b>Gestión de permisos</b><br/>solicitud → aprobación<br/>✅ Asignación 2"]
         DOC["<b>Manejador de documentos</b><br/>subir, listar, borrado lógico<br/>✅ Práctica 4"]
         REP["<b>Reportes</b><br/>agregación filtrada por rol<br/>✅ Práctica 5"]
-        AUD["<b>Auditoría</b><br/>quién hizo qué y cuándo<br/>S14"]
+        AUD["<b>Auditoría</b><br/>quién cambió qué y cuándo<br/>✅ Asignación 4"]
     end
     subgraph Negocio["Módulo de negocio"]
         MOD["<b>Inventario</b><br/>proveedores, productos, órdenes de compra y existencias<br/>✅ Práctica 3"]
     end
 
+    ACC -->|"deja cada cambio de rol, estado y contraseña"| AUD
+    PERM -->|"deja cada resolución"| AUD
+    DOC -->|"deja cada subida y eliminación"| AUD
     ACC -->|"encola los correos de activación y recuperación"| NOTI
     PERM -->|"pregunta quién es y aplica el permiso aprobado"| ACC
     PERM -->|"avisa a los Administradores y al solicitante"| NOTI
@@ -81,10 +93,9 @@ flowchart LR
     MOD -->|"dispara avisos del negocio"| NOTI
     MOD -->|"alimenta un reporte"| REP
     MOD -.->|"adjunta documentos (opcional)"| DOC
-    MOD -.->|"registra eventos"| AUD
 ```
 
-Casi todas las piezas registran sus acciones en Auditoría; esa flecha punteada se dibuja una sola vez para no llenar el diagrama. Las piezas marcadas con ✅ ya están construidas; las demás indican la semana en que llegan.
+Las seis piezas están construidas (✅). Auditoría no requiere a nadie: las tres piezas que se auditan la referencian para dejar sus registros, y el host le pasa lo que necesita saber (las entidades auditadas y el día del negocio). Por eso no tiene flechas que salgan de ella.
 
 | Pieza | Proyecto | Interfaz que ofrece a las demás |
 |---|---|---|
@@ -94,11 +105,12 @@ Casi todas las piezas registran sus acciones en Auditoría; esa flecha punteada 
 | Cola de correos | `backend/src/Inventario.Core.ColaCorreos` | `IColaCorreos.EncolarAsync`, `IConsultaCola` (estado de cada correo) y `ProcesadorCola` (reintentos hasta `COLA_MAX_INTENTOS`) |
 | Reportes | `backend/src/Inventario.Core.Reportes` | `RangoFechas` (el rango y su validación). Los reportes: `IReporteSolicitudes` en Gestión de permisos e `IReporteCompras` en el negocio |
 | Manejador de documentos | `backend/src/Inventario.Core.Documentos` | `IServicioDocumentos` (subir, listar, consultar, descargar y eliminar) e `IAlmacenArchivos` (dónde vive el contenido de cada archivo) |
+| Auditoría | `backend/src/Inventario.Core.Auditoria` | `HistorialAuditoria.Auditar` («deja este cambio en el historial», en el contexto de quien cambia), `MapearHistorialAuditoria` y `ProtegerHistorialAuditoria` (para ese contexto) e `IConsultaAuditoria` (consulta con filtros, solo para el Administrador). No requiere a ninguna otra pieza |
 | Módulo de negocio | `backend/src/Inventario.Negocio` | `IServicioProveedores`, `IServicioProductos`, `IServicioOrdenes`, `IServicioExistencias`, `IServicioCotizaciones` y la máquina de estados `TransicionesOrdenCompra`. Requiere `ITasasDeCambio`, que implementa el cliente de la API externa |
 | Host de la API | `backend/src/Inventario.Api` | Endpoints HTTP delgados y la tabla de roles por operación (`Acceso/Operaciones.cs`) |
 | Enviador | `backend/src/Inventario.Enviador` | Proceso aparte que entrega la cola por SMTP |
 
-Cada pieza tiene su propio esquema en PostgreSQL (`control_acceso`, `gestion_permisos`, `cola_correos`, `notificaciones`, `documentos` e `inventario`). Ninguna lee las tablas de otra: todo pasa por interfaces. Por ejemplo, Gestión de permisos pregunta quién es el usuario con `IUsuarioActual` y otorga el permiso aprobado con `IOtorgamientoPermisos`; nunca toca las tablas de Control de acceso. Del mismo modo, el negocio le pregunta a Gestión de permisos con `IPermisosConcedidos` si un usuario tiene aprobado un permiso, sin conocer los estados de una solicitud. Ningún proyecto `Inventario.Core.*` referencia a `Inventario.Negocio`.
+Cada pieza tiene su propio esquema en PostgreSQL (`control_acceso`, `gestion_permisos`, `cola_correos`, `notificaciones`, `documentos`, `auditoria` e `inventario`). Ninguna lee las tablas de otra: todo pasa por interfaces. La única tabla que comparten es `auditoria.historial`, y solo para agregarle filas: cada pieza auditada la mapea en su contexto para guardar el registro junto con el cambio ([Auditoría](#decisiones-de-diseño)). Por ejemplo, Gestión de permisos pregunta quién es el usuario con `IUsuarioActual` y otorga el permiso aprobado con `IOtorgamientoPermisos`; nunca toca las tablas de Control de acceso. Del mismo modo, el negocio le pregunta a Gestión de permisos con `IPermisosConcedidos` si un usuario tiene aprobado un permiso, sin conocer los estados de una solicitud. Ningún proyecto `Inventario.Core.*` referencia a `Inventario.Negocio`.
 
 ## Requisitos
 
@@ -369,6 +381,263 @@ Pieza 5 del Core ([`Inventario.Core.Reportes`](backend/src/Inventario.Core.Repor
 | Un rango inválido (RF-REP-05, RD-07) | `curl -s -w ' [%{http_code}]\n' "$API/reportes/compras-por-proveedor?desde=2026-12-01&hasta=2026-11-01" -H "$AD"; curl -s -w ' [%{http_code}]\n' "$API/reportes/solicitudes?desde=ayer&hasta=$HOY" -H "$AD"` | 400 «La fecha desde (2026-12-01) es posterior a hasta (2026-11-01)…» y 400 «La fecha desde «ayer» no es válida…». |
 | Sin sesión | `curl -s -w ' [%{http_code}]\n' "$API/reportes/solicitudes?desde=$HOY&hasta=$HOY"` | 401. |
 
+## Auditoría
+
+Pieza 6 del Core, en [`backend/src/Inventario.Core.Auditoria`](backend/src/Inventario.Core.Auditoria). Hace con los datos de la aplicación lo que `git log` hace con el repositorio: guarda quién cambió qué, cuándo y qué había antes. La comparación campo por campo de un registro con un commit está en la [bitácora de la Asignación 4](docs/bitacora-asignacion-4.md).
+
+### Qué guarda cada registro (RF-AUD-01)
+
+| Campo | Qué es | Ejemplo |
+|---|---|---|
+| `id` | El número del registro. Crece con cada uno. | `14` |
+| `fechaHora` | Cuándo, en UTC. Sale del mismo reloj que el cambio (RD-11): es la misma hora que queda en la entidad (`resueltaEn`, `subidoEn`, `eliminadoEn`). | `2026-11-22T18:05:41.123456+00:00` |
+| `usuarioId`, `usuarioCorreo`, `usuarioRol` | Quién actuó y con qué rol lo hizo. | `1`, `admin@inventario.local`, `Administrador` |
+| `accion` | Qué hizo. Se llama como la operación de la API que lo provoca. | `CambiarRol` |
+| `entidad`, `entidadId` | Qué tipo de cosa cambió, y cuál. | `Usuario`, `3` |
+| `valorAnterior`, `valorNuevo` | JSON con los campos que cambiaron, antes y después. Nunca vacíos. | `{"rol":"Estándar"}` y `{"rol":"Administrador"}` |
+
+Un registro al que le falte cualquiera de esos datos no se puede crear: la pieza lo rechaza antes de guardarlo y las columnas no admiten nulos.
+
+### Qué se audita (RF-AUD-02 a 05)
+
+| Evento | `accion` | `entidad` | `valorAnterior` → `valorNuevo` |
+|---|---|---|---|
+| Aprobar una solicitud de permiso (RF-AUD-02) | `AprobarSolicitud` | `SolicitudPermiso` | `{"estado":"Pendiente","permiso":…,"solicitante":…}` → `{"estado":"Aprobada","permiso":…}` |
+| Rechazar una solicitud de permiso (RF-AUD-02) | `RechazarSolicitud` | `SolicitudPermiso` | `{"estado":"Pendiente",…}` → `{"estado":"Rechazada","permiso":…,"motivo":…}` |
+| Subir un documento (RF-AUD-03) | `SubirDocumento` | `Documento` | `{"estado":"No existía"}` → `{"estado":"Vigente","nombre":…,"tipo":…,"tamanoBytes":…}` |
+| Eliminar un documento (RF-AUD-03) | `EliminarDocumento` | `Documento` | `{"estado":"Vigente","nombre":…}` → `{"estado":"Eliminado","nombre":…}` |
+| Cambiar el rol de un usuario (RF-AUD-04) | `CambiarRol` | `Usuario` | `{"rol":"Estándar"}` → `{"rol":"Administrador"}` |
+| Desactivar un usuario (RF-AUD-04) | `DesactivarUsuario` | `Usuario` | `{"estado":"Activo"}` → `{"estado":"Desactivado","sesionesCerradas":…}` |
+| Reactivar un usuario (RF-AUD-04) | `ReactivarUsuario` | `Usuario` | `{"estado":"Desactivado"}` → `{"estado":"Activo"}` |
+| Un Administrador fuerza el restablecimiento (RF-AUD-05) | `ForzarRestablecimiento` | `Usuario` | `{"contrasena":"la anterior (no se guarda)"}` → `{"contrasena":"anulada hasta que el usuario defina otra con el código que recibe por correo","iniciadoPor":"Administrador","sesionesCerradas":…}` |
+| El usuario define su contraseña con un código (RF-AUD-05) | `RestablecerContrasena` | `Usuario` | `{"contrasena":"la anterior (no se guarda)"}` → `{"contrasena":"una nueva (no se guarda)","iniciadoPor":…,"sesionesCerradas":…}` |
+| El usuario cambia su contraseña escribiendo la actual | `CambiarContrasena` | `Usuario` | Igual que el anterior, con `"iniciadoPor":"PropioUsuario"` |
+
+`iniciadoPor` dice quién inició el restablecimiento. Es `PropioUsuario` si el usuario pidió el código, y `Administrador` si el código se lo mandó un Administrador al forzarlo, aunque quien escriba la contraseña nueva sea el usuario (el código guarda quién lo pidió). Ningún registro guarda la contraseña, su hash ni el código: el campo `contrasena` solo dice qué pasó con ella.
+
+Un cambio que se rechaza (400, 403 o 409) no deja registro, porque el registro se guarda junto con el cambio.
+
+### Decisiones de diseño
+
+- **Dónde se escribe el registro, para que no pueda quedar un cambio sin él.** En el mismo guardado que el cambio. La tabla `auditoria.historial` está mapeada en el contexto de cada pieza auditada (Control de acceso, Gestión de permisos y Documentos). Cada una agrega el registro con `HistorialAuditoria.Auditar(...)` y lo guarda con el mismo `SaveChanges` que el cambio, o dentro de la misma transacción. Si el cambio falla, el registro tampoco queda; si se guarda, el registro también. Solo la pieza de Auditoría crea la tabla, en sus migraciones; las demás la dejan fuera de las suyas.
+- **Cómo se representan el valor anterior y el nuevo.** Como JSON con nombres de campo y solo lo que cambió, no la entidad entera: se ve qué cambió sin comparar todo y no se copian datos que no hacen falta. Nunca están vacíos: si la entidad no existía, el anterior dice `{"estado":"No existía"}`, como el `/dev/null` en el diff de un archivo nuevo en git.
+- **Cómo el Core no depende del negocio (RD-03).** La pieza no conoce ninguna entidad: guarda el nombre de la entidad y su id como texto. No referencia a ninguna otra pieza; son las demás las que la referencian para escribir (si dependiera de Control de acceso habría un ciclo, porque Control de acceso escribe en ella). Las entidades que acepta el filtro y el desfase del día del negocio se los pasa el host al arrancar, igual que le pasa a Gestión de permisos el catálogo de permisos. Si el negocio quisiera auditar sus órdenes, referenciaría a la pieza él mismo, y el Core seguiría sin saber que existen.
+- **Inmutable (RF-AUD-06), en tres capas.** No hay ninguna operación de edición ni de borrado: ni en la pieza (su única interfaz, `IConsultaAuditoria`, solo consulta) ni en la API (`GET /api/auditoria` es su única ruta). Si algún código lo intentara, el contexto se niega a guardar un registro modificado o borrado ([`GuardaHistorial.cs`](backend/src/Inventario.Core.Auditoria/GuardaHistorial.cs)). Y en PostgreSQL un trigger rechaza `UPDATE`, `DELETE` y `TRUNCATE` sobre la tabla, vengan de donde vengan ([migración](backend/src/Inventario.Core.Auditoria/Migraciones/20261122172945_Inicial.cs)).
+- **Fecha y hora (RD-11).** Salen del mismo reloj del sistema que usa el cambio, en UTC y con microsegundos, así que el `fechaHora` de un registro es exactamente el `resueltaEn`, `subidoEn` o `eliminadoEn` de la entidad. Los filtros `desde` y `hasta` cortan los días en hora de Santo Domingo, igual que los [reportes](#reportes).
+- **Solo el Administrador (RF-AUD-07, RD-06).** La regla vive en la pieza. `Operaciones.cs` exige la sesión (`ConsultarAuditoria`) y la consulta rechaza con 403 a quien no sea Administrador, como hace el negocio con `AjustarExistencia`. Así la regla está en un solo lugar y su prueba corre sin levantar la API.
+
+### Consulta (RF-AUD-07)
+
+`GET /api/auditoria`, solo para el Administrador. Devuelve `total` (cuántos registros cumplen el filtro) y `registros`, del más reciente al más antiguo, como `git log` (muestra hasta 500). Los filtros son opcionales y se combinan:
+
+| Filtro | Qué deja | Ejemplo |
+|---|---|---|
+| `usuario` | Lo que hizo un usuario: su id o su correo. | `?usuario=1` o `?usuario=admin@inventario.local` |
+| `entidad` | Un tipo de entidad: `Usuario`, `SolicitudPermiso` o `Documento` (sin importar mayúsculas). | `?entidad=Documento` |
+| `entidadId` | Una sola cosa, junto con `entidad`: su historia completa, como `git log -- archivo`. | `?entidad=Usuario&entidadId=3` |
+| `desde`, `hasta` | Días `AAAA-MM-DD` del calendario del negocio (Santo Domingo, UTC−4), los dos completos. Se puede usar uno solo. | `?desde=2026-11-01&hasta=2026-11-30` |
+
+Un filtro inválido responde 400 con un mensaje que dice qué corregir (RD-07): un usuario que no es número ni correo, una entidad que no existe, `entidadId` sin `entidad`, una fecha mal escrita o fuera de 1900–2100, o `desde` posterior a `hasta`. Un Estándar recibe 403 aunque arme la petición a mano (RD-06); sin sesión, 401.
+
+**En la interfaz:** enlace «Auditoría» de la barra (`/auditoria`), solo para el Administrador. Tiene los cinco filtros y la tabla, con la fecha en hora de Santo Domingo. No tiene nada que editar.
+
+### Cómo provocar cada evento y consultar el historial
+
+**Preparación.** Con la aplicación levantada (`docker compose up -d`) y el Administrador de `.env`. La función `cuenta` crea a Eva, una usuaria Estándar: registra la cuenta, espera el correo de activación en Mailpit y abre el enlace. `codigo` espera el siguiente correo de una dirección y saca el código de recuperación. `historial` consulta el historial como Administrador con los filtros que le pases. En Git Bash, desde la carpeta del repositorio:
+
+```bash
+API=http://localhost:8080/api; J='Content-Type: application/json'; CORREO=http://localhost:8080/correo
+token() { curl -s $API/acceso/sesion -H "$J" -d "{\"correo\":\"$1\",\"contrasena\":\"$2\"}" | sed -nE 's/.*"token":"([^"]+)".*/\1/p'; }
+ultimo_correo() { curl -s "$CORREO/api/v1/search?query=to:$1" | grep -o '"ID":"[^"]*"' | head -1 | cut -d'"' -f4; }
+esperar_correo() { for i in $(seq 30); do ID=$(ultimo_correo $1); [ -n "$ID" ] && [ "$ID" != "${2:-}" ] && break; sleep 1; done; curl -s $CORREO/view/$ID.txt; }
+cuenta() { curl -s $API/acceso/registro -H "$J" -d "{\"nombre\":\"$1\",\"correo\":\"$2\",\"contrasena\":\"clave1234\"}"; echo; curl -s $API/acceso/activar -H "$J" -d "{\"token\":\"$(esperar_correo $2 | grep -o 'token=[A-Za-z0-9_-]*' | cut -d= -f2)\"}"; echo; }
+codigo() { esperar_correo $1 $2 | grep -o 'codigo=[A-Za-z0-9_-]*' | head -1 | cut -d= -f2; }
+historial() { curl -s "$API/auditoria?$1" -H "$A"; echo; }
+primer_id() { grep -o '"id":[0-9]*' | head -1 | cut -d: -f2; }
+cuenta Eva eva@ejemplo.com
+TOKEN_ADMIN=$(token admin@inventario.local Admin12345); A="Authorization: Bearer $TOKEN_ADMIN"
+TOKEN_EVA=$(token eva@ejemplo.com clave1234); E="Authorization: Bearer $TOKEN_EVA"
+EVA=$(curl -s $API/yo -H "$E" | primer_id); HOY=$(TZ=AST4 date +%F); echo "Eva es el usuario $EVA; hoy es $HOY"
+```
+
+`cuenta` imprime «Cuenta creada…» y «Cuenta activada. Ya puedes iniciar sesión.», y la última línea, el id de Eva y la fecha de hoy en Santo Domingo. Sigue los pasos en orden: cada uno usa lo que dejó el anterior. Cada `historial` imprime un JSON con `total` y `registros`; el primero de `registros` es el más reciente.
+
+**1. Aprobar una solicitud (RF-AUD-02).** Eva pide `ListarUsuarios` y el Administrador la aprueba:
+
+```bash
+SOL=$(curl -s $API/solicitudes -H "$E" -H "$J" -d '{"permiso":"ListarUsuarios"}' | primer_id)
+curl -s -X POST $API/solicitudes/$SOL/aprobar -H "$A"; echo
+historial "entidad=SolicitudPermiso&entidadId=$SOL"
+```
+
+Resultado: «Solicitud aprobada…» y, en el historial, `"total":1` con un registro `"usuarioCorreo":"admin@inventario.local","usuarioRol":"Administrador","accion":"AprobarSolicitud","entidad":"SolicitudPermiso"`, el `entidadId` de la solicitud, `"valorAnterior":{"estado":"Pendiente","permiso":"ListarUsuarios","solicitante":"eva@ejemplo.com"}` y `"valorNuevo":{"estado":"Aprobada","permiso":"ListarUsuarios"}`. Su `fechaHora` es la misma que el `resueltaEn` de la respuesta de aprobar.
+
+**2. Rechazar una solicitud (RF-AUD-02):**
+
+```bash
+SOL2=$(curl -s $API/solicitudes -H "$E" -H "$J" -d '{"permiso":"ReactivarUsuario"}' | primer_id)
+curl -s -X POST $API/solicitudes/$SOL2/rechazar -H "$A" -H "$J" -d '{"motivo":"Pideselo a tu supervisor"}'; echo
+historial "entidad=SolicitudPermiso&entidadId=$SOL2"
+```
+
+Resultado: «Solicitud rechazada…» y un registro `"accion":"RechazarSolicitud"` del Administrador, con `"valorNuevo":{"estado":"Rechazada","permiso":"ReactivarUsuario","motivo":"Pideselo a tu supervisor"}`.
+
+**3. Subir un documento (RF-AUD-03).** Lo sube Eva:
+
+```bash
+printf 'Conteo fisico del lunes\n' > conteo.txt
+DOC=$(curl -s $API/documentos -H "$E" -F "archivo=@conteo.txt;type=text/plain" | primer_id)
+historial "entidad=Documento&entidadId=$DOC"
+```
+
+Resultado: un registro `"usuarioCorreo":"eva@ejemplo.com","usuarioRol":"Estándar","accion":"SubirDocumento","entidad":"Documento"`, con `"valorAnterior":{"estado":"No existía"}` y `"valorNuevo":{"estado":"Vigente","nombre":"conteo.txt","tipo":"text/plain","tamanoBytes":24}`.
+
+**4. Eliminar el documento (RF-AUD-03).** Lo elimina el Administrador:
+
+```bash
+curl -s -X DELETE $API/documentos/$DOC -H "$A"; echo
+historial "entidad=Documento&entidadId=$DOC"
+```
+
+Resultado: «Documento «conteo.txt» eliminado…» y `"total":2`: primero `"accion":"EliminarDocumento"` del Administrador, de `{"estado":"Vigente","nombre":"conteo.txt"}` a `{"estado":"Eliminado","nombre":"conteo.txt"}`, y después la subida del paso 3. Es la historia completa del documento.
+
+**5. Cambiar el rol (RF-AUD-04).** El Administrador sube a Eva a Administradora y la devuelve a Estándar:
+
+```bash
+curl -s -X PUT $API/usuarios/$EVA/rol -H "$A" -H "$J" -d '{"rol":"Administrador"}'; echo
+curl -s -X PUT $API/usuarios/$EVA/rol -H "$A" -H "$J" -d '{"rol":"Estandar"}'; echo
+historial "entidad=Usuario&entidadId=$EVA"
+```
+
+Resultado: «Rol cambiado a Administrador.», «Rol cambiado a Estándar.» y dos registros `"accion":"CambiarRol"`: el más reciente de `{"rol":"Administrador"}` a `{"rol":"Estándar"}`, y el anterior de `{"rol":"Estándar"}` a `{"rol":"Administrador"}`.
+
+**6. Desactivar y reactivar (RF-AUD-04):**
+
+```bash
+curl -s -X POST $API/usuarios/$EVA/desactivar -H "$A"; echo
+curl -s -X POST $API/usuarios/$EVA/reactivar -H "$A"; echo
+historial "entidad=Usuario&entidadId=$EVA"
+TOKEN_EVA=$(token eva@ejemplo.com clave1234); E="Authorization: Bearer $TOKEN_EVA"
+```
+
+Resultado: dos registros más, arriba de los del paso 5: `"accion":"ReactivarUsuario"` de `{"estado":"Desactivado"}` a `{"estado":"Activo"}`, y `"accion":"DesactivarUsuario"` de `{"estado":"Activo"}` a `{"estado":"Desactivado","sesionesCerradas":1}` (la sesión de Eva de la preparación). Por eso la última línea vuelve a iniciar su sesión.
+
+**7. Restablecer la contraseña como la propia usuaria (RF-AUD-05).** Eva pide un código de recuperación (sin sesión, como quien olvidó su contraseña) y define una nueva:
+
+```bash
+ANTES=$(ultimo_correo eva@ejemplo.com)
+curl -s $API/acceso/recuperacion -H "$J" -d '{"correo":"eva@ejemplo.com"}'; echo
+COD=$(codigo eva@ejemplo.com $ANTES); echo "código: $COD"
+curl -s $API/acceso/restablecer -H "$J" -d "{\"codigo\":\"$COD\",\"contrasenaNueva\":\"nueva12345\"}"; echo
+historial "entidad=Usuario&entidadId=$EVA"
+```
+
+Resultado: «Contraseña cambiada…» y, arriba, un registro de Eva (`"usuarioCorreo":"eva@ejemplo.com","usuarioRol":"Estándar"`) con `"accion":"RestablecerContrasena"`, `"valorAnterior":{"contrasena":"la anterior (no se guarda)"}` y `"valorNuevo":{"contrasena":"una nueva (no se guarda)","iniciadoPor":"PropioUsuario","sesionesCerradas":1}`.
+
+**8. Restablecer la contraseña como Administrador (RF-AUD-05).** El Administrador lo fuerza y Eva usa el código que le llega:
+
+```bash
+ANTES=$(ultimo_correo eva@ejemplo.com)
+curl -s -X POST $API/usuarios/$EVA/forzar-restablecimiento -H "$A"; echo
+COD2=$(codigo eva@ejemplo.com $ANTES); echo "código: $COD2"
+curl -s $API/acceso/restablecer -H "$J" -d "{\"codigo\":\"$COD2\",\"contrasenaNueva\":\"otra12345\"}"; echo
+historial "entidad=Usuario&entidadId=$EVA"
+TOKEN_EVA=$(token eva@ejemplo.com otra12345); E="Authorization: Bearer $TOKEN_EVA"
+```
+
+Resultado: dos registros más. Primero, el de Eva al usar el código: `"accion":"RestablecerContrasena"` con `"iniciadoPor":"Administrador"`, porque el código lo pidió el Administrador. Debajo, el del Administrador: `"usuarioCorreo":"admin@inventario.local","accion":"ForzarRestablecimiento"` con `"valorNuevo":{"contrasena":"anulada hasta que el usuario defina otra con el código que recibe por correo","iniciadoPor":"Administrador","sesionesCerradas":0}`.
+
+**9. Ningún registro guarda una contraseña ni un código (RF-AUD-05):**
+
+```bash
+historial "" | grep -c -e clave1234 -e nueva12345 -e otra12345 -e "$COD" -e "$COD2"
+docker compose exec -T db psql -U inventario -d inventario -c "select id, accion, valor_anterior, valor_nuevo from auditoria.historial where entidad = 'Usuario' order by id"
+```
+
+Resultado: `0`, y la tabla muestra los registros de Eva con `contrasena` como «la anterior (no se guarda)», «una nueva (no se guarda)» o «anulada…», nunca un valor real ni un hash.
+
+**10. Consultar por usuario (RF-AUD-07),** por correo o por id:
+
+```bash
+historial "usuario=eva@ejemplo.com"
+historial "usuario=$EVA"
+```
+
+Resultado: las dos dan lo mismo, solo lo que hizo Eva: `"total":3` (los dos `RestablecerContrasena` y el `SubirDocumento`). Lo que el Administrador le hizo a Eva no sale aquí: el filtro es por quién actuó.
+
+**11. Consultar por entidad (RF-AUD-07):**
+
+```bash
+historial "entidad=documento"
+historial "entidad=SolicitudPermiso"
+```
+
+Resultado: solo registros de `Documento` (la subida y la eliminación) y solo de `SolicitudPermiso` (la aprobación y el rechazo).
+
+**12. Consultar por rango de fechas (RF-AUD-07).** `HOY` es la fecha de hoy en Santo Domingo, calculada en la preparación:
+
+```bash
+historial "desde=$HOY&hasta=$HOY" | grep -o '"total":[0-9]*'
+historial "hasta=$HOY" | grep -o '"total":[0-9]*'
+historial "desde=2026-01-01&hasta=2026-01-31" | grep -o '"total":[0-9]*'
+```
+
+Resultado: las dos primeras dan el mismo total (todo lo que hiciste hoy: `"total":11` si es la primera vez que sigues estos pasos: 2 de solicitudes, 2 del documento, 2 de rol, 2 de estado y 3 de contraseña), porque `hasta` incluye el día completo, también lo hecho después de las 20:00, que en UTC ya es el día siguiente. Enero da `"total":0`: otro rango, otro resultado sobre los mismos registros.
+
+**13. Los filtros se combinan:**
+
+```bash
+historial "usuario=admin@inventario.local&entidad=Usuario&desde=$HOY&hasta=$HOY"
+```
+
+Resultado: solo lo que hizo hoy el Administrador sobre usuarios (los cambios de rol, la desactivación, la reactivación y el restablecimiento forzado).
+
+**14. Un filtro inválido (RD-07):**
+
+```bash
+curl -s -w ' [%{http_code}]\n' "$API/auditoria?desde=2026-13-01" -H "$A"
+curl -s -w ' [%{http_code}]\n' "$API/auditoria?entidad=Producto" -H "$A"
+curl -s -w ' [%{http_code}]\n' "$API/auditoria?usuario=abc" -H "$A"
+curl -s -w ' [%{http_code}]\n' "$API/auditoria?desde=2026-11-30&hasta=2026-11-01" -H "$A"
+```
+
+Resultado: cuatro 400, cada uno con su mensaje: «La fecha desde «2026-13-01» no es válida. Usa el formato AAAA-MM-DD…», «La entidad «Producto» no existe en el historial. Usa una de estas: Documento, SolicitudPermiso, Usuario.», «El filtro usuario «abc» no es válido…» y «La fecha desde (2026-11-30) es posterior a hasta (2026-11-01). Invierte las fechas.».
+
+**15. Un Estándar no consulta el historial (RF-AUD-07, RD-06).** Eva arma la petición a mano:
+
+```bash
+curl -s -w ' [%{http_code}]\n' $API/auditoria -H "$E"
+curl -s -w ' [%{http_code}]\n' "$API/auditoria?entidad=Producto" -H "$E"
+curl -s -w ' [%{http_code}]\n' $API/auditoria
+```
+
+Resultado: 403 «La operación ConsultarAuditoria es solo para: Administrador. Tu rol es Estándar.» dos veces (con un filtro inválido también, no un 400: a un Estándar no se le dice nada más), y 401 sin sesión. En la interfaz, Eva no ve el enlace «Auditoría» y `/auditoria` le dice que es solo para Administradores.
+
+**16. El historial no se modifica ni se borra (RF-AUD-06):**
+
+```bash
+curl -s -w ' [%{http_code}]\n' -X DELETE $API/auditoria -H "$A"
+curl -s -w ' [%{http_code}]\n' -X PUT $API/auditoria -H "$A" -H "$J" -d '{}'
+docker compose exec -T db psql -U inventario -d inventario -c "delete from auditoria.historial"
+docker compose exec -T db psql -U inventario -d inventario -c "update auditoria.historial set usuario_correo = 'otro@ejemplo.com'"
+docker compose exec -T db psql -U inventario -d inventario -c "truncate auditoria.historial"
+grep -rnE "Map(Get|Post|Put|Patch|Delete)" backend/src/Inventario.Api/Auditoria
+```
+
+Resultado: 405 «Esta ruta no acepta ese método HTTP.» dos veces; las tres órdenes de `psql` fallan con `ERROR:  El historial de auditoría no se modifica ni se borra (RF-AUD-06).`; y el único endpoint de la pieza es un `MapGet`. Ni siquiera desde la base se puede cambiar: solo se pueden agregar filas.
+
+**17. El historial sobrevive a `docker compose down` (RD-09):**
+
+```bash
+historial "" | grep -o '"total":[0-9]*'
+docker compose down
+docker compose up -d
+until [ "$(curl -s -o /dev/null -w '%{http_code}' $API/salud)" = 200 ]; do sleep 2; done
+historial "" | grep -o '"total":[0-9]*'
+```
+
+Resultado: el mismo total antes y después. `docker compose down` sin `-v` borra los contenedores pero no el volumen `datos-postgres`, donde está el esquema `auditoria`. La credencial del Administrador también sigue sirviendo, porque las sesiones están en la base.
+
 ## Cómo provocar cada criterio de aceptación
 
 Control de acceso y Gestión de permisos se pueden probar desde la interfaz (http://localhost:8080) o armando la petición a mano con `curl`; el módulo de negocio, con `curl`. Los `curl` de abajo son para **Git Bash**. En los textos que mandes con `curl` (por ejemplo un motivo de rechazo), no uses tildes: en Windows, `curl.exe` manda los argumentos en otra codificación y la API responde «La petición no tiene el formato esperado». Desde la interfaz las tildes funcionan bien.
@@ -443,8 +712,9 @@ La contraseña no aparece en ninguna columna, y los dos hashes son distintos. Es
 | Negocio: RegistrarProveedor, RegistrarProducto | Administrador |
 | Negocio: CambiarEstadoOrden | Administrador o Estándar; luego la máquina de estados dice qué rol hace cada transición ([`TransicionesOrdenCompra.cs`](backend/src/Inventario.Negocio/Ordenes/TransicionesOrdenCompra.cs)) |
 | Negocio: AjustarExistencia | Administrador o Estándar; luego el negocio exige ser Administrador o tener el permiso aprobado en Gestión de permisos ([`ServicioExistencias.cs`](backend/src/Inventario.Negocio/Existencias/ServicioExistencias.cs)) |
+| Auditoría: ConsultarAuditoria | Administrador o Estándar; luego la pieza de Auditoría rechaza con 403 a quien no sea Administrador ([`ConsultaAuditoria.cs`](backend/src/Inventario.Core.Auditoria/ConsultaAuditoria.cs), sección [Auditoría](#auditoría)) |
 
-Las dos últimas filas no repiten la regla en dos lugares: `Operaciones.cs` exige la sesión, y la regla fina vive una sola vez, en la tabla de transiciones o en el servicio que consulta a Gestión de permisos.
+Las tres últimas filas no repiten la regla en dos lugares: `Operaciones.cs` exige la sesión, y la regla fina vive una sola vez: en la tabla de transiciones, en el servicio que consulta a Gestión de permisos o en la consulta del historial.
 
 | Para comprobar | Haz esto | Resultado esperado |
 |---|---|---|
@@ -495,7 +765,7 @@ Los datos viven en dos volúmenes con nombre, fuera de la imagen y de los conten
 
 `docker volume ls` muestra los dos volúmenes (`<carpeta>_datos-postgres` y `<carpeta>_documentos`). Para ver los archivos guardados: `docker compose exec -T api sh -c 'ls -l $DOCUMENTOS_CARPETA'`. Cada archivo tiene un nombre que genera la aplicación; el nombre original está en la tabla `documentos.documentos`.
 
-`docker compose restart` también lo conserva todo.
+`docker compose restart` también lo conserva todo. El historial de auditoría también vive en `datos-postgres` (esquema `auditoria`): el [paso 17 de Auditoría](#cómo-provocar-cada-evento-y-consultar-el-historial) lo comprueba con `docker compose down` y `up`.
 
 ### 8. Módulo de negocio: inventario (RF-NEG-02 a 06 y 09)
 
@@ -778,20 +1048,21 @@ Un solo comando, desde la raíz del repositorio. Funciona en un clon recién hec
 docker compose -f docker-compose.pruebas.yml run --rm --build pruebas
 ```
 
-Compila dentro de Docker y corre las ocho suites. La primera vez tarda unos minutos. Termina con:
+Compila dentro de Docker y corre las nueve suites. La primera vez tarda unos minutos. Termina con:
 
 ```
 Passed!  - Failed:     0, Passed:    12, Skipped:     0, Total:    12, ... - Inventario.Core.Reportes.Pruebas.dll (net10.0)
 Passed!  - Failed:     0, Passed:    18, Skipped:     0, Total:    18, ... - Inventario.Core.ColaCorreos.Pruebas.dll (net10.0)
-Passed!  - Failed:     0, Passed:    81, Skipped:     0, Total:    81, ... - Inventario.Core.GestionPermisos.Pruebas.dll (net10.0)
+Passed!  - Failed:     0, Passed:    86, Skipped:     0, Total:    86, ... - Inventario.Core.GestionPermisos.Pruebas.dll (net10.0)
+Passed!  - Failed:     0, Passed:    41, Skipped:     0, Total:    41, ... - Inventario.Core.Auditoria.Pruebas.dll (net10.0)
 Passed!  - Failed:     0, Passed:    21, Skipped:     0, Total:    21, ... - Inventario.Core.Notificaciones.Pruebas.dll (net10.0)
-Passed!  - Failed:     0, Passed:    35, Skipped:     0, Total:    35, ... - Inventario.Core.Documentos.Pruebas.dll (net10.0)
+Passed!  - Failed:     0, Passed:    38, Skipped:     0, Total:    38, ... - Inventario.Core.Documentos.Pruebas.dll (net10.0)
 Passed!  - Failed:     0, Passed:   157, Skipped:     0, Total:   157, ... - Inventario.Negocio.Pruebas.dll (net10.0)
-Passed!  - Failed:     0, Passed:    44, Skipped:     0, Total:    44, ... - Inventario.Core.ControlAcceso.Pruebas.dll (net10.0)
+Passed!  - Failed:     0, Passed:    53, Skipped:     0, Total:    53, ... - Inventario.Core.ControlAcceso.Pruebas.dll (net10.0)
 Passed!  - Failed:     0, Passed:     7, Skipped:     0, Total:     7, ... - Inventario.Integracion.Pruebas.dll (net10.0)
 ```
 
-Las ocho líneas pueden salir en otro orden. Si tienes el SDK de .NET 10 instalado, también sirve `dotnet test backend/Inventario.slnx`.
+Las nueve líneas pueden salir en otro orden: 433 pruebas en total. Si tienes el SDK de .NET 10 instalado, también sirve `dotnet test backend/Inventario.slnx`.
 
 Para correr una sola prueba, agrega un filtro al final del mismo comando:
 
@@ -799,7 +1070,23 @@ Para correr una sola prueba, agrega un filtro al final del mismo comando:
 docker compose -f docker-compose.pruebas.yml run --rm --build pruebas --filter "FullyQualifiedName~CancelarUnaOrdenRecibida"
 ```
 
-En todas las suites salvo la de Control de acceso, cada prueba marca sus tres fases con comentarios (`// Preparar`, `// Actuar`, `// Verificar`), su nombre dice qué comportamiento verifica y lleva el requisito con `[Trait("Requisito", "...")]`. En las ocho suites, cada prueba arma su propio entorno, con bases en memoria nuevas, así que no comparten datos: pasan en cualquier orden y por separado.
+En todas las suites salvo la de Control de acceso, cada prueba marca sus tres fases con comentarios (`// Preparar`, `// Actuar`, `// Verificar`), su nombre dice qué comportamiento verifica y lleva el requisito con `[Trait("Requisito", "...")]`; en Control de acceso lo hacen las pruebas nuevas de auditoría. En las nueve suites, cada prueba arma su propio entorno, con bases en memoria nuevas, así que no comparten datos: pasan en cualquier orden y por separado.
+
+### Auditoría (Asignación 4)
+
+Para correr solo estas, agrega `--filter "Requisito~RF-AUD"` al final del comando de Pruebas (44 pruebas en cuatro suites). Cada una lee el registro de la misma base, con un contexto nuevo, y compara **todos** sus campos, incluidos el valor anterior y el nuevo, no solo que exista.
+
+| Requisito | Prueba | Qué comprueba |
+|---|---|---|
+| RF-AUD-02 | [`AuditoriaSolicitudesPruebas`](backend/tests/Inventario.Core.GestionPermisos.Pruebas/AuditoriaSolicitudesPruebas.cs) `.AprobarDejaQuienAproboQueSolicitudYPermisoYCuando` y `.RechazarDejaQuienRechazoQueSolicitudCuandoYElMotivo` | Quién resolvió, la solicitud, la fecha (la misma que `resueltaEn`) y los estados antes y después, con el motivo. Una resolución rechazada, o perdida contra otro Administrador al mismo tiempo, no deja registro. |
+| RF-AUD-03 | [`AuditoriaDocumentosPruebas`](backend/tests/Inventario.Core.Documentos.Pruebas/AuditoriaDocumentosPruebas.cs) `.SubirDejaQuienLoSubioCuandoYQueAntesNoExistia` y `.EliminarDejaQuienLoEliminoCuandoYQuePasoDeVigenteAEliminado` | Los dos registros con todos sus campos; una subida o eliminación rechazada no deja nada. |
+| RF-AUD-04 | [`AuditoriaUsuariosPruebas`](backend/tests/Inventario.Core.ControlAcceso.Pruebas/AuditoriaUsuariosPruebas.cs) `.CambiarElRolDejaQuienLoCambioCuandoYElRolAnteriorYElNuevo`, `.DesactivarDejaElEstadoAnteriorElNuevoYCuantasSesionesSeCerraron` y `.ReactivarDejaElEstadoAnteriorYElNuevo` | El rol o el estado antes y después; un cambio que no ocurre (último Administrador, mismo rol) no deja registro. |
+| RF-AUD-05 | `AuditoriaUsuariosPruebas.RestablecerConUnCodigoPedidoPorElPropioUsuario…`, `.ForzarElRestablecimientoDiceQueLoInicioUnAdministrador…`, `.DefinirLaContrasenaConElCodigoDeUnRestablecimientoForzado…` y `.CambiarLaContrasenaPropia…` | `iniciadoPor` (`PropioUsuario` o `Administrador`) y que ninguna contraseña, hash ni código aparece en ningún campo. |
+| RF-AUD-07 | [`ConsultaAuditoriaPruebas`](backend/tests/Inventario.Core.Auditoria.Pruebas/ConsultaAuditoriaPruebas.cs) `.UnEstandarNoConsultaElHistorial` | Un Estándar recibe el rechazo (403 en la API) y ningún registro; también con un filtro inválido y sin sesión. Más una prueba por filtro, y `ElRangoDeFechasIncluyeElPrimerYElUltimoDiaCompletosEnElDiaDelNegocio` con registros justo dentro y justo fuera del rango. |
+| RF-AUD-06 | [`HistorialPruebas`](backend/tests/Inventario.Core.Auditoria.Pruebas/HistorialPruebas.cs) `.NingunaOperacionExpuestaModificaNiBorraRegistros` | Llama a todas las operaciones de la pieza (consultar con cada filtro, como cada usuario, y agregar) y comprueba que los registros de antes siguen idénticos. Además, `LaPiezaNoTieneNingunaOperacionDeEdicionNiDeBorradoNiSiquieraOculta` revisa por reflexión todos los métodos de la pieza, y modificar o borrar un registro desde el contexto se rechaza. |
+| RF-AUD-01, RD-07, RD-11 | `HistorialPruebas` y `ConsultaAuditoriaPruebas` | Un registro sin alguno de sus datos no se crea; cada filtro inválido da su mensaje; la hora se guarda en UTC y es la del cambio. |
+
+Que estas pruebas detectan errores se comprobó rompiendo cada regla a propósito (11 cambios, como quitar el último día del rango o no guardar el registro al reactivar): con cada uno falla al menos la prueba que lo cubre. El detalle está en la [bitácora](docs/bitacora-asignacion-4.md).
 
 ### Notificaciones, cola y reportes (Práctica 5)
 
@@ -832,7 +1119,7 @@ estas cuatro, agrega `--filter "FullyQualifiedName~Hallazgo"` al final del mismo
 Que cada una falla sin su corrección y pasa con ella lo comprueba
 [`docs/evidencias/asignacion-3/antes-y-despues.sh`](docs/evidencias/asignacion-3/antes-y-despues.sh) (necesita el SDK de .NET 10).
 
-### Manejador de documentos (35 pruebas)
+### Manejador de documentos (38 pruebas)
 
 Están en [`backend/tests/Inventario.Core.Documentos.Pruebas`](backend/tests/Inventario.Core.Documentos.Pruebas/DocumentosPruebas.cs) y prueban la pieza por `IServicioDocumentos`, como la usa la API, sin la API ni PostgreSQL. Usan SQLite en memoria, una carpeta temporal propia de cada prueba como almacén, un reloj controlado y, en lugar de Control de acceso, `UsuarioActualFalso`, que dice quién hace la petición (o que no hay sesión). Lo guardado se lee con un contexto nuevo y desde la carpeta del almacén.
 
@@ -882,7 +1169,7 @@ Están en [`backend/tests/Inventario.Integracion.Pruebas`](backend/tests/Inventa
 | `ElPermisoAprobadoAOtroEstandarNoLeSirveAAna` | El permiso es del solicitante y de nadie más. |
 | `AlAprobarElPermisoTambienQuedaOtorgadoEnControlDeAcceso` | La misma sesión, validada otra vez, ya trae el permiso (RF-GP-05). |
 
-### Gestión de permisos (80 pruebas)
+### Gestión de permisos (86 pruebas)
 
 Están en `backend/tests/Inventario.Core.GestionPermisos.Pruebas` y prueban la pieza directamente, sin la API ni PostgreSQL. Usan SQLite en memoria y un reloj controlado. En lugar de Control de acceso usan dos dobles de sus interfaces: `UsuarioActualFalso` dice quién hace la petición y `OtorgamientoFalso` anota los permisos otorgados.
 
@@ -911,7 +1198,7 @@ docker compose -f docker-compose.pruebas.yml run --rm --build pruebas --filter "
 
 Las demás suites no tienen pruebas con ese filtro, así que para ellas el comando dice «No test matches the given testcase filter». Es normal: la línea que importa es la de `Inventario.Core.GestionPermisos.Pruebas.dll`, con 33 pruebas.
 
-### Control de acceso (44 pruebas)
+### Control de acceso (53 pruebas)
 
 Están en `backend/tests/Inventario.Core.ControlAcceso.Pruebas`. En lugar de PostgreSQL y SMTP usan SQLite en memoria, un reloj falso para provocar vencimientos y bloqueos, y una cola de correos falsa que guarda los enlaces. Cubren la política de contraseña y la validación de datos, el hash, registro y activación, sesión y bloqueo, recuperación, cambio y restablecimiento forzado de contraseña, y administración de usuarios.
 
@@ -981,6 +1268,7 @@ Sobre los defectos 2 y 5: la suite los detecta sin importar si la transición ag
 │   │   ├── Inventario.Core.ColaCorreos/       # cola de correos: reintentos con límite y consulta
 │   │   ├── Inventario.Core.Notificaciones/    # pieza 4: bandeja interna, preferencias y aviso por correo
 │   │   ├── Inventario.Core.Reportes/          # pieza 5: rango de fechas de los reportes
+│   │   ├── Inventario.Core.Auditoria/         # pieza 6: historial de auditoría, su consulta y su trigger
 │   │   ├── Inventario.Enviador/        # consola que entrega la cola
 │   │   └── Inventario.Negocio/         # módulo de inventario: servicios, máquina de la orden y cotización con la API externa
 │   └── tests/                          # pruebas xUnit (RD-12), sin la aplicación levantada
@@ -990,6 +1278,7 @@ Sobre los defectos 2 y 5: la suite los detecta sin importar si la transición ag
 │       ├── Inventario.Core.Notificaciones.Pruebas/
 │       ├── Inventario.Core.ColaCorreos.Pruebas/
 │       ├── Inventario.Core.Reportes.Pruebas/
+│       ├── Inventario.Core.Auditoria.Pruebas/
 │       ├── Inventario.Negocio.Pruebas/        # máquina de estados de la orden, servicios del negocio y cliente de la API
 │       └── Inventario.Integracion.Pruebas/    # negocio + Gestión de permisos + Control de acceso reales
 ├── frontend/                           # React 19 + TypeScript + Vite; nginx.conf
@@ -1023,5 +1312,6 @@ En la declaración de la semana 1 el stack decía .NET 9. Se cambió a **.NET 10
 - **API externa:** el negocio define lo que necesita (`ITasasDeCambio`) y el cliente de ExchangeRate-API lo implementa. Así la operación se prueba con un doble, y el cliente con respuestas HTTP simuladas. Cualquier problema de la API es un `TipoFallo.NoDisponible` (503) con su mensaje, nunca una excepción.
 - **Notificaciones (RF-NOT):** las piezas que avisan (Gestión de permisos y el negocio) solo conocen `INotificador`. Notificaciones guarda la notificación y encola el correo; nunca contacta el servidor SMTP, así que avisar no hace fallar la operación aunque el correo esté caído. El aviso se hace después de guardar la operación: si la operación se rechaza, no hay aviso.
 - **Reportes (RF-REP):** cada reporte vive junto a sus datos (el de solicitudes en Gestión de permisos, el de compras en el negocio) y la pieza Reportes solo comparte el rango de fechas, así el Core no depende del negocio (RD-03). La orden de compra guarda quién la creó y cuándo se recibió; la migración llena `recibida_en` de las órdenes que ya estaban recibidas.
+- **Auditoría (RF-AUD):** el registro se guarda en el mismo guardado que el cambio, porque cada pieza auditada mapea la tabla del historial en su propio contexto. La pieza de Auditoría no depende de ninguna otra y nadie puede modificar ni borrar el historial (ver [Auditoría](#decisiones-de-diseño)).
 - **Un solo puerto:** nginx es la única entrada. Resuelve `api` y `mailpit` en cada petición con el DNS de Docker, así que si uno se detiene, lo demás sigue respondiendo.
-- **Bitácoras con el agente:** [`docs/bitacora-asignacion-1.md`](docs/bitacora-asignacion-1.md) y [`docs/bitacora-asignacion-2.md`](docs/bitacora-asignacion-2.md).
+- **Bitácoras con el agente:** [`docs/bitacora-asignacion-1.md`](docs/bitacora-asignacion-1.md), [`docs/bitacora-asignacion-2.md`](docs/bitacora-asignacion-2.md), [`docs/bitacora-asignacion-3.md`](docs/bitacora-asignacion-3.md) y [`docs/bitacora-asignacion-4.md`](docs/bitacora-asignacion-4.md).
