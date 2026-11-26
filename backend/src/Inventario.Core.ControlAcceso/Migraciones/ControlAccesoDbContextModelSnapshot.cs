@@ -23,6 +23,83 @@ namespace Inventario.Core.ControlAcceso.Migraciones
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.Entity("Inventario.Core.Auditoria.RegistroAuditoria", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<string>("Accion")
+                        .IsRequired()
+                        .HasMaxLength(60)
+                        .HasColumnType("character varying(60)")
+                        .HasColumnName("accion");
+
+                    b.Property<string>("Entidad")
+                        .IsRequired()
+                        .HasMaxLength(60)
+                        .HasColumnType("character varying(60)")
+                        .HasColumnName("entidad");
+
+                    b.Property<string>("EntidadId")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("entidad_id");
+
+                    b.Property<DateTimeOffset>("FechaHora")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("fecha_hora");
+
+                    b.Property<string>("UsuarioCorreo")
+                        .IsRequired()
+                        .HasMaxLength(254)
+                        .HasColumnType("character varying(254)")
+                        .HasColumnName("usuario_correo");
+
+                    b.Property<int>("UsuarioId")
+                        .HasColumnType("integer")
+                        .HasColumnName("usuario_id");
+
+                    b.Property<string>("UsuarioRol")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)")
+                        .HasColumnName("usuario_rol");
+
+                    b.Property<string>("ValorAnterior")
+                        .IsRequired()
+                        .HasMaxLength(4000)
+                        .HasColumnType("character varying(4000)")
+                        .HasColumnName("valor_anterior");
+
+                    b.Property<string>("ValorNuevo")
+                        .IsRequired()
+                        .HasMaxLength(4000)
+                        .HasColumnType("character varying(4000)")
+                        .HasColumnName("valor_nuevo");
+
+                    b.HasKey("Id")
+                        .HasName("pk_historial");
+
+                    b.HasIndex("FechaHora")
+                        .HasDatabaseName("ix_historial_fecha_hora");
+
+                    b.HasIndex("UsuarioId")
+                        .HasDatabaseName("ix_historial_usuario_id");
+
+                    b.HasIndex("Entidad", "EntidadId")
+                        .HasDatabaseName("ix_historial_entidad_entidad_id");
+
+                    b.ToTable("historial", "auditoria", t =>
+                        {
+                            t.ExcludeFromMigrations();
+                        });
+                });
+
             modelBuilder.Entity("Inventario.Core.ControlAcceso.Contrasenas.CodigoRecuperacion", b =>
                 {
                     b.Property<long>("Id")
@@ -45,6 +122,12 @@ namespace Inventario.Core.ControlAcceso.Migraciones
                     b.Property<DateTimeOffset?>("InvalidadoEn")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("invalidado_en");
+
+                    b.Property<string>("Origen")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("origen");
 
                     b.Property<bool>("Usado")
                         .HasColumnType("boolean")

@@ -1,3 +1,4 @@
+using Inventario.Core.Auditoria;
 using Inventario.Core.ColaCorreos;
 using Inventario.Core.ControlAcceso;
 using Inventario.Core.ControlAcceso.Permisos;
@@ -12,6 +13,7 @@ using Inventario.Negocio.Productos;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Microsoft.Extensions.Time.Testing;
 
@@ -47,6 +49,13 @@ public sealed class Sistema : IDisposable
         Negocio().Database.EnsureCreated();
         Notificaciones().Database.EnsureCreated();
         Cola().Database.EnsureCreated();
+        // Control de acceso y Gestión de permisos escriben en el historial de auditoría, que solo mapean: la tabla la crea la
+        // pieza de Auditoría, como al arrancar la API. Aquí cada pieza tiene su propia base, así que va en las dos.
+        foreach (var conexion in new[] { baseControlAcceso, baseGestionPermisos })
+        {
+            using var auditoria = new AuditoriaDbContext(Opciones<AuditoriaDbContext>(conexion));
+            auditoria.GetService<IRelationalDatabaseCreator>().CreateTables();
+        }
     }
 
     public FakeTimeProvider Reloj { get; } = new(new DateTimeOffset(2026, 10, 31, 12, 0, 0, TimeSpan.Zero));

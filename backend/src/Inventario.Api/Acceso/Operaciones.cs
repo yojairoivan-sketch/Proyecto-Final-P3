@@ -104,6 +104,11 @@ public static class Operaciones
     public static readonly Operacion RegistrarProveedor = new(nameof(RegistrarProveedor), SoloAdministrador);
     public static readonly Operacion RegistrarProducto = new(nameof(RegistrarProducto), SoloAdministrador);
 
+    // Historial de auditoría (RF-AUD-07): reservado al Administrador. Aquí se pide la sesión y la pieza de Auditoría rechaza
+    // a quien no sea Administrador (403), igual que el negocio afina AjustarExistencia: la regla está en un solo lugar y su
+    // prueba corre sin levantar la API. No hay ninguna operación que modifique o borre el historial (RF-AUD-06).
+    public static readonly Operacion ConsultarAuditoria = new(nameof(ConsultarAuditoria), ConSesion);
+
     /// <summary>Todas las operaciones declaradas arriba.</summary>
     public static IReadOnlyList<Operacion> Todas { get; } = typeof(Operaciones)
         .GetFields(BindingFlags.Public | BindingFlags.Static)

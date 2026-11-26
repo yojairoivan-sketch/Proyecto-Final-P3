@@ -3,8 +3,8 @@
   <!--
     Pieza del Core: Gestión de permisos. Responde «¿qué acceso elevado pediste y en qué estado está?».
     Requiere Control de acceso (quién es el usuario y dónde se aplica el permiso aprobado) y Notificaciones
-    (avisar a los Administradores y al solicitante), solo por sus interfaces.
-    Nunca referencia al módulo de negocio (RD-03).
+    (avisar a los Administradores y al solicitante), solo por sus interfaces, y deja cada resolución en el historial
+    de auditoría. Nunca referencia al módulo de negocio (RD-03).
   -->
 
   <ItemGroup>
@@ -13,6 +13,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\Inventario.Core.Auditoria\Inventario.Core.Auditoria.csproj" />
     <ProjectReference Include="..\Inventario.Core.ControlAcceso\Inventario.Core.ControlAcceso.csproj" />
     <ProjectReference Include="..\Inventario.Core.Notificaciones\Inventario.Core.Notificaciones.csproj" />
     <ProjectReference Include="..\Inventario.Core.Reportes\Inventario.Core.Reportes.csproj" />

@@ -1,3 +1,4 @@
+using Inventario.Core.Auditoria;
 using Inventario.Core.ControlAcceso;
 using Inventario.Core.Notificaciones;
 using Microsoft.EntityFrameworkCore;
@@ -206,10 +207,22 @@ internal sealed class ServicioSolicitudes(
         if (solicitud is null)
             return Fallo<SolicitudPermiso>(NoExiste());
 
+        var desde = solicitud.Estado;
         var intento = new IntentoTransicion(Actor.Administrador(administrador.Id, administrador.Nombre), reloj.GetUtcNow(), motivo);
         var cambio = solicitud.CambiarEstado(hacia, intento);
         if (!cambio.Exito)
             return Fallo<SolicitudPermiso>(cambio);
+
+        // RF-AUD-02: quién aprobó o rechazó qué y cuándo. Se guarda con el mismo SaveChanges que la resolución, así que si
+        // otro Administrador la resolvió primero (conflicto de versión) no queda ni la resolución ni su registro.
+        db.Auditar(administrador.ComoQuienActua(),
+            hacia == EstadoSolicitud.Aprobada ? AuditoriaSolicitudes.AprobarSolicitud : AuditoriaSolicitudes.RechazarSolicitud,
+            AuditoriaSolicitudes.Entidad, solicitud.Id,
+            new { estado = desde.ToString(), permiso = solicitud.Permiso, solicitante = solicitud.SolicitanteCorreo },
+            hacia == EstadoSolicitud.Aprobada
+                ? new { estado = hacia.ToString(), permiso = solicitud.Permiso }
+                : (object)new { estado = hacia.ToString(), permiso = solicitud.Permiso, motivo = solicitud.MotivoRechazo },
+            intento.Ahora);
 
         try
         {

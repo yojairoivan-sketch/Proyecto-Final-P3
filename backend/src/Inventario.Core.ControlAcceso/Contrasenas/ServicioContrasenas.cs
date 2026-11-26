@@ -1,3 +1,4 @@
+using Inventario.Core.Auditoria;
 using Inventario.Core.ColaCorreos;
 using Inventario.Core.ControlAcceso.Seguridad;
 using Inventario.Core.ControlAcceso.Sesiones;
@@ -34,11 +35,17 @@ public interface IServicioContrasenas
     Task<Resultado> ForzarRestablecimientoAsync(int usuarioId, CancellationToken ct = default);
 }
 
+/// <summary>
+/// Restablecer, cambiar o forzar una contraseña deja su registro en el historial de auditoría (RF-AUD-05), guardado en la misma
+/// transacción que el cambio. El registro dice quién lo inició (el propio usuario o un Administrador) y cuántas sesiones se
+/// cerraron; nunca guarda la contraseña, su hash ni el código.
+/// </summary>
 internal sealed class ServicioContrasenas(
     ControlAccesoDbContext db,
     IColaCorreos cola,
     TimeProvider reloj,
-    OpcionesControlAcceso opciones) : IServicioContrasenas
+    OpcionesControlAcceso opciones,
+    IUsuarioActual usuarioActual) : IServicioContrasenas
 {
     public const string RespuestaRecuperacion =
         "Si el correo corresponde a una cuenta activa, te enviamos un código para definir una contraseña nueva.";
@@ -52,7 +59,7 @@ internal sealed class ServicioContrasenas(
         var usuario = await db.Usuarios.SingleOrDefaultAsync(u => u.Correo == correoValido, ct);
         if (usuario is { Activo: true })
         {
-            var (codigo, venceEn) = await EmitirCodigoAsync(usuario, ct);
+            var (codigo, venceEn) = await EmitirCodigoAsync(usuario, OrigenCodigo.PropioUsuario, ct);
             var enlace = Correos.Enlace(opciones, "restablecer", "codigo", codigo);
             var (asunto, cuerpo) = Correos.Recuperacion(usuario.Nombre, enlace, codigo, venceEn);
             await cola.EncolarAsync(usuario.Correo, asunto, cuerpo, ct);
@@ -68,7 +75,9 @@ internal sealed class ServicioContrasenas(
             return Resultado.Falla(TipoFallo.Validacion, "Falta el código de recuperación.");
 
         var hash = Secretos.HashDeToken(codigo.Trim());
-        var registro = await db.CodigosRecuperacion.Include(c => c.Usuario).SingleOrDefaultAsync(c => c.HashCodigo == hash, ct);
+        var registro = await db.CodigosRecuperacion
+            .Include(c => c.Usuario).ThenInclude(u => u.Rol)
+            .SingleOrDefaultAsync(c => c.HashCodigo == hash, ct);
         var ahora = reloj.GetUtcNow();
 
         if (registro is null)
@@ -96,7 +105,11 @@ internal sealed class ServicioContrasenas(
         usuario.CambiarHash(Secretos.HashDeContrasena(contrasenaNueva!));
         usuario.RegistrarInicioCorrecto();
         await db.SaveChangesAsync(ct);
-        await db.RevocarSesionesDeAsync(usuario.Id, ahora, ct);
+        var cerradas = await db.RevocarSesionesDeAsync(usuario.Id, ahora, ct);
+        // Actúa el dueño del código (no hay sesión). Quién lo inició lo dice el código: él mismo o un Administrador.
+        AuditarContrasena(new QuienActua(usuario.Id, usuario.Correo, usuario.Rol.Nombre), AuditoriaUsuarios.RestablecerContrasena,
+            usuario.Id, AuditoriaUsuarios.ContrasenaNueva, registro.Origen, cerradas, ahora);
+        await db.SaveChangesAsync(ct);
         await transaccion.CommitAsync(ct);
 
         return Resultado.Ok("Contraseña cambiada. Las sesiones abiertas se cerraron; inicia sesión con la nueva.");
@@ -107,7 +120,7 @@ internal sealed class ServicioContrasenas(
         if (string.IsNullOrEmpty(contrasenaActual))
             return Resultado.Falla(TipoFallo.Validacion, "Escribe tu contraseña actual.");
 
-        var usuario = await db.Usuarios.SingleOrDefaultAsync(u => u.Id == usuarioId, ct);
+        var usuario = await db.Usuarios.Include(u => u.Rol).SingleOrDefaultAsync(u => u.Id == usuarioId, ct);
         if (usuario is null)
             return Resultado.Falla(TipoFallo.NoEncontrado, "El usuario no existe.");
 
@@ -118,10 +131,14 @@ internal sealed class ServicioContrasenas(
         if (PoliticaContrasena.Validar(contrasenaNueva) is { } error)
             return Resultado.Falla(TipoFallo.Validacion, error);
 
+        var ahora = reloj.GetUtcNow();
         await using var transaccion = await db.Database.BeginTransactionAsync(ct);
         usuario.CambiarHash(Secretos.HashDeContrasena(contrasenaNueva!));
         await db.SaveChangesAsync(ct);
-        await db.RevocarSesionesDeAsync(usuario.Id, reloj.GetUtcNow(), ct);
+        var cerradas = await db.RevocarSesionesDeAsync(usuario.Id, ahora, ct);
+        AuditarContrasena(new QuienActua(usuario.Id, usuario.Correo, usuario.Rol.Nombre), AuditoriaUsuarios.CambiarContrasena,
+            usuario.Id, AuditoriaUsuarios.ContrasenaNueva, OrigenCodigo.PropioUsuario, cerradas, ahora);
+        await db.SaveChangesAsync(ct);
         await transaccion.CommitAsync(ct);
 
         return Resultado.Ok("Contraseña cambiada. Todas tus sesiones se cerraron; inicia sesión con la nueva.");
@@ -129,6 +146,9 @@ internal sealed class ServicioContrasenas(
 
     public async Task<Resultado> ForzarRestablecimientoAsync(int usuarioId, CancellationToken ct = default)
     {
+        if (usuarioActual.Usuario is not { } administrador)
+            return Resultado.Falla(TipoFallo.NoAutenticado, "Inicia sesión como Administrador para forzar un restablecimiento.");
+
         var usuario = await db.Usuarios.SingleOrDefaultAsync(u => u.Id == usuarioId, ct);
         if (usuario is null)
             return Resultado.Falla(TipoFallo.NoEncontrado, "El usuario no existe.");
@@ -138,13 +158,17 @@ internal sealed class ServicioContrasenas(
         await using (var transaccion = await db.Database.BeginTransactionAsync(ct))
         {
             // La contraseña pasa a ser el hash de un secreto que nadie conoce: la anterior deja de servir ya.
+            var ahora = reloj.GetUtcNow();
             usuario.CambiarHash(Secretos.HashDeContrasena(Secretos.NuevoToken()));
             await db.SaveChangesAsync(ct);
-            await db.RevocarSesionesDeAsync(usuario.Id, reloj.GetUtcNow(), ct);
+            var cerradas = await db.RevocarSesionesDeAsync(usuario.Id, ahora, ct);
+            AuditarContrasena(administrador.ComoQuienActua(), AuditoriaUsuarios.ForzarRestablecimiento,
+                usuario.Id, AuditoriaUsuarios.ContrasenaAnulada, OrigenCodigo.Administrador, cerradas, ahora);
+            await db.SaveChangesAsync(ct);
             await transaccion.CommitAsync(ct);
         }
 
-        var (codigo, venceEn) = await EmitirCodigoAsync(usuario, ct);
+        var (codigo, venceEn) = await EmitirCodigoAsync(usuario, OrigenCodigo.Administrador, ct);
         var enlace = Correos.Enlace(opciones, "restablecer", "codigo", codigo);
         var (asunto, cuerpo) = Correos.RestablecimientoForzado(usuario.Nombre, enlace, codigo, venceEn);
         await cola.EncolarAsync(usuario.Correo, asunto, cuerpo, ct);
@@ -155,8 +179,19 @@ internal sealed class ServicioContrasenas(
     private static Resultado CodigoUsado() =>
         Resultado.Falla(TipoFallo.Validacion, "Este código de recuperación ya se usó. Pide uno nuevo si lo necesitas.");
 
+    /// <summary>
+    /// RF-AUD-05: el registro de un cambio de contraseña. Dice qué pasó con ella, quién lo inició y cuántas sesiones se cerraron,
+    /// pero nunca la contraseña, su hash ni el código: ninguno de ellos llega a este método.
+    /// </summary>
+    private void AuditarContrasena(
+        QuienActua quien, string accion, int usuarioId, string contrasenaNueva, OrigenCodigo inicio, int sesionesCerradas, DateTimeOffset ahora) =>
+        db.Auditar(quien, accion, AuditoriaUsuarios.Entidad, usuarioId,
+            new { contrasena = AuditoriaUsuarios.ContrasenaAnterior },
+            new { contrasena = contrasenaNueva, iniciadoPor = inicio.ToString(), sesionesCerradas },
+            ahora);
+
     /// <summary>Invalida los códigos anteriores sin usar y emite uno nuevo.</summary>
-    private async Task<(string Codigo, DateTimeOffset VenceEn)> EmitirCodigoAsync(Usuario usuario, CancellationToken ct)
+    private async Task<(string Codigo, DateTimeOffset VenceEn)> EmitirCodigoAsync(Usuario usuario, OrigenCodigo origen, CancellationToken ct)
     {
         var ahora = reloj.GetUtcNow();
         await db.CodigosRecuperacion
@@ -164,7 +199,7 @@ internal sealed class ServicioContrasenas(
             .ExecuteUpdateAsync(c => c.SetProperty(x => x.InvalidadoEn, ahora), ct);
 
         var codigo = Secretos.NuevoToken();
-        var registro = CodigoRecuperacion.Emitir(usuario, Secretos.HashDeToken(codigo), ahora, opciones.VigenciaCodigoRecuperacion);
+        var registro = CodigoRecuperacion.Emitir(usuario, Secretos.HashDeToken(codigo), ahora, opciones.VigenciaCodigoRecuperacion, origen);
         db.CodigosRecuperacion.Add(registro);
         await db.SaveChangesAsync(ct);
         return (codigo, registro.VenceEn);

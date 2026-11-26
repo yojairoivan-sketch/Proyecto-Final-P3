@@ -1,3 +1,4 @@
+using Inventario.Core.Auditoria;
 using Inventario.Core.ControlAcceso.Sesiones;
 using Microsoft.EntityFrameworkCore;
 
@@ -28,7 +29,11 @@ public interface IServicioUsuarios
     Task<Resultado> ReactivarAsync(int usuarioId, CancellationToken ct = default);
 }
 
-internal sealed class ServicioUsuarios(ControlAccesoDbContext db, TimeProvider reloj) : IServicioUsuarios
+/// <summary>
+/// Cada cambio (rol, desactivar, reactivar) deja su registro en el historial de auditoría con el valor anterior y el nuevo
+/// (RF-AUD-04). El registro se guarda junto con el cambio: si uno falla, no queda ninguno.
+/// </summary>
+internal sealed class ServicioUsuarios(ControlAccesoDbContext db, TimeProvider reloj, IUsuarioActual usuarioActual) : IServicioUsuarios
 {
     public async Task<IReadOnlyList<UsuarioListado>> ListarAsync(CancellationToken ct = default)
     {
@@ -38,6 +43,8 @@ internal sealed class ServicioUsuarios(ControlAccesoDbContext db, TimeProvider r
 
     public async Task<Resultado> CambiarRolAsync(int usuarioId, string? rol, CancellationToken ct = default)
     {
+        if (usuarioActual.Usuario is not { } quien)
+            return SinSesion();
         if (Rol.IdDe(rol) is not { } rolId)
             return Resultado.Falla(TipoFallo.Validacion, $"El rol debe ser {Rol.Administrador} o {Rol.Estandar}.");
 
@@ -51,13 +58,18 @@ internal sealed class ServicioUsuarios(ControlAccesoDbContext db, TimeProvider r
             && await db.Usuarios.CountAsync(u => u.RolId == Rol.IdAdministrador && u.Activo, ct) == 1)
             return Resultado.Falla(TipoFallo.Conflicto, "No se puede quitar el rol al último Administrador activo.");
 
+        var anterior = Rol.NombreDe(usuario.RolId);
         usuario.CambiarRol(rolId);
+        db.Auditar(quien.ComoQuienActua(), AuditoriaUsuarios.CambiarRol, AuditoriaUsuarios.Entidad, usuario.Id,
+            new { rol = anterior }, new { rol = Rol.NombreDe(rolId) }, reloj.GetUtcNow());
         await db.SaveChangesAsync(ct);
-        return Resultado.Ok($"Rol cambiado a {(rolId == Rol.IdAdministrador ? Rol.Administrador : Rol.Estandar)}.");
+        return Resultado.Ok($"Rol cambiado a {Rol.NombreDe(rolId)}.");
     }
 
     public async Task<Resultado> DesactivarAsync(int administradorId, int usuarioId, CancellationToken ct = default)
     {
+        if (usuarioActual.Usuario is not { } quien)
+            return SinSesion();
         if (usuarioId == administradorId)
             return Resultado.Falla(TipoFallo.Conflicto, "Un Administrador no puede desactivarse a sí mismo.");
 
@@ -69,10 +81,15 @@ internal sealed class ServicioUsuarios(ControlAccesoDbContext db, TimeProvider r
         if (!usuario.Activo)
             return Resultado.Ok("El usuario ya estaba desactivado.");
 
+        // El cambio, la revocación de sesiones y el registro de auditoría van en la misma transacción.
+        var ahora = reloj.GetUtcNow();
         await using var transaccion = await db.Database.BeginTransactionAsync(ct);
         usuario.Desactivar();
         await db.SaveChangesAsync(ct);
-        await db.RevocarSesionesDeAsync(usuario.Id, reloj.GetUtcNow(), ct);
+        var cerradas = await db.RevocarSesionesDeAsync(usuario.Id, ahora, ct);
+        db.Auditar(quien.ComoQuienActua(), AuditoriaUsuarios.DesactivarUsuario, AuditoriaUsuarios.Entidad, usuario.Id,
+            new { estado = "Activo" }, new { estado = "Desactivado", sesionesCerradas = cerradas }, ahora);
+        await db.SaveChangesAsync(ct);
         await transaccion.CommitAsync(ct);
 
         return Resultado.Ok("Usuario desactivado. Sus sesiones abiertas dejaron de servir.");
@@ -80,6 +97,9 @@ internal sealed class ServicioUsuarios(ControlAccesoDbContext db, TimeProvider r
 
     public async Task<Resultado> ReactivarAsync(int usuarioId, CancellationToken ct = default)
     {
+        if (usuarioActual.Usuario is not { } quien)
+            return SinSesion();
+
         var usuario = await db.Usuarios.SingleOrDefaultAsync(u => u.Id == usuarioId, ct);
         if (usuario is null)
             return NoExiste();
@@ -89,9 +109,13 @@ internal sealed class ServicioUsuarios(ControlAccesoDbContext db, TimeProvider r
             return Resultado.Falla(TipoFallo.Conflicto, "La cuenta nunca se activó: el usuario debe abrir su enlace de activación.");
 
         usuario.Reactivar();
+        db.Auditar(quien.ComoQuienActua(), AuditoriaUsuarios.ReactivarUsuario, AuditoriaUsuarios.Entidad, usuario.Id,
+            new { estado = "Desactivado" }, new { estado = "Activo" }, reloj.GetUtcNow());
         await db.SaveChangesAsync(ct);
         return Resultado.Ok("Usuario reactivado. Ya puede iniciar sesión.");
     }
 
     private static Resultado NoExiste() => Resultado.Falla(TipoFallo.NoEncontrado, "El usuario no existe.");
+
+    private static Resultado SinSesion() => Resultado.Falla(TipoFallo.NoAutenticado, "Inicia sesión para administrar usuarios.");
 }

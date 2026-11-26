@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Pieza 6 del Core: historial de auditoría (RF-AUD-01 a 07). Guarda quién cambió qué, cuándo, y qué había antes.
+    No depende de ninguna otra pieza: las que se auditan (Control de acceso, Gestión de permisos, Documentos) la referencian
+    a ella para escribir sus registros, así que si dependiera de alguna se formaría un ciclo. Nunca referencia al negocio (RD-03).
+  -->
+
+  <ItemGroup>
+    <PackageReference Include="EFCore.NamingConventions" />
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Inventario.Core.Auditoria.Pruebas" />
+  </ItemGroup>
+
+</Project>

@@ -1,18 +1,25 @@
+using Inventario.Core.Auditoria;
 using Inventario.Core.GestionPermisos.Solicitudes;
 using Microsoft.EntityFrameworkCore;
 
 namespace Inventario.Core.GestionPermisos;
 
-/// <summary>Datos propios de Gestión de permisos, en su propio esquema. No lee las tablas de Control de acceso.</summary>
+/// <summary>
+/// Datos propios de Gestión de permisos, en su propio esquema. No lee las tablas de Control de acceso.
+/// También mapea la tabla del historial de auditoría (sin migrarla): la resolución y su registro se guardan juntos.
+/// </summary>
 public sealed class GestionPermisosDbContext(DbContextOptions<GestionPermisosDbContext> opciones) : DbContext(opciones)
 {
     public const string Esquema = "gestion_permisos";
 
     internal DbSet<SolicitudPermiso> Solicitudes => Set<SolicitudPermiso>();
 
+    protected override void OnConfiguring(DbContextOptionsBuilder opciones) => opciones.ProtegerHistorialAuditoria();
+
     protected override void OnModelCreating(ModelBuilder modelo)
     {
         modelo.HasDefaultSchema(Esquema);
+        modelo.MapearHistorialAuditoria();
 
         modelo.Entity<SolicitudPermiso>(solicitud =>
         {
