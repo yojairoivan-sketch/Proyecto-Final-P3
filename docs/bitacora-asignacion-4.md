@@ -17,6 +17,7 @@
 | 5 | Comprobar que las pruebas detectan errores, rompiendo cada regla a propósito | Hecha: 11 de 11 detectados |
 | 6 | Escribir la sección «Auditoría» del README y seguirla al pie de la letra en un clon limpio | Hecha; un resultado esperado estaba mal (caso C) |
 | 7 | Correr el comando de Pruebas desde el clon limpio y redactar esta bitácora | Hecha |
+| 8 | Revisar todo contra el enunciado antes de publicar | Hecha; encontró un camino para borrar el historial que se le había pasado (caso D) |
 
 ## Qué le pedí
 
@@ -37,6 +38,8 @@
 3. A mitad de la sesión interrumpí una comprobación y le dije **«sigue»**. Encontró Docker Desktop caído con el error de
    siempre («initializing Inference manager») y me pidió permiso para la receta conocida (cerrarlo y renombrar sus carpetas
    `run` y `docker-secrets-engine`). Le respondí **«Sí, aplícala»**.
+4. Al final le pedí que revisara que todo cuadrara con los requerimientos de la asignación, que corrigiera lo que estuviera
+   mal y que lo subiera solo cuando se asegurara de que todo estaba bien (caso D).
 
 ## Qué devolvió
 
@@ -50,6 +53,8 @@ b1471a9 test: agrega la suite de la pieza de auditoría
 5aeb986 feat: audita subir y eliminar documentos
 6479c5f feat: consulta el historial en /api/auditoria
 fdb9987 feat: agrega la pantalla del historial
+a145f87 docs: README y bitácora de la Asignación 4
+7047dcf fix: la migración del historial no se deshace          (caso D)
 ```
 
 | Commit | Pruebas al pasar por él |
@@ -140,6 +145,18 @@ corrió en una sola sesión de Git Bash, en un clon limpio con la base vacía. E
 
 **Cómo se corrigió.** El README dice ahora `"total":11`, con ese desglose. Los otros 16 pasos dieron exactamente lo que
 dice el README, incluidos los mensajes de error, el 403 del Estándar, los 405 y el error del trigger en `psql`.
+
+### Caso D — La migración del historial se podía deshacer, y deshacerla borraba los registros
+
+**Qué hizo.** El `Down` que generó para la migración inicial de la pieza (lo que corre si se deshace la migración) borraba
+la función del trigger y la tabla `auditoria.historial` completa.
+
+**Cómo se detectó.** En la revisión final contra la rúbrica, que penaliza «una operación que modifica o elimina registros
+pero está oculta». La aplicación nunca deshace migraciones y la prueba de reflexión no lo veía (`Down` no se parece a
+«borrar»), pero era un camino en el código para eliminar todo el historial.
+
+**Cómo se corrigió.** En el commit `7047dcf`, `Down` lanza una excepción con el mensaje «El historial de auditoría no se
+borra (RF-AUD-06): esta migración no se deshace.» La compilación sigue sin avisos y las 433 pruebas pasan.
 
 ### Un incidente que no fue del agente
 
