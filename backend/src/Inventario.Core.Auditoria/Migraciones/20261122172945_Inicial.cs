@@ -75,13 +75,11 @@ namespace Inventario.Core.Auditoria.Migraciones
                 """);
         }
 
-        /// <inheritdoc />
-        protected override void Down(MigrationBuilder migrationBuilder)
-        {
-            migrationBuilder.Sql("DROP FUNCTION auditoria.rechazar_cambio_historial() CASCADE;");
-            migrationBuilder.DropTable(
-                name: "historial",
-                schema: "auditoria");
-        }
+        /// <summary>
+        /// RF-AUD-06: deshacer esta migración borraría el historial, así que no se permite. La aplicación nunca deshace
+        /// migraciones; esto cierra también ese camino.
+        /// </summary>
+        protected override void Down(MigrationBuilder migrationBuilder) =>
+            throw new NotSupportedException("El historial de auditoría no se borra (RF-AUD-06): esta migración no se deshace.");
     }
 }
